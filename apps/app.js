@@ -526,23 +526,98 @@ window.toggleStrategicMap = function() {
 
 function initStrategicGraph() {
     const container = document.getElementById('map-svg-container');
-    container.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--accent-color);">GENERANDO RED DE RELACIONES (OBSIDIAN MODE)...</div>';
+    container.innerHTML = ''; // Clear simulation
     
-    // Simulación de grafo interconectado
-    setTimeout(() => {
-        container.innerHTML = `
-            <svg width="100%" height="300" style="border: 1px solid var(--border-color); border-radius: 8px;">
-                <circle cx="50%" cy="50%" r="40" fill="var(--secondary-accent)" opacity="0.4" />
-                <text x="50%" y="50%" text-anchor="middle" fill="white" font-size="12">TU EMPRESA</text>
-                
-                <line x1="50%" y1="50%" x2="30%" y2="30%" stroke="var(--accent-color)" stroke-dasharray="5,5" />
-                <circle cx="30%" cy="30%" r="30" fill="var(--warning-color)" opacity="0.3" />
-                <text x="30%" y="30%" text-anchor="middle" fill="white" font-size="10">COMPETIDOR</text>
-                
-                <line x1="50%" y1="50%" x2="70%" y2="40%" stroke="var(--accent-color)" />
-                <circle cx="70%" cy="40%" r="20" fill="var(--accent-color)" opacity="0.3" />
-                <text x="70%" y="40%" text-anchor="middle" fill="white" font-size="10">LEAD 1</text>
-            </svg>
-        `;
-    }, 1500);
+    // 1. DATA PREPARATION (Ensuring 100% Connectivity)
+    const operator = getOperatorIntel();
+    const nodes = [
+        { id: operator.myCompany, group: 'CORE', radius: 30, color: 'var(--secondary-accent)' }
+    ];
+    const links = [];
+
+    // Add session leads and competitors
+    const sessionData = INTEL_DATA.slice(0, 10);
+    sessionData.forEach(item => {
+        nodes.push({ id: item.company, group: 'LEAD', radius: 15, color: 'var(--accent-color)' });
+        links.push({ source: operator.myCompany, target: item.company });
+        
+        // Secondary connections (smart heuristics)
+        if (item.category === 'HARVESTED_INTEL') {
+             // Connect to a virtual "Market Pool" node or to each other
+             if (nodes.length > 2) {
+                 links.push({ source: nodes[nodes.length-2].id, target: item.company });
+             }
+        }
+    });
+
+    const width = container.clientWidth || 800;
+    const height = 400;
+
+    const svg = d3.select('#map-svg-container')
+        .append('svg')
+        .attr('width', '100%')
+        .attr('height', height)
+        .style('background', 'rgba(0,0,0,0.2)')
+        .style('border-radius', '12px');
+
+    const simulation = d3.forceSimulation(nodes)
+        .force('link', d3.forceLink(links).id(d => d.id).distance(100))
+        .force('charge', d3.forceManyBody().strength(-200))
+        .force('center', d3.forceCenter(width / 2, height / 2))
+        .force('collision', d3.forceCollide().radius(d => d.radius + 10));
+
+    const link = svg.append('g')
+        .selectAll('line')
+        .data(links)
+        .enter().append('line')
+        .attr('class', 'link')
+        .style('stroke', 'var(--accent-color)')
+        .style('stroke-opacity', 0.2);
+
+    const node = svg.append('g')
+        .selectAll('g')
+        .data(nodes)
+        .enter().append('g')
+        .call(d3.drag()
+            .on('start', dragstarted)
+            .on('drag', dragged)
+            .on('end', dragended));
+
+    node.append('circle')
+        .attr('r', d => d.radius)
+        .attr('fill', d => d.color)
+        .attr('filter', 'blur(0.5px)')
+        .style('stroke', 'rgba(255,255,255,0.2)');
+
+    node.append('text')
+        .text(d => d.id)
+        .attr('x', 0)
+        .attr('y', d => d.radius + 12)
+        .attr('text-anchor', 'middle')
+        .attr('class', 'label');
+
+    simulation.on('tick', () => {
+        link
+            .attr('x1', d => d.source.x)
+            .attr('y1', d => d.source.y)
+            .attr('x2', d => d.target.x)
+            .attr('y2', d => d.target.y);
+
+        node.attr('transform', d => `translate(${d.x},${d.y})`);
+    });
+
+    function dragstarted(event) {
+        if (!event.active) simulation.alphaTarget(0.3).restart();
+        event.subject.fx = event.subject.x;
+        event.subject.fy = event.subject.y;
+    }
+    function dragged(event) {
+        event.subject.fx = event.x;
+        event.subject.fy = event.y;
+    }
+    function dragended(event) {
+        if (!event.active) simulation.alphaTarget(0);
+        event.subject.fx = null;
+        event.subject.fy = null;
+    }
 }

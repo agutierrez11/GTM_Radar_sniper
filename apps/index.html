@@ -3,8 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ANTIGRAVITY SNIPER V16.0 | SNIPER FACTORY</title>
+    <title>ANTIGRAVITY SNIPER V26.0 | SAAS DASHBOARD</title>
     <link rel="stylesheet" href="style.css">
+    <!-- D3.js for Professional Knowledge Graph -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
 </head>
 <body class="cyber-terminal">
 
@@ -165,5 +167,12 @@
 
     <script src="data.js"></script>
     <script src="app.js"></script>
+    <style>
+        /* Smooth transitions for D3 elements */
+        .node { stroke: #fff; stroke-width: 1.5px; cursor: pointer; transition: all 0.3s; }
+        .link { stroke: var(--electric-cyan); stroke-opacity: 0.3; stroke-width: 1px; }
+        .node:hover { filter: brightness(1.5); r: 8px; }
+        .label { font-size: 10px; fill: var(--text-color); pointer-events: none; text-transform: uppercase; letter-spacing: 1px; }
+    </style>
 </body>
 </html>

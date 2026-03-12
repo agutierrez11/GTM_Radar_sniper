@@ -1,14 +1,17 @@
 :root {
-    --bg-color: #0a0d14; /* Deep Charcoal Blue */
-    --text-color: #e0e6ed; /* Soft White/Grey */
-    --accent-color: #10b981; /* Premium Emerald */
-    --secondary-accent: #3b82f6; /* Strategic Blue */
-    --warning-color: #ef4444;
-    --cta-color: #f59e0b;
-    --font-primary: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --bg-color: #0c111d; /* Deep Midnight Blue */
+    --text-color: #f8fafc; /* Crystal White */
+    --accent-color: #00ecff; /* Electric Cyan */
+    --secondary-accent: #6366f1; /* Indigo Strategic */
+    --emerald-accent: #10b981; /* Premium Growth Emerald */
+    --warning-color: #f43f5e; /* Rose Alert */
+    --cta-color: #fbbf24; /* Amber Action */
+    --font-primary: 'Inter', -apple-system, sans-serif;
     --font-mono: 'JetBrains Mono', monospace;
-    --glass-bg: rgba(255, 255, 255, 0.03);
-    --border-color: rgba(255, 255, 255, 0.1);
+    --glass-bg: rgba(255, 255, 255, 0.04);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --glass-blur: blur(12px);
+    --glow-shadow: 0 0 20px rgba(0, 236, 255, 0.15);
 }
 
 * {
@@ -32,13 +35,14 @@ body, html {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%) rotate(-45deg);
-    font-size: 5rem;
-    font-weight: bold;
-    color: rgba(57, 255, 20, 0.08); /* Increased visibility */
+    font-size: 8rem;
+    font-weight: 900;
+    color: rgba(0, 236, 255, 0.03); 
     pointer-events: none;
     z-index: 0;
     white-space: nowrap;
     text-transform: uppercase;
+    letter-spacing: 20px;
 }
 
 /* Screens */
@@ -60,11 +64,13 @@ body, html {
 }
 
 .terminal-container {
-    width: 500px;
-    border: 2px solid var(--text-color);
-    padding: 30px;
-    background: rgba(0, 0, 0, 0.95);
-    box-shadow: var(--glow-shadow);
+    width: 450px;
+    border: 1px solid var(--glass-border);
+    padding: 40px;
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    border-radius: 20px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
 }
 
 .terminal-header {
@@ -113,9 +119,11 @@ input[type="password"] {
 .terminal-nav {
     display: flex;
     justify-content: space-between;
-    padding: 10px 30px;
-    border-bottom: 1px solid var(--text-color);
-    background: #050505;
+    padding: 15px 40px;
+    border-bottom: 1px solid var(--glass-border);
+    background: rgba(12, 17, 29, 0.9);
+    backdrop-filter: blur(10px);
+    z-index: 100;
 }
 
 .nav-center {
@@ -137,13 +145,13 @@ input[type="password"] {
 
 /* Sidebar */
 .sidebar {
-    width: 320px;
-    border-right: 1px solid var(--border-color);
-    padding: 25px;
+    width: 340px;
+    border-right: 1px solid var(--glass-border);
+    padding: 30px;
     display: flex;
     flex-direction: column;
-    background: rgba(10, 13, 20, 0.8);
-    backdrop-filter: blur(20px);
+    background: rgba(12, 17, 29, 0.6);
+    backdrop-filter: var(--glass-blur);
 }
 
 .user-profile {
@@ -169,11 +177,12 @@ input[type="password"] {
 }
 
 .telemetry-box {
-    border: 1px solid rgba(57, 255, 20, 0.3);
-    padding: 10px;
+    border: 1px solid var(--glass-border);
+    padding: 15px;
     font-size: 0.75rem;
-    margin-bottom: 10px;
-    background: rgba(57, 255, 20, 0.02);
+    margin-bottom: 15px;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 10px;
 }
 
 .telemetry-header {
@@ -192,28 +201,25 @@ input[type="password"] {
 
 .interaction-panel button {
     width: 100%;
-    padding: 10px;
-    background: transparent;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
     font-family: inherit;
-    font-weight: bold;
+    font-weight: 700;
     font-size: 0.7rem;
     cursor: pointer;
     text-transform: uppercase;
-    transition: all 0.2s;
+    transition: all 0.3s ease;
+    letter-spacing: 1px;
 }
 
-.btn-radar { border: 1px solid var(--text-color); color: var(--text-color); }
-.btn-report { border: 1px solid var(--accent-color); color: var(--accent-color); }
-.btn-wa { border: 2px solid var(--cta-color); color: var(--cta-color); }
-
-.interaction-panel button:hover {
-    background: rgba(255,255,255,0.05);
-}
-
-.btn-wa:hover {
-    background: var(--cta-color);
-    color: #000;
-}
+.btn-radar { border-color: var(--accent-color); color: var(--accent-color); box-shadow: 0 0 10px rgba(0, 236, 255, 0.1); }
+.btn-radar:hover { background: var(--accent-color); color: #000; box-shadow: 0 0 20px var(--accent-color); }
+.btn-report { border-color: var(--secondary-accent); color: var(--secondary-accent); }
+.btn-report:hover { background: var(--secondary-accent); color: #000; }
+.btn-wa { border-color: var(--emerald-accent); color: var(--emerald-accent); }
+.btn-wa:hover { background: var(--emerald-accent); color: #000; }
 
 /* Grid */
 .content-area {
@@ -224,11 +230,12 @@ input[type="password"] {
 
 .tactical-map-container {
     background: var(--glass-bg);
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
     margin-bottom: 30px;
-    padding: 20px;
-    backdrop-filter: blur(15px);
+    padding: 25px;
+    backdrop-filter: var(--glass-blur);
+    box-shadow: inset 0 0 20px rgba(0, 236, 255, 0.05);
 }
 
 .tactical-map-container.hidden { display: none; }
@@ -275,16 +282,16 @@ input[type="password"] {
 }
 
 .intel-card {
-    border: 1px solid var(--border-color);
-    padding: 20px;
+    border: 1px solid var(--glass-border);
+    padding: 22px;
     background: var(--glass-bg);
-    border-radius: 12px;
+    border-radius: 16px;
     cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    backdrop-filter: blur(10px);
+    backdrop-filter: var(--glass-blur);
 }
 
 .intel-card:hover {
@@ -403,8 +410,8 @@ input[type="password"] {
     border-radius: 50%;
     margin-right: 5px;
 }
-.status-led.green { background: #00ff41; box-shadow: 0 0 5px #00ff41; }
-.status-led.red { background: #ff0000; box-shadow: 0 0 5px #ff0000; }
+.status-led.green { background: var(--accent-color); box-shadow: 0 0 10px var(--accent-color); }
+.status-led.red { background: var(--warning-color); box-shadow: 0 0 10px var(--warning-color); }
 
 .scraper-status-line {
     font-size: 0.7rem;
