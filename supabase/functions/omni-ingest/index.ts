@@ -1,7 +1,7 @@
 // Supabase Edge Function: omni-ingest
 // Handles Slack and Telegram Webhooks for Inbound Intelligence
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-client@2'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -20,7 +20,12 @@ Deno.serve(async (req) => {
       })
     }
 
-    // 2. Handle Slack Event (Message)
+    // 2. Handle Tactical/Mass Ingestion (Direct Payload)
+    if (payload.url) {
+      await insertLead(payload.url, payload.source || 'Manual_Hunt', payload.source_url)
+    }
+
+    // 3. Handle Slack Event (Message)
     if (payload.event && payload.event.type === 'message' && !payload.event.bot_id) {
       const text = payload.event.text || ""
       const urlMatch = text.match(/https?:\/\/[^\s]+/)
@@ -31,7 +36,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 3. Handle Telegram Message
+    // 4. Handle Telegram Message
     if (payload.message && payload.message.text) {
       const text = payload.message.text
       const urlMatch = text.match(/https?:\/\/[^\s]+/)
@@ -52,24 +57,36 @@ Deno.serve(async (req) => {
   }
 })
 
-async function insertLead(url: string, source: string) {
-  const domain = new URL(url).hostname.replace('www.', '').toUpperCase()
+async function insertLead(url: string, source_attribution: string, source_url?: string) {
+  const domain = new URL(url).hostname.replace('www.', '').toLowerCase()
   
+  // Clean URL for comparison
+  const cleanUrl = url.split('?')[0].replace(/\/$/, '')
+
   const { data, error } = await supabase
     .from('empresas')
-    .insert([
-      { 
-        name: domain, 
-        website: url, 
-        status: 'PENDING',
-        notes: `Ingested from ${source}` 
-      }
-    ])
+    .upsert(
+      [
+        { 
+          name: domain, 
+          website: cleanUrl, 
+          status: 'PENDING',
+          source_attribution: source_attribution,
+          source_url: source_url || url,
+          notes: `Intelligence captured via ${source_attribution} at ${new Date().toISOString()}` 
+        }
+      ],
+      { onConflict: 'website', ignoreDuplicates: false }
+    )
 
   if (error) {
-    console.error("Error inserting lead:", error)
+    if (error.code === '23505') {
+       console.log(`Target ${domain} already monitored. Intel updated.`)
+       return
+    }
+    console.error("Error inserting/updating lead:", error)
     throw error
   }
   
-  console.log(`Lead inserted: ${domain} from ${source}`)
+  console.log(`Target locked/updated: ${domain} from ${source_attribution}`)
 }
