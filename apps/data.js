@@ -70,23 +70,32 @@ const TITAN_INTEL = {
         regions: ['Brasil', 'México', 'UK', 'Polonia'],
         topProspects: ['Itaú', 'Bradesco', 'Santander', 'Banorte', 'Barclays (UK)']
     },
-    'DAVID': {
-        myCompany: 'Sumsub (Enterprise)',
-        myUrl: 'sumsub.com',
-        myCategory: 'Enterprise Sales / expansion',
-        myKillShot: 'Expertise en cerrar brechas de seguridad en mercados de alta regulación (Polonia/UK).',
-        competitors: ['Incode', 'Jumio', 'Onfido'],
-        regions: ['UK', 'Alemania', 'México'],
-        topProspects: ['HSBC', 'Lloyds', 'Monzo', 'Konfio']
-    },
     'DANIEL': {
-        myCompany: 'Sumsub (Strategic Partnerships)',
-        myUrl: 'sumsub.com',
-        myCategory: 'Partnerships / Founding Growth',
-        myKillShot: 'Arquitecto de ecosistemas de confianza para expansión acelerada.',
-        competitors: ['MetaMap', 'Trulioo'],
-        regions: ['Polonia', 'Europa del Este', 'México'],
-        topProspects: ['Allegro', 'InPost', 'PayU']
+        myCompany: 'Vitrify / Founder Vision',
+        myUrl: 'vitrify.com.br',
+        myCategory: 'Private Credit / IA Structuring',
+        myKillShot: 'Reverse ICP: Si Itaú y BTG lo usan, el mercado secundario lo necesita.',
+        competitors: ['Legacy manual structuring'],
+        regions: ['Brasil'],
+        topProspects: ['Itaú', 'BTG Pactual', 'XP Inc', 'Suno']
+    },
+    'EDSON': {
+        myCompany: 'Vitrify / CTO Technical',
+        myUrl: 'vitrify.com.br',
+        myCategory: 'Data Infrastructure / Fintech',
+        myKillShot: 'Infraestructura de datos para el ecosistema financiero brasileño.',
+        competitors: ['In-house data silos'],
+        regions: ['Brasil'],
+        topProspects: ['BTG Pactual', 'Itaú Digital', 'B3']
+    },
+    'REGINA': {
+        myCompany: 'SDR Agency / Open Market',
+        myUrl: 'sdr-agency.eu',
+        myCategory: 'Sales Development / Growth',
+        myKillShot: 'Escalamiento de ventas fuera de Fintech (Europa/Global).',
+        competitors: ['In-house SDR teams'],
+        regions: ['Europa', 'Global'],
+        topProspects: ['Cualquier empresa B2B buscando clientes calificados']
     }
 };
 

@@ -225,8 +225,12 @@ function generateBattleCards(intel, context, compUrl) {
 }
 
 // --- CORE LOGIC & UI ---
+// --- PERSISTENCE & SECRETS (Vercel Ready) ---
 const WEBHOOK_CONFIG = {
     ENABLED: true,
+    // Estos valores se inyectarán en Vercel Dashboard para seguridad
+    SUPABASE_URL: window.location.hostname === 'localhost' ? '' : 'https://vstmsndpxmxhkcllypxr.supabase.co',
+    SUPABASE_KEY: '', // Inyectado vía ENV
     URL: 'https://hooks.slack.com/services/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',
     TELEGRAM: {
         ENABLED: true,
@@ -235,8 +239,8 @@ const WEBHOOK_CONFIG = {
     }
 };
 
-const SCRAPER_POOL = [{ provider: 'Firecrawl_01', key: 'fc-0e246d8f705c49c9b6ae137311aacd8f', weight: 40, status: 'ONLINE' }];
-const WHITELIST = ['ANTONIO', 'NATELLA', 'GABRIEL', 'XAVIER', 'EDSON', 'ALEJANDRO', 'ANASTASIA', 'DAVID', 'DANIEL', 'REGINA'];
+const SCRAPER_POOL = [{ provider: 'Firecrawl_05', key: 'fc-0e246d8f705c49c9b6ae137311aacd8f', weight: 40, status: 'ONLINE' }];
+const WHITELIST = ['ANTONIO', 'NATELLA', 'GABRIEL', 'XAVIER', 'EDSON', 'ALEJANDRO', 'ANASTASIA', 'DANIEL', 'REGINA'];
 
 let state = {
     operator: null,
