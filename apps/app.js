@@ -475,6 +475,43 @@ function setLanguage(lang) {
 }
 
 function initInteraction() {
+    const feedbackBtn = document.getElementById('send-feedback-btn');
+    if (feedbackBtn) {
+        feedbackBtn.onclick = async () => {
+            const text = document.getElementById('feedback-text').value;
+            if (!text) return;
+            
+            addTerminalLog("ENVIANDO_REPORTE_A_COMANDANCIA...");
+            
+            const msg = `[FEEDBACK] Titán ${state.operator}: ${text}`;
+            
+            // Send to Slack (Simulation/Direct if enabled)
+            if (WEBHOOK_CONFIG.ENABLED) {
+                try {
+                    await fetch(WEBHOOK_CONFIG.URL, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        body: JSON.stringify({ text: msg })
+                    });
+                    
+                    // Send to Telegram
+                    const tgUrl = `https://api.telegram.org/bot${WEBHOOK_CONFIG.TELEGRAM.TOKEN}/sendMessage`;
+                    await fetch(tgUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ chat_id: WEBHOOK_CONFIG.TELEGRAM.CHAT_ID, text: msg })
+                    });
+                    
+                    alert("REPORTE ENVIADO. El Alto Mando ha sido notificado.");
+                    toggleModal('feedback-modal', false);
+                    document.getElementById('feedback-text').value = '';
+                } catch (e) {
+                    console.error("Feedback error:", e);
+                    alert("Error de conexión con el centro de mando.");
+                }
+            }
+        };
+    }
     document.getElementById('contact-strategist-btn').onclick = () => window.open('https://wa.me/529981191903', '_blank');
 }
 
