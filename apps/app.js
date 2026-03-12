@@ -524,6 +524,49 @@ window.toggleStrategicMap = function() {
     if (!map.classList.contains('hidden')) initStrategicGraph();
 };
 
+// 🗺️ GEO-INTELLIGENCE LOGIC
+function updateGeoHeatmap(countryCode) {
+    if (!countryCode) return;
+    const pathId = `path_${countryCode.toUpperCase()}`;
+    const path = document.getElementById(pathId);
+    if (path) {
+        path.classList.add('active');
+        addTerminalLog(`[GEO] LOCALIZANDO ECOSISTEMA EN: ${countryCode.toUpperCase()}`);
+    }
+}
+
+function resetGeoMap() {
+    document.querySelectorAll('.country-path').forEach(p => p.classList.remove('active'));
+}
+
+function addTerminalLog(msg) {
+    const el = document.getElementById('system-alerts');
+    if (el) el.textContent = `SISTEMA: ${msg}`;
+}
+
+// Interaction: Click on Map Filter
+document.querySelectorAll('.country-path').forEach(path => {
+    path.addEventListener('click', () => {
+        const country = path.id.split('_')[1];
+        addTerminalLog(`[FILTER] AISLANDO CORREDOR: ${country}`);
+        // Visual feedback
+        resetGeoMap();
+        path.classList.add('active');
+    });
+});
+
+// AUTO-BOOTSTRAP SIMULATION
+document.addEventListener('DOMContentLoaded', () => {
+    // Already in bootSystem, but we ensure geo starts
+    setTimeout(() => {
+        if (state.operator) {
+            updateGeoHeatmap('MX');
+            updateGeoHeatmap('BR');
+            updateGeoHeatmap('CO');
+        }
+    }, 5000);
+});
+
 function initStrategicGraph() {
     const container = document.getElementById('map-svg-container');
     container.innerHTML = ''; // Clear simulation
@@ -541,9 +584,13 @@ function initStrategicGraph() {
         nodes.push({ id: item.company, group: 'LEAD', radius: 15, color: 'var(--accent-color)' });
         links.push({ source: operator.myCompany, target: item.company });
         
+        // Auto-update heatmap if country detected in content
+        if (item.content.includes('México') || item.content.includes('MX')) updateGeoHeatmap('MX');
+        if (item.content.includes('Brasil') || item.content.includes('BR')) updateGeoHeatmap('BR');
+        if (item.content.includes('Colombia') || item.content.includes('CO')) updateGeoHeatmap('CO');
+        
         // Secondary connections (smart heuristics)
-        if (item.category === 'HARVESTED_INTEL') {
-             // Connect to a virtual "Market Pool" node or to each other
+        if (item.category === 'HARVESTED_INTEL' || item.category === 'FINTECH_STRATEGY') {
              if (nodes.length > 2) {
                  links.push({ source: nodes[nodes.length-2].id, target: item.company });
              }

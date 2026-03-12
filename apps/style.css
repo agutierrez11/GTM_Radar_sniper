@@ -240,6 +240,33 @@ input[type="password"] {
 
 .tactical-map-container.hidden { display: none; }
 
+/* Geo Map Styles */
+.country-path {
+    fill: rgba(255, 255, 255, 0.05);
+    stroke: var(--glass-border);
+    stroke-width: 1;
+    transition: all 0.5s ease;
+    cursor: pointer;
+}
+
+.country-path:hover {
+    fill: rgba(0, 236, 255, 0.1);
+    stroke: var(--accent-color);
+}
+
+.country-path.active {
+    fill: rgba(0, 236, 255, 0.3);
+    stroke: var(--accent-color);
+    filter: drop-shadow(0 0 15px var(--accent-color));
+    animation: geo-pulse 2s infinite;
+}
+
+@keyframes geo-pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.7; }
+    100% { opacity: 1; }
+}
+
 .map-header {
     font-size: 0.75rem;
     font-weight: 800;
