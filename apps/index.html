@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ANTIGRAVITY SNIPER V16.0 | SNIPER FACTORY</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="cyber-terminal">
+
+    <!-- Gateway Overlay -->
+    <div id="login-screen" class="screen active">
+        <div class="terminal-container">
+            <div class="terminal-header glow">> SNIPER_V16.0_FACTORY_INITIALIZE</div>
+            <div class="terminal-body">
+                <p>IDENTIFY SEQUENCE REQUIRED (TITAN_WHITELIST)...</p>
+                <div class="input-line">
+                    <input type="password" id="operator-id" autofocus placeholder="OPERATOR_CODE" autocomplete="off">
+                </div>
+                <p id="auth-error" class="hidden" style="color:red; margin-top:10px;">[ACCESS_DENIED]: IDENTITY_MISMATCH</p>
+            </div>
+            <div class="lang-selector">
+                <button onclick="setLanguage('ES')">ES</button>
+                <button onclick="setLanguage('EN')">EN</button>
+                <button onclick="setLanguage('PT')">PT</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Dashboard -->
+    <div id="dashboard-screen" class="screen">
+        <div id="watermark">CONFIDENTIAL FOR OPERATOR</div>
+        <header class="terminal-nav">
+            <div class="nav-left">
+                STATUS: <span id="mission-status" class="blink">HUNTING</span>
+                [<span id="countdown">20:00</span>]
+            </div>
+            <div class="nav-center">
+                <span class="header-clock" id="clock-cancun">BASE_OP (CANCUN): --:--:--</span>
+                <span class="header-divider">|</span>
+                <span class="header-clock" id="clock-titan">TITAN_NODE: --:--:--</span>
+            </div>
+            <div class="nav-right">PROPRIETARY: <span class="glow">A. GUTIÉRREZ</span></div>
+        </header>
+
+        <main class="terminal-main">
+            <aside class="sidebar">
+
+                
+                <div class="author-card" id="author-card">
+                    <!-- Dynamic content -->
+                </div>
+
+                <div class="telemetry-box" id="geo-intel">
+                    <div class="telemetry-header">[GEO_INTEL_V7.1]</div>
+                    IP: <span id="guest-ip">SCANNING...</span><br>
+                    LOC: <span id="guest-loc">DETECTION_PENDING...</span><br>
+                    TIME: <span id="live-time">00:00:00</span>
+                </div>
+
+                <div class="telemetry-box" id="heartbeat-monitor">
+                    <div class="telemetry-header">[HEARTBEAT_REPORT_V16.0]</div>
+                    FACTORY: <span id="factory-status" class="blink">OPERATIONAL</span><br>
+                    INVENTORY: <span id="inv-total">22,784</span><br>
+                    SHELLS: <span id="shells-count">14,203</span> | READY: <span id="ready-count">1,684</span><br>
+                    DESTILADOS: <span id="distilled-count">0</span> | PURGED: <span id="purged-count">0</span>
+                </div>
+
+                <div class="telemetry-box" style="margin-top:10px;">
+                    <div class="telemetry-header">[SNIPER_METRICS]</div>
+                    STATUS: <span id="engine-status">IDLE</span><br>
+                    LATAM_21: <span style="color:var(--text-color)">[VERIFIED]</span><br>
+                    ANTI-LEAK: <span style="color:var(--text-color)">[ACTIVE]</span>
+                </div>
+
+                <div class="interaction-panel">
+                    <button id="radar-hunt-btn" class="btn-radar" onclick="radarHunt()">[RADAR_DE_CAZA]</button>
+                    <button id="send-report-btn" class="btn-report" onclick="toggleModal('feedback-modal', true)">[DEJA_REPORTE_O_SUGERENCIAS]</button>
+                    <button id="contact-strategist-btn" class="btn-wa" onclick="window.open('https://wa.me/529981191903?text=Reporte%20Sniper%20Feedback%20V16.2','_blank')">[COMENTARIOS_WHATSAPP]</button>
+                </div>
+            </aside>
+
+            <section class="content-area">
+                <div class="content-header">
+                    <span id="silo-title">> GLOBAL_V7.1 / TITAN_BATTLECARDS</span>
+                    <div id="simulation-mode" class="hidden glow-blue" style="margin-left: 20px;">[MODO_MÁQUINA_VIRTUAL_ACTIVO]</div>
+                </div>
+
+                <!-- Strategic Input Layer V17.0 -->
+                <div class="input-guard-panel">
+                    <div class="input-group">
+                        <label>MI COMPAÑÍA (ORIGEN):</label>
+                        <input type="text" id="company-url-input" placeholder="https://tuempresa.com" class="cyber-input">
+                    </div>
+                    <div class="input-group">
+                        <label>COMPETIDOR (DIAGNÓSTICO):</label>
+                        <input type="text" id="target-url-input" placeholder="https://competencia.com" class="cyber-input">
+                    </div>
+                    <div class="input-group">
+                        <label>MI CLIENTE IDEAL (PERFIL):</label>
+                        <input type="text" id="icp-input" placeholder="Ej: Neobancos, Retail o Fintech B2B" class="cyber-input">
+                    </div>
+                </div>
+
+                <!-- Tactical Map (Knowledge Graph) -->
+                <div id="tactical-map" class="tactical-map-container hidden">
+                    <div class="map-header">MAPA DE RELACIONES ESTRATÉGICAS</div>
+                    <div id="map-svg-container"></div>
+                </div>
+
+                <div class="action-bar-strat">
+                    <button id="load-harvest-btn" class="cyber-btn-mini" onclick="loadHarvestBlock()">CARGAR BLOQUE DE 5 LEADS</button>
+                    <button id="toggle-map-btn" class="cyber-btn-mini" onclick="toggleStrategicMap()">VER MAPA DE RELACIONES</button>
+                </div>
+                
+                <div id="intel-feed" class="intel-feed">
+                    <!-- Cards are rendered here in Packages of 5 -->
+                </div>
+            </section>
+        </main>
+
+        <footer class="terminal-footer">
+            <div id="operator-display" style="font-weight:bold;">OPERATOR: [GUTIÉRREZ]</div>
+            <div id="system-alerts" class="status-ticker">SISTEMA: Conexión establecida | Latencia: 24ms</div>
+            <div id="shadow-indicator" class="hidden" style="color:var(--accent-color)">SHADOW_MODE_ACTIVE</div>
+            <div class="system-tag">SNIPER_V16.2_MASTER_DEPLOY</div>
+        </footer>
+    </div>
+
+    <!-- Detail Modal -->
+    <div id="detail-modal" class="modal hidden">
+        <div class="modal-content">
+            <div id="modal-close" class="modal-close">[CLOSE_FILE]</div>
+            <div id="modal-body"></div>
+            <div id="battlecard-feedback" class="hidden" style="border-top: 1px solid var(--border-color); padding-top: 10px; margin-top: 10px;">
+                <p>¿ESTE REGISTRO YA ES TU CLIENTE?</p>
+                <div style="display:flex; gap: 10px;">
+                    <button onclick="handleBattlecardFeedback('SÍ')" class="cyber-btn-mini">SÍ (UPSELL)</button>
+                    <button onclick="handleBattlecardFeedback('NO')" class="cyber-btn-mini">NO (FLANQUEO)</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Feedback Console Modal -->
+    <div id="feedback-modal" class="modal hidden">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="terminal-header">> INTEL_FEEDBACK_LOOP</div>
+            <p>Déjanos tus sugerencias o reporte de mejora:</p>
+            <textarea id="feedback-text" class="cyber-input" style="width:100%; height: 100px; margin-bottom: 15px;" placeholder="Escribe aquí..."></textarea>
+            <div style="display:flex; gap: 10px;">
+                <button id="send-feedback-btn" class="cyber-btn-mini">ENVIAR_REPORTE</button>
+                <button onclick="toggleModal('feedback-modal', false)" class="cyber-btn-mini">CANCELAR</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Wipeout Screen -->
+    <div id="wipeout-screen" class="screen">
+        <div class="wipeout-content">
+            [ACCESS_VOID]<br>
+            <span style="font-size: 1.5rem;">SESSION_VOLATILITY_PURGE_COMPLETE</span>
+        </div>
+    </div>
+
+    <script src="data.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,29 @@
+# Plan de Estabilización y Escala: Sniper V18.5 (8 Núcleos)
+
+La inestabilidad actual sugiere un cuello de botella en el procesamiento de logs o concurrencia. Aprovecharemos los **8 núcleos** para maximizar la cosecha de 22k leads con un motor más robusto.
+
+## User Review Required
+
+> [!IMPORTANT]
+> **Plan de Escala (8 Cores):**
+> - Subiremos de **20 a 60 Workers** simultáneos.
+> - Reduciremos el delay entre peticiones a **0.1s**.
+> - **Telegram Fix:** Necesito verificar si tienes un Token de Telegram nuevo, ya que el actual (`...A3E1`) da error 401 (Unauthorized).
+
+## Cambios Propuestos
+
+### [Componente] Orquestador VM
+
+#### [MODIFY] [orquestador_massive_v5.py](file:///C:/Users/antonio/gemini/antigravity/scratch/orquestador_massive_v5.py)
+- **MAX_WORKERS:** 20 -> 60.
+- **Batch Speed:** Optimización de `DELAY_BETWEEN_REQS`.
+- **Silent Mode:** Reducir verbosidad de logs para evitar el colapso del "cerebro" por exceso de texto.
+
+#### [MODIFY] [.env](file:///C:/Users/antonio/gemini/antigravity/scratch/.env)
+- Actualizar `TELEGRAM_TOKEN` una vez validado.
+
+## Plan de Verificación
+
+### Pruebas Automatizadas
+1. `python test_telegram.py`: Validar conexión antes de lanzar el masivo.
+2. `python orquestador_massive_v5.py`: Corrida de prueba de 100 leads con 60 workers para monitorear CPU.

@@ -1,0 +1,28 @@
+# --- SEGURIDAD SNIPER ---
+# NUNCA subir este archivo a GitHub o nubes públicas.
+# Contiene las llaves de acceso a la infraestructura.
+
+# Entorno
+.env
+.env.local
+.env.*.local
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+env/
+.env/
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Temp
+_archive/
+tmp/

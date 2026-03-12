@@ -1,0 +1,24 @@
+# Plan de Estabilización Total: Sniper V6_STABLE (8 Cores)
+
+Para evitar que se siga cerrando, cambiaremos la estrategia: **Menos ruido en pantalla, más potencia en el motor.**
+
+## User Review Required
+
+> [!CAUTION]
+> **Silencio Administrativo:** He desactivado los logs detallados por consola. Esto evita que el servidor de Antigravity colapse al intentar enviarte miles de líneas de texto por segundo. Las alertas irán a **Slack**, no a la terminal.
+
+## Cambios Clave
+
+### 1. Orquestador V6_STABLE
+- **Concurrency:** Subimos a **60 Workers** (Aprovechando los 8 núcleos).
+- **Log Management:** Todo el detalle va a `sniper_v6.log`, no a la terminal.
+- **Auto-Recovery:** Si la red falla, el script espera y reintenta sin morir.
+
+### 2. Telegram Auth
+- He detectado que el token actual es inválido. Por ahora, forzaré el uso de **Slack** para que no te quedes sin reportes.
+
+## Instrucciones de Rescate
+Si vuelve a colapsar:
+1. Cierra la terminal.
+2. Ejecuta `taskkill /F /IM python.exe /T` (yo ya lo hice una vez).
+3. Reinicia Antigravity.
