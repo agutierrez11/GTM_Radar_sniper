@@ -454,8 +454,20 @@ export default function Companies() {
             name: r.name || 'Unknown',
             country: r.country || 'MX',
             segment: r.segment || 'saas',
-            tier: r.tier || extra.tier || (extra.sniper_score > 90 ? 'diamond' : extra.sniper_score > 70 ? 'gold' : 'silver'),
-            status: r.status || 'target',
+            tier: (() => {
+              const t = (r.tier || extra.tier || '').toLowerCase();
+              if (t.includes('diamante') || t === 'diamond') return 'diamond';
+              if (t.includes('oro') || t === 'gold') return 'gold';
+              if (t.includes('plata') || t === 'silver') return 'silver';
+              if (t.includes('emerging') || t.includes('nuevo')) return 'emerging';
+              return extra.sniper_score > 90 ? 'diamond' : extra.sniper_score > 70 ? 'gold' : 'silver';
+            })(),
+            status: (() => {
+              const s = (r.status || 'target').toLowerCase();
+              if (s.includes('enriquecido') || s.includes('active')) return 'active';
+              if (s.includes('target') || s.includes('objetivo')) return 'target';
+              return s;
+            })(),
             description: r.description || '',
             painPoints: r.pain_points || extra.pain_points || (extra.pain_points ? extra.pain_points : (r.description && !r.description.startsWith('{') ? [r.description] : ['Unprocessed'])),
             solutions: r.solutions || extra.solutions || ['Custom GTM Solution'],
