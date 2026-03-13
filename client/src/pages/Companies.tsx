@@ -1,5 +1,5 @@
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
-import { supabase, TABLE_LEADS } from '@/lib/supabase';
+import React, { useState, useMemo, useEffect } from 'react';
+import { trpc } from '@/lib/trpc';
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -8,13 +8,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { 
-  Search, 
-  Filter, 
-  Globe, 
-  Zap, 
-  Target, 
-  TrendingUp, 
+import {
+  Search,
+  Filter,
+  Globe,
+  Zap,
+  Target,
+  TrendingUp,
   AlertCircle,
   Crosshair,
   Flame,
@@ -72,7 +72,7 @@ function BattleCard({ company, onClose }: { company: Company; onClose: () => voi
               </div>
               <div>
                 <p className="text-slate-500 text-[10px] uppercase font-bold mb-1 tracking-tighter">Segmento</p>
-                <p className="text-white font-medium">{company.segment.toUpperCase()}</p>
+                <p className="text-white font-medium">{company.segment?.toUpperCase()}</p>
               </div>
               <div>
                 <p className="text-slate-500 text-[10px] uppercase font-bold mb-1 tracking-tighter">Clasificación</p>
@@ -80,7 +80,7 @@ function BattleCard({ company, onClose }: { company: Company; onClose: () => voi
                   'bg-blue-600': company.tier === 'diamond',
                   'bg-amber-600': company.tier === 'gold',
                   'bg-slate-600': company.tier === 'silver',
-                })}>{company.tier.toUpperCase()}</Badge>
+                })}>{company.tier?.toUpperCase()}</Badge>
               </div>
               <div>
                 <p className="text-slate-500 text-[10px] uppercase font-bold mb-1 tracking-tighter">Status</p>
@@ -95,7 +95,7 @@ function BattleCard({ company, onClose }: { company: Company; onClose: () => voi
               Pain Points (La Herida)
             </h3>
             <div className="space-y-2">
-              {company.painPoints.map((pain, idx) => (
+              {company.painPoints?.map((pain, idx) => (
                 <div key={idx} className="flex items-start gap-2 text-sm">
                   <span className="text-red-500 mt-1">▸</span>
                   <span className="text-slate-300 font-medium">{pain}</span>
@@ -120,7 +120,7 @@ function BattleCard({ company, onClose }: { company: Company; onClose: () => voi
               Stakeholders (Interesados)
             </h3>
             <div className="grid grid-cols-1 gap-3">
-              {company.stakeholders.map((sh, idx) => (
+              {company.stakeholders?.map((sh, idx) => (
                 <div key={idx} className="bg-white/5 rounded-lg p-3 flex justify-between items-center group">
                   <div>
                     <p className="text-[10px] text-slate-500 uppercase font-bold">{sh.role}</p>
@@ -162,11 +162,11 @@ function PipelinePhase({ phase, icon: Icon, companies, color }: { phase: string;
           </div>
           <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">{phase === 'Hunting' ? 'CACERÍA' : phase.toUpperCase()}</h3>
         </div>
-        <span className="text-[10px] font-mono text-slate-500 bg-white/[0.05] px-2 py-0.5 rounded-full">{companies.length}</span>
+        <span className="text-[10px] font-mono text-slate-500 bg-white/[0.05] px-2 py-0.5 rounded-full">{companies?.length || 0}</span>
       </div>
-      
+
       <div className="space-y-3">
-        {companies.map((company) => (
+        {companies?.map((company) => (
           <div
             key={company.id}
             className="bg-white/[0.02] border border-white/[0.05] rounded-xl p-4 hover:bg-white/[0.04] hover:border-blue-500/30 transition-all cursor-pointer group relative overflow-hidden shadow-sm"
@@ -189,10 +189,10 @@ function PipelinePhase({ phase, icon: Icon, companies, color }: { phase: string;
             <p className="text-[10px] text-slate-500 line-clamp-2 leading-relaxed">
               {company.description || 'Inteligencia esperando proceso de refinería...'}
             </p>
-            
+
             <div className="mt-4 flex items-center justify-between">
               <div className="flex flex-wrap gap-1">
-                {company.painPoints.slice(0, 2).map((p, i) => (
+                {company.painPoints?.slice(0, 2).map((p, i) => (
                    <span key={i} className="text-[8px] text-blue-400/70 border border-blue-500/10 px-1.5 py-0.5 rounded uppercase font-bold tracking-tighter">{p}</span>
                 ))}
               </div>
@@ -200,7 +200,7 @@ function PipelinePhase({ phase, icon: Icon, companies, color }: { phase: string;
             </div>
           </div>
         ))}
-        {companies.length === 0 && (
+        {(!companies || companies.length === 0) && (
           <div className="border border-dashed border-white/5 rounded-xl p-8 text-center bg-white/[0.01]">
             <p className="text-xs text-slate-700 font-mono italic uppercase tracking-tighter">sector_sin_explorar_orbita</p>
           </div>
@@ -224,13 +224,13 @@ function GraphNode({ company, isSelected, onClick }: { company: Company; isSelec
       onClick={onClick}
       className={cn("relative group transition-all duration-500", isSelected ? 'scale-125 z-20' : 'hover:scale-110')}
     >
-      <div className={cn("absolute inset-0 rounded-full blur-xl opacity-0 group-hover:opacity-40 transition-opacity bg-gradient-to-r", 
-        tierColors[company.tier as keyof typeof tierColors].split(' ')[0])} 
+      <div className={cn("absolute inset-0 rounded-full blur-xl opacity-0 group-hover:opacity-40 transition-opacity bg-gradient-to-r",
+        tierColors[company.tier as keyof typeof tierColors]?.split(' ')[0] || 'from-slate-500')}
       />
-      <div className={cn("relative w-14 h-14 rounded-full bg-gradient-to-br flex flex-col items-center justify-center border shadow-xl", 
-        tierColors[company.tier as keyof typeof tierColors])}>
+      <div className={cn("relative w-14 h-14 rounded-full bg-gradient-to-br flex flex-col items-center justify-center border shadow-xl",
+        tierColors[company.tier as keyof typeof tierColors] || 'from-slate-500 to-slate-400 border-slate-400')}>
         <p className="text-[10px] font-bold text-white tracking-widest leading-none">{company.name.slice(0, 3).toUpperCase()}</p>
-        <span className="text-[8px] text-white/70 font-bold uppercase mt-0.5 tracking-tighter">{company.tier[0]}</span>
+        <span className="text-[8px] text-white/70 font-bold uppercase mt-0.5 tracking-tighter">{company.tier?.[0] || 'S'}</span>
       </div>
     </button>
   );
@@ -248,8 +248,8 @@ const LATAM_COUNTRIES = [
 const FINTECH_SEGMENTS = ['pagos', 'lending', 'insurtech', 'wallets', 'neobanks', 'blockchain'];
 
 export default function Companies() {
-  const [leads, setLeads] = useState<Company[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: rawLeads, isLoading: loading } = trpc.companies.list.useQuery({ limit: 1000 });
+  
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCountry, setSelectedCountry] = useState('all');
   const [selectedSegment, setSelectedSegment] = useState('all');
@@ -257,47 +257,34 @@ export default function Companies() {
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [activeTab, setActiveTab] = useState('pipeline');
 
-  useEffect(() => {
-    const fetchLeads = async () => {
-      setLoading(true);
-      try {
-        const { data, error } = await supabase.from(TABLE_LEADS).select('*').limit(1000);
-        if (error) throw error;
-        
-        const parsed: Company[] = (data || []).map((r: any) => {
-          let extra: any = {};
-          try { if (r.description?.startsWith('{')) extra = JSON.parse(r.description); } catch(e) {}
-          
-          return {
-            id: r.id.toString(),
-            name: r.name || 'Desconocido',
-            country: r.country || 'MX',
-            segment: r.segment || extra.segment || 'saas',
-            tier: (() => {
-              const t = (r.tier || extra.tier || '').toLowerCase();
-              if (t.includes('diamante') || t === 'diamond') return 'diamond';
-              if (t.includes('oro') || t === 'gold') return 'gold';
-              if (t.includes('plata') || t === 'silver') return 'silver';
-              if (t.includes('emerging')) return 'emerging';
-              return 'silver';
-            })(),
-            status: r.status?.toLowerCase() || 'objetivo',
-            description: r.description || '',
-            painPoints: r.pain_points || extra.pain_points || [],
-            solutions: r.solutions || extra.solutions || [],
-            killShot: r.kill_shot || extra.kill_shot || r.description,
-            stakeholders: r.stakeholders || extra.stakeholders || []
-          };
-        });
-        setLeads(parsed);
-      } catch (err) {
-        console.error("Error de Carga:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchLeads();
-  }, []);
+  const leads = useMemo(() => {
+    if (!rawLeads) return [];
+    return rawLeads.map((r: any) => {
+      let extra: any = {};
+      try { if (r.description?.startsWith('{')) extra = JSON.parse(r.description); } catch(e) {}
+      
+      return {
+        id: r.id.toString(),
+        name: r.name || 'Desconocido',
+        country: r.country || 'MX',
+        segment: r.segment || extra.segment || 'saas',
+        tier: (() => {
+          const t = (r.tier || extra.tier || '').toLowerCase();
+          if (t.includes('diamante') || t === 'diamond') return 'diamond';
+          if (t.includes('oro') || t === 'gold') return 'gold';
+          if (t.includes('plata') || t === 'silver') return 'silver';
+          if (t.includes('emerging')) return 'emerging';
+          return 'silver';
+        })(),
+        status: r.status?.toLowerCase() || 'objetivo',
+        description: r.description || '',
+        painPoints: r.pain_points || extra.pain_points || [],
+        solutions: r.solutions || extra.solutions || [],
+        killShot: r.kill_shot || extra.kill_shot || r.description,
+        stakeholders: r.stakeholders || extra.stakeholders || []
+      } as Company;
+    });
+  }, [rawLeads]);
 
   const filtered = useMemo(() => {
     return leads.filter(c => {
