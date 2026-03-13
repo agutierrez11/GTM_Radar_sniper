@@ -103,6 +103,12 @@ def process_lead(lead):
     name = lead.get("name", "Unknown")
     url = lead.get("website")
     
+    # QUALITY FILTER: If name is too long, it's likely a description/junk
+    if len(name) > 60:
+        log.warning(f"  [SKIP] Junk Name detected: {name[:30]}...")
+        update_lead_status(lid, {"status": "JUNK", "scan_error": "NAME_TOO_LONG"})
+        return False
+
     # Si no tiene website y el status es NO_URL/PENDIENTE, intentamos descubrirlo
     if not url or url.lower() in ["none", "", "null"]:
         url = find_website_via_serper(name)
@@ -111,8 +117,8 @@ def process_lead(lead):
             update_lead_status(lid, {"website": url})
         else:
             log.warning(f"  [SKIP] No se pudo encontrar URL para {name}")
-            # Si ya era NO_URL, lo dejamos así para no entrar en bucle infinito
-            # o lo marcamos como JUNK tras X intentos si fuera necesario
+            # Marcamos como NO_URL para evitar re-intentos infinitos en este ciclo
+            update_lead_status(lid, {"status": "NO_URL"})
             return False
 
     log.info(f"[*] Procesando: {name} -> {url}")

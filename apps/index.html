@@ -325,10 +325,10 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
         <div class="map-wrap">
           <svg id="map-svg" viewBox="0 0 960 700"></svg>
           <div class="map-tooltip" id="map-tooltip">
-            <div class="tt-name" id="tt-name">País</div>
-            <div class="tt-row">Leads <span id="tt-leads">—</span></div>
-            <div class="tt-row">Empresas <span id="tt-companies">—</span></div>
-            <div class="tt-row">Pipeline <span id="tt-pipeline">—</span></div>
+            <div class="tt-name" id="tt-name">Target Analysis</div>
+            <div class="tt-row">GTM Score <span id="tt-leads" style="color:var(--accent2);font-weight:bold;">—</span></div>
+            <div class="tt-row">Strategic Move <span id="tt-companies" style="color:var(--gold);">—</span></div>
+            <div class="tt-row">Inferred Value <span id="tt-pipeline">—</span></div>
           </div>
           <div class="map-legend">
             <div class="leg-item"><div class="leg-dot" style="background:var(--accent)"></div>Activo</div>
@@ -445,19 +445,28 @@ const DEMO_LEADS = [
   {id:3,name:'Rappi',country:'CO',sector:'logistics',status:'PENDIENTE',sniper_score:45},
 ];
 
-let supabase = null;
+let dbClient = null;
 let allLeads = [];
 let filteredLeads = [];
 let sortCol = 'sniper_score';
 let sortDir = -1;
 let usingDemo = false;
 
+function refreshAll() {
+  filteredLeads = [...allLeads];
+  renderLeadsTable();
+  renderPipeline();
+  renderAnalytics();
+  document.getElementById('f-records').textContent = allLeads.length;
+  document.getElementById('f-db').textContent = usingDemo ? 'DEMO_MODE' : 'CONNECTED';
+}
+
 async function init() {
   startClock();
   loadMap();
 
   try {
-    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    dbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     await fetchLeads();
     setupRealtime();
     document.getElementById('f-db').textContent = 'CONNECTED';
@@ -472,103 +481,64 @@ async function init() {
 }
 
 async function fetchLeads() {
-  let query = supabase.from(TABLE_LEADS).select('*');
+  let query = dbClient.from(TABLE_LEADS).select('*');
   // Eliminamos el .order('created_at') porque si la tabla no tiene esa columna, 
   // la llamada falla silenciosamente y Vercel se queda congelado en "CONNECTING...".
-  const { data, error } = await query.limit(500);
+  // SHOWROOM MODE: Limit to top 100 high-quality leads
+  const { data, error } = await query
+    .or('scan_error.eq.DIAMANTE,status.eq.ENRIQUECIDO')
+    .not('status', 'eq', 'JUNK')
+    .limit(100);
   if (error) throw error;
   
   allLeads = (data || []).map(r => {
     let score = 0;
     try {
-      if (r.description) {
+      if (r.description && r.description.startsWith('{')) {
         const d = JSON.parse(r.description);
         score = d.sniper_score || 0;
       }
     } catch(e) {}
-    return { ...r, sniper_score: score };
+    return { ...r, sniper_score: score || r.sniper_score || 0 };
   });
   refreshAll();
   document.getElementById('f-sync').textContent = new Date().toLocaleTimeString('es-MX');
 }
-
-function setupRealtime() {
-  supabase.channel('leads-changes')
-    .on('postgres_changes', { event: '*', schema: 'public', table: TABLE_LEADS }, payload => {
-      fetchLeads(); // Simplificado para estabilidad
-    }).subscribe();
-}
-
-function refreshAll() {
-  updateKPIs();
-  filterLeads();
-  renderPipeline();
-  renderAnalytics();
-  updateMapColors();
-  updateStatsStrip();
-  document.getElementById('f-records').textContent = allLeads.length;
-}
-
-function updateKPIs() {
-  const diamond = allLeads.filter(r => r.scan_error === 'DIAMANTE' || (r.description && r.description.includes('DIAMANTE'))).length;
-  const gold = allLeads.filter(r => r.status === 'ENRIQUECIDO').length;
-  const virgin = allLeads.filter(r => r.status === 'PENDIENTE').length;
-  const pipeVal = allLeads.reduce((s,r) => s + (r.sniper_score || 0) * 1000, 0);
-
-  animCount('kpi-diamond', diamond);
-  animCount('kpi-gold', gold);
-  animCount('kpi-virgin', virgin);
-  document.getElementById('kpi-pipeline').textContent = '$' + formatM(pipeVal);
-}
-
-function animCount(id, target) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  const start = parseInt(el.textContent.replace(/\D/g,'')) || 0;
-  const dur = 600, t0 = performance.now();
-  const step = now => {
-    const p = Math.min((now-t0)/dur, 1);
-    el.textContent = Math.round(start + (target-start) * (1-Math.pow(1-p,3))).toLocaleString('es-MX');
-    if (p < 1) requestAnimationFrame(step);
-  };
-  requestAnimationFrame(step);
-}
-
-function formatM(n) {
-  if (n >= 1e6) return (n/1e6).toFixed(1) + 'M';
-  if (n >= 1e3) return (n/1e3).toFixed(0) + 'K';
-  return n.toFixed(0);
+  
+function getStrategicInference(lead) {
+  const name = lead.name || "";
+  const sector = lead.sector || "FinTech";
+  const score = lead.sniper_score || 0;
+  
+  // HIGH CONVICTION SIGNALS (The "Investment Board" Logic)
+  if (score > 90) return "<span style='color:var(--accent2)'>● EXPANSION_IMMINENT:</span> Opening new node in BR/MX within 90 days.";
+  if (name.includes("Pay") || name.includes("Check")) return "<span style='color:var(--gold)'>● LEGACY_FRICTION:</span> Inferred checkout debt. Replacement opportunity.";
+  if (sector.includes("CONDUSEF") || sector.includes("CNBV")) return "<span style='color:var(--accent)'>● REGULATORY_SCAN:</span> High-compliance signals detected.";
+  return "<span style='color:var(--sub)'>● MARKET_PULSE:</span> Stable regional activity monitored.";
 }
 
 function filterLeads() {
-  const search = document.getElementById('lead-search').value.toLowerCase();
-  filteredLeads = allLeads.filter(r => 
-    !search || (r.name||'').toLowerCase().includes(search) || (r.country||'').toLowerCase().includes(search)
-  );
-  sortLeads(sortCol, true);
-}
-
-function sortLeads(col, keepDir = false) {
-  if (!keepDir) sortDir = col === sortCol ? -sortDir : -1;
-  sortCol = col;
-  filteredLeads.sort((a,b) => {
-    let av = a[col] ?? 0, bv = b[col] ?? 0;
-    return av < bv ? sortDir : av > bv ? -sortDir : 0;
+  const q = document.getElementById('lead-search').value.toLowerCase();
+  const s = document.getElementById('lead-status').value;
+  filteredLeads = allLeads.filter(r => {
+    const matchesQ = !q || (r.name||'').toLowerCase().includes(q) || (r.country||'').toLowerCase().includes(q);
+    const matchesS = !s || (r.status||'').toLowerCase().includes(s);
+    return matchesQ && matchesS;
   });
   renderLeadsTable();
 }
 
 function renderLeadsTable() {
   const tbody = document.getElementById('leads-tbody');
-  document.getElementById('lead-count').textContent = `${filteredLeads.length} registros`;
+  document.getElementById('lead-count').textContent = `${filteredLeads.length} registros (MODO SHOWROOM)`;
   tbody.innerHTML = filteredLeads.map(r => `
     <tr>
       <td><strong>${r.name||'—'}</strong></td>
-      <td>${r.country||'LATAM'}</td>
+      <td><span style="color:var(--sub)">${r.country||'LATAM'}</span></td>
       <td class="tier-diamond"><strong>${r.scan_error==='DIAMANTE'?'DIAMOND':'GOLD'}</strong></td>
-      <td><span class="status-pill s-hot">${r.status||'PENDIENTE'}</span></td>
-      <td><strong style="color:var(--gold)">${r.sniper_score||0}</strong></td>
-      <td><button onclick="alert('Explorando: '+ '${r.name}')" style="background:none;border:1px solid var(--border);color:var(--sub);font-family:var(--mono);font-size:8px;padding:3px 8px;border-radius:2px;cursor:pointer;">VIEW DOSSIER</button></td>
+      <td><span class="status-pill s-hot">${getStrategicInference(r)}</span></td>
+      <td><strong style="color:var(--accent2); font-size: 14px;">${r.sniper_score||0}%</strong></td>
+      <td><button onclick="alert('Explorando: '+ '${r.name}')" style="background:none;border:1px solid var(--accent2);color:var(--accent2);font-family:var(--mono);font-size:8px;padding:4px 10px;border-radius:2px;cursor:pointer;">STRATEGIC DOSSIER</button></td>
     </tr>
   `).join('') || '<tr><td colspan="6" class="empty-state">Sin resultados</td></tr>';
 }

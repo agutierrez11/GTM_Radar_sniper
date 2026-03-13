@@ -44,7 +44,7 @@ TELEGRAM_CHAT_ID   = "7233842845"
 
 MAX_CREDITS_PER_SESSION = 200
 BATCH_SIZE              = 10 # Reduced for stability
-MAX_WORKERS             = 5  # Reduced for stability
+MAX_WORKERS             = 3  # Reduced for extreme stability
 DELAY_BETWEEN_REQS      = 2.0 # Increased delay
 ERROR_BACKOFF           = 5.0 # Backoff when API fails
 
@@ -112,6 +112,7 @@ def save_intel(lead_id, content):
         "status": "ENRIQUECIDO",
         "last_scan": datetime.utcnow().isoformat()
     }
+        
     try:
         r = requests.patch(url, headers=get_headers(), json=payload, timeout=20)
         if r.status_code in [200, 204]:
@@ -138,6 +139,8 @@ def is_quality_content(intel):
         if kw.lower() in intel.lower():
             return False
             
+    return True
+
     return True
 
 # ─────────────────────────────────────────────
@@ -270,11 +273,11 @@ def execute_hunt():
             progress = (enriched / total) * 100 if total > 0 else 0
             
             stats_msg = (
-                f"📊 *DAILY PROGRESS REPORT*\n"
-                f"- Universo Dinámico: {total:,} (Creciendo vía Reverse ICP 📈)\n"
+                f"DAILY PROGRESS REPORT\n"
+                f"- Universo Dinamico: {total:,} (Creciendo via Reverse ICP)\n"
                 f"- Capturados: {enriched:,} ({progress:.1f}%)\n"
                 f"- Pendientes: {pending:,}\n"
-                f"- Estado: Caza Activa 🎯"
+                f"- Estado: Caza Activa"
             )
             notify_operator(stats_msg, "STATS")
             last_report_time = current_time

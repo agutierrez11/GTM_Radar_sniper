@@ -1,12 +1,10 @@
+import './env.js';
 import express from "express";
 import { createServer } from "http";
 import path from "path";
 import { fileURLToPath } from "url";
 import * as trpcExpress from '@trpc/server/adapters/express';
 import { appRouter } from './routers/index';
-import * as dotenv from 'dotenv';
-
-dotenv.config({ path: path.resolve(process.cwd(), 'engine/.env') });
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
