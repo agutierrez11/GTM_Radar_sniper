@@ -6,10 +6,10 @@ Este es el listado maestro para alimentar al Sniper. Al procesar estos links, el
 - [ABFintechs](https://abfintechs.com.br/en/home-2/)
 
 ## 🇲🇽 México
-- [Panorama Octubre 2025](https://panoramadenegocios.press/panorama-fintech-mexico-octubre-2025/)
+- **México:** [Panorama Octubre 2025](https://panoramadenegocios.press/panorama-fintech-mexico-octubre-2025/) y [ASOFOM (Sofomes)](https://asofom.mx/) y [AMSOFIPO (Sofipos)](https://amsofipo.mx/)
 
 ## 🇨🇴 Colombia
-- [Colombia Fintech](https://colombiafintech.co/)
+- **Colombia:** [Colombia Fintech](https://colombiafintech.co/) y [Asobancaria](https://www.asobancaria.com/)
 
 ## 🇨🇱 Chile
 - [FinteChile](https://www.fintechile.org/miembros)

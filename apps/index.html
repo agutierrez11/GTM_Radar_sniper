@@ -1,196 +1,638 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ANTIGRAVITY SNIPER V26.0 | SAAS DASHBOARD</title>
-    <link rel="stylesheet" href="style.css">
-    <!-- D3.js for Professional Knowledge Graph -->
-    <script src="https://d3js.org/d3.v7.min.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SNIPER_GTM — NERV Intelligence</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="https://unpkg.com/topojson@3"></script>
+<style>
+:root {
+  --bg: #04070f;
+  --bg2: #070c1a;
+  --bg3: #0b1122;
+  --border: rgba(0,180,255,0.1);
+  --border-hi: rgba(0,180,255,0.32);
+  --accent: #00b4ff;
+  --accent2: #00ffa3;
+  --gold: #f5c518;
+  --red: #ff3e5e;
+  --text: #dce8ff;
+  --sub: #7a90b8;
+  --muted: #2e3f5c;
+  --mono: 'Space Mono', monospace;
+  --sans: 'Syne', sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;overflow:hidden;}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);display:flex;flex-direction:column;}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,180,255,0.022) 1px,transparent 1px),linear-gradient(90deg,rgba(0,180,255,0.022) 1px,transparent 1px);background-size:44px 44px;pointer-events:none;z-index:0;}
+
+/* TOPBAR */
+.topbar{z-index:100;display:flex;align-items:center;justify-content:space-between;padding:0 28px;height:52px;background:rgba(4,7,15,0.96);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);flex-shrink:0;}
+.t-left{display:flex;align-items:center;gap:12px;}
+.logo{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--accent);letter-spacing:.18em;}
+.logo em{color:var(--muted);font-style:normal;margin:0 7px;}
+.ver-tag{font-family:var(--mono);font-size:9px;color:var(--sub);border:1px solid var(--border);padding:2px 8px;border-radius:2px;letter-spacing:.1em;}
+.t-center{display:flex;align-items:center;gap:20px;}
+.clock-wrap{font-family:var(--mono);font-size:15px;letter-spacing:.08em;}
+.tz{font-size:9px;color:var(--sub);}
+.live-dot{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:9px;color:var(--accent2);letter-spacing:.12em;}
+.live-dot::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--accent2);box-shadow:0 0 8px var(--accent2);animation:blink 2s ease-in-out infinite;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.3;}}
+.t-right{display:flex;align-items:center;gap:10px;font-family:var(--mono);}
+.op-name{font-size:11px;letter-spacing:.05em;}
+.op-role{font-size:9px;color:var(--sub);margin-top:1px;}
+.avatar{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--bg);}
+
+/* LAYOUT */
+.app{display:flex;flex:1;overflow:hidden;position:relative;z-index:1;}
+
+/* SIDEBAR */
+.sidebar{width:264px;flex-shrink:0;border-right:1px solid var(--border);background:rgba(7,12,26,0.8);display:flex;flex-direction:column;overflow-y:auto;padding:16px 14px 80px;gap:5px;}
+.sidebar::-webkit-scrollbar{width:2px;}
+.sidebar::-webkit-scrollbar-thumb{background:var(--border-hi);border-radius:2px;}
+.s-section{font-family:var(--mono);font-size:8px;color:var(--muted);letter-spacing:.18em;text-transform:uppercase;padding:12px 4px 5px;border-top:1px solid var(--border);margin-top:6px;}
+.s-section:first-child{border-top:none;margin-top:0;padding-top:2px;}
+.field{display:flex;flex-direction:column;gap:4px;}
+.field label{font-family:var(--mono);font-size:8px;color:var(--sub);letter-spacing:.14em;text-transform:uppercase;}
+.field input,.field select{background:rgba(255,255,255,0.025);border:1px solid var(--border);border-radius:3px;padding:8px 10px;font-family:var(--mono);font-size:10px;color:var(--text);outline:none;width:100%;transition:border-color .2s,background .2s;-webkit-appearance:none;}
+.field input:focus,.field select:focus{border-color:var(--border-hi);background:rgba(0,180,255,0.03);}
+.field input::placeholder{color:var(--muted);}
+.field select option{background:var(--bg3);}
+.btn-run{width:100%;padding:11px;background:var(--accent);border:none;border-radius:3px;font-family:var(--mono);font-size:10px;font-weight:700;color:var(--bg);letter-spacing:.14em;text-transform:uppercase;cursor:pointer;position:relative;overflow:hidden;transition:all .2s;margin-top:2px;}
+.btn-run:hover{box-shadow:0 0 24px rgba(0,180,255,.4);transform:translateY(-1px);}
+.btn-run.loading{background:rgba(0,180,255,.15);color:var(--accent);border:1px solid var(--border-hi);}
+.btn-run.success{background:rgba(0,255,163,.1);color:var(--accent2);border:1px solid rgba(0,255,163,.3);}
+
+/* KPI Cards */
+.kpi{background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:4px;padding:12px 14px;position:relative;overflow:hidden;transition:border-color .2s;cursor:default;}
+.kpi:hover{border-color:var(--border-hi);}
+.kpi::after{content:'';position:absolute;top:0;left:0;right:0;height:1px;}
+.kpi.blue::after{background:linear-gradient(90deg,transparent,var(--accent),transparent);}
+.kpi.green::after{background:linear-gradient(90deg,transparent,var(--accent2),transparent);}
+.kpi.gold::after{background:linear-gradient(90deg,transparent,var(--gold),transparent);}
+.kpi-label{font-family:var(--mono);font-size:8px;color:var(--sub);letter-spacing:.14em;text-transform:uppercase;margin-bottom:5px;}
+.kpi-val{font-family:var(--mono);font-size:24px;font-weight:700;line-height:1;}
+.kpi-val.blue{color:var(--accent);}
+.kpi-val.green{color:var(--accent2);}
+.kpi-val.gold{color:var(--gold);}
+.kpi-meta{font-family:var(--mono);font-size:8px;color:var(--sub);margin-top:5px;display:flex;align-items:center;gap:5px;}
+.delta{color:var(--accent2);}
+.pipeline-box{background:rgba(245,197,24,.06);border:1px solid rgba(245,197,24,.2);border-radius:4px;padding:14px;margin-top:auto;}
+.pipeline-label{font-family:var(--mono);font-size:8px;color:rgba(245,197,24,.55);letter-spacing:.15em;text-transform:uppercase;margin-bottom:4px;}
+.pipeline-val{font-family:var(--mono);font-size:22px;font-weight:700;color:var(--gold);}
+.pipeline-sub{font-family:var(--mono);font-size:8px;color:rgba(245,197,24,.4);margin-top:3px;}
+
+/* MAIN */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.main-header{display:flex;align-items:center;justify-content:space-between;padding:13px 24px;border-bottom:1px solid var(--border);background:rgba(7,12,26,.5);flex-shrink:0;}
+.main-title{font-family:var(--mono);font-size:10px;color:var(--accent);letter-spacing:.2em;text-transform:uppercase;}
+.badges{display:flex;gap:8px;}
+.badge{font-family:var(--mono);font-size:8px;padding:3px 9px;border-radius:2px;letter-spacing:.1em;text-transform:uppercase;}
+.badge-green{background:rgba(0,255,163,.07);color:var(--accent2);border:1px solid rgba(0,255,163,.2);}
+.badge-blue{background:rgba(0,180,255,.07);color:var(--accent);border:1px solid rgba(0,180,255,.2);}
+
+/* TABS */
+.tabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0;padding:0 24px;background:rgba(7,12,26,.3);}
+.tab{font-family:var(--mono);font-size:9px;padding:10px 16px;cursor:pointer;color:var(--sub);letter-spacing:.12em;text-transform:uppercase;border-bottom:2px solid transparent;margin-bottom:-1px;transition:color .2s,border-color .2s;}
+.tab:hover{color:var(--text);}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+
+/* PANELS */
+.panels{flex:1;overflow:hidden;position:relative;}
+.panel{position:absolute;inset:0;overflow:auto;opacity:0;pointer-events:none;transition:opacity .2s;}
+.panel.active{opacity:1;pointer-events:all;}
+.panel::-webkit-scrollbar{width:3px;}
+.panel::-webkit-scrollbar-thumb{background:var(--border-hi);}
+
+/* MAP PANEL */
+#panel-map{display:flex;flex-direction:column;}
+.map-wrap{flex:1;position:relative;overflow:hidden;}
+#map-svg{width:100%;height:100%;}
+.country{fill:rgba(0,180,255,.04);stroke:rgba(0,180,255,.2);stroke-width:.5;cursor:pointer;transition:fill .2s,stroke .2s;}
+.country:hover,.country.hot{fill:rgba(0,180,255,.12);stroke:var(--accent);stroke-width:1;}
+.country.cold{fill:rgba(0,180,255,.02);stroke:rgba(0,180,255,.1);}
+.map-tooltip{position:absolute;background:var(--bg3);border:1px solid var(--border-hi);border-radius:4px;padding:10px 13px;font-family:var(--mono);font-size:10px;pointer-events:none;opacity:0;transition:opacity .15s;z-index:20;min-width:150px;}
+.map-tooltip.show{opacity:1;}
+.tt-name{color:var(--accent);font-weight:700;margin-bottom:6px;font-size:11px;}
+.tt-row{display:flex;justify-content:space-between;gap:14px;color:var(--sub);margin-top:2px;}
+.tt-row span{color:var(--text);}
+.map-legend{position:absolute;bottom:16px;right:20px;font-family:var(--mono);font-size:8px;color:var(--sub);display:flex;gap:14px;}
+.leg-item{display:flex;align-items:center;gap:5px;}
+.leg-dot{width:8px;height:8px;border-radius:50%;}
+.stats-strip{display:grid;grid-template-columns:repeat(5,1fr);border-top:1px solid var(--border);flex-shrink:0;}
+.strip-cell{padding:12px 16px;border-right:1px solid var(--border);}
+.strip-cell:last-child{border-right:none;}
+.strip-label{font-family:var(--mono);font-size:7px;color:var(--sub);letter-spacing:.14em;text-transform:uppercase;margin-bottom:5px;}
+.strip-val{font-family:var(--mono);font-size:17px;font-weight:700;color:var(--text);}
+.strip-bar{margin-top:6px;height:2px;background:var(--border);border-radius:1px;overflow:hidden;}
+.strip-fill{height:100%;border-radius:1px;transition:width 1.2s cubic-bezier(.16,1,.3,1);}
+
+/* LEADS TABLE */
+#panel-leads{padding:0;}
+.table-controls{padding:14px 20px;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:center;background:rgba(7,12,26,.5);flex-shrink:0;position:sticky;top:0;z-index:10;}
+.search-input{flex:1;background:rgba(255,255,255,.025);border:1px solid var(--border);border-radius:3px;padding:7px 12px;font-family:var(--mono);font-size:10px;color:var(--text);outline:none;max-width:300px;}
+.search-input:focus{border-color:var(--border-hi);}
+.search-input::placeholder{color:var(--muted);}
+.filter-select{background:rgba(255,255,255,.025);border:1px solid var(--border);border-radius:3px;padding:7px 10px;font-family:var(--mono);font-size:9px;color:var(--sub);outline:none;-webkit-appearance:none;cursor:pointer;}
+.filter-select:focus{border-color:var(--border-hi);}
+.filter-select option{background:var(--bg3);}
+.tbl{width:100%;border-collapse:collapse;}
+.tbl th{font-family:var(--mono);font-size:8px;color:var(--muted);letter-spacing:.14em;text-transform:uppercase;padding:10px 16px;text-align:left;border-bottom:1px solid var(--border);background:rgba(7,12,26,.8);position:sticky;top:52px;z-index:5;white-space:nowrap;cursor:pointer;user-select:none;}
+.tbl th:hover{color:var(--sub);}
+.tbl th.sorted{color:var(--accent);}
+.tbl td{font-family:var(--mono);font-size:10px;padding:10px 16px;border-bottom:1px solid rgba(0,180,255,.05);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px;}
+.tbl tr:hover td{background:rgba(0,180,255,.025);}
+.status-pill{display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:2px;font-size:8px;letter-spacing:.1em;text-transform:uppercase;}
+.s-hot{background:rgba(0,255,163,.08);color:var(--accent2);border:1px solid rgba(0,255,163,.2);}
+.s-warm{background:rgba(245,197,24,.08);color:var(--gold);border:1px solid rgba(245,197,24,.2);}
+.s-cold{background:rgba(255,255,255,.04);color:var(--sub);border:1px solid var(--border);}
+.s-new{background:rgba(0,180,255,.08);color:var(--accent);border:1px solid rgba(0,180,255,.2);}
+.tier-badge{font-family:var(--mono);font-size:9px;font-weight:700;}
+.tier-diamond{color:var(--accent);}
+.tier-gold{color:var(--gold);}
+.tier-silver{color:var(--sub);}
+.empty-state{padding:60px;text-align:center;font-family:var(--mono);font-size:11px;color:var(--muted);}
+
+/* PIPELINE PANEL */
+#panel-pipeline{padding:24px;}
+.pipeline-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border);border-radius:4px;overflow:hidden;margin-bottom:24px;}
+.pipe-col{background:var(--bg2);padding:0;}
+.pipe-col-header{padding:12px 16px;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:8px;letter-spacing:.14em;text-transform:uppercase;display:flex;justify-content:space-between;align-items:center;}
+.pipe-col-count{font-size:16px;font-weight:700;font-family:var(--mono);}
+.pipe-items{padding:8px;display:flex;flex-direction:column;gap:6px;min-height:200px;}
+.pipe-card{background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:3px;padding:10px 12px;cursor:pointer;transition:border-color .2s,background .2s;}
+.pipe-card:hover{border-color:var(--border-hi);background:rgba(0,180,255,.03);}
+.pc-company{font-family:var(--mono);font-size:10px;font-weight:700;color:var(--text);margin-bottom:3px;}
+.pc-value{font-family:var(--mono);font-size:11px;color:var(--gold);font-weight:700;}
+.pc-meta{font-family:var(--mono);font-size:8px;color:var(--sub);margin-top:3px;}
+
+/* ANALYTICS PANEL */
+#panel-analytics{padding:24px;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:auto auto;gap:16px;}
+.chart-box{background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:4px;padding:18px;}
+.chart-box.full{grid-column:1/-1;}
+.chart-title{font-family:var(--mono);font-size:9px;color:var(--sub);letter-spacing:.15em;text-transform:uppercase;margin-bottom:16px;}
+.bar-chart{display:flex;align-items:flex-end;gap:8px;height:140px;}
+.bar-group{display:flex;flex-direction:column;align-items:center;gap:5px;flex:1;}
+.bar{border-radius:2px 2px 0 0;width:100%;transition:height 1.2s cubic-bezier(.16,1,.3,1);min-height:2px;}
+.bar-label{font-family:var(--mono);font-size:7px;color:var(--sub);letter-spacing:.08em;text-align:center;}
+.bar-val{font-family:var(--mono);font-size:8px;color:var(--text);font-weight:700;}
+.donut-wrap{display:flex;align-items:center;gap:20px;}
+.donut-legend{display:flex;flex-direction:column;gap:8px;}
+.leg-row{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:9px;color:var(--sub);}
+.leg-sq{width:8px;height:8px;border-radius:1px;flex-shrink:0;}
+.leg-row strong{color:var(--text);margin-left:auto;}
+
+/* FOOTER */
+.footer{position:fixed;bottom:0;left:0;right:0;z-index:200;background:rgba(4,7,15,.95);backdrop-filter:blur(10px);border-top:1px solid var(--border);padding:6px 28px;display:flex;align-items:center;gap:20px;font-family:var(--mono);font-size:8px;color:var(--muted);letter-spacing:.12em;text-transform:uppercase;}
+.f-item{display:flex;align-items:center;gap:5px;}
+.f-item span{color:var(--accent2);}
+.f-sep{color:var(--border);}
+.scan-line{position:fixed;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(0,180,255,.25),transparent);animation:scan 5s linear infinite;pointer-events:none;z-index:300;}
+@keyframes scan{0%{top:0;opacity:.8;}95%{opacity:.8;}100%{top:100vh;opacity:0;}}
+
+/* Realtime flash */
+@keyframes flash{0%{background:rgba(0,255,163,.08);}100%{background:transparent;}}
+.new-row{animation:flash 1.5s ease-out;}
+
+/* Loading spinner */
+.spinner{display:inline-block;width:10px;height:10px;border:1px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .6s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* Connection error */
+.conn-error{position:fixed;top:60px;right:20px;background:rgba(255,62,94,.1);border:1px solid rgba(255,62,94,.3);border-radius:4px;padding:10px 14px;font-family:var(--mono);font-size:10px;color:var(--red);z-index:500;display:none;}
+.conn-error.show{display:block;}
+</style>
 </head>
-<body class="cyber-terminal">
+<body>
+<div class="scan-line"></div>
+<div class="conn-error" id="conn-error">⚠ SUPABASE_NOT_CONFIGURED — usando datos demo</div>
 
-    <!-- Gateway Overlay -->
-    <div id="login-screen" class="screen active">
-        <div class="terminal-container">
-            <div class="terminal-header glow">> SNIPER_V16.0_FACTORY_INITIALIZE</div>
-            <div class="terminal-body">
-                <p>IDENTIFY SEQUENCE REQUIRED (TITAN_WHITELIST)...</p>
-                <div class="input-line">
-                    <input type="password" id="operator-id" autofocus placeholder="OPERATOR_CODE" autocomplete="off">
-                </div>
-                <p id="auth-error" class="hidden" style="color:red; margin-top:10px;">[ACCESS_DENIED]: IDENTITY_MISMATCH</p>
-            </div>
-            <div class="lang-selector">
-                <button onclick="setLanguage('ES')">ES</button>
-                <button onclick="setLanguage('EN')">EN</button>
-                <button onclick="setLanguage('PT')">PT</button>
-            </div>
+/* TOPBAR */
+<header class="topbar">
+  <div class="t-left">
+    <div class="logo">NERV <em>/</em> SNIPER_GTM</div>
+    <div class="ver-tag">v3.0.0</div>
+  </div>
+  <div class="t-center">
+    <div class="clock-wrap"><span id="clk">--:--:--</span><span class="tz"> UTC-5</span></div>
+    <div class="live-dot" id="live-status">REALTIME ACTIVE</div>
+  </div>
+  <div class="t-right">
+    <div>
+      <div class="op-name">A. GUTIÉRREZ</div>
+      <div class="op-role">Executive Operator</div>
+    </div>
+    <div class="avatar">AG</div>
+  </div>
+</header>
+
+<div class="app">
+  /* SIDEBAR */
+  <aside class="sidebar">
+    <div class="s-section">Hunt Radar</div>
+    <div class="field"><label>Rival Ref (opcional)</label><input id="f-rival" type="text" placeholder="https://stripe.com"></div>
+    <div class="field">
+      <label>Región Target</label>
+      <select id="f-region">
+        <option value="">Todas las regiones</option>
+        <option value="MX">México</option>
+        <option value="BR">Brasil</option>
+        <option value="CO">Colombia</option>
+        <option value="AR">Argentina</option>
+        <option value="PE">Perú</option>
+        <option value="CL">Chile</option>
+        <option value="OTHER">Otros LATAM</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Segmento ICP</label>
+      <select id="f-segment">
+        <option value="">Todos los segmentos</option>
+        <option value="saas">SaaS</option>
+        <option value="fintech">Fintech</option>
+        <option value="ecommerce">E-Commerce</option>
+        <option value="retail">Retail</option>
+        <option value="logistics">Logística</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Tier mínimo</label>
+      <select id="f-tier">
+        <option value="">Todos los tiers</option>
+        <option value="diamond">Diamond</option>
+        <option value="gold">Gold</option>
+        <option value="silver">Silver</option>
+      </select>
+    </div>
+    <button class="btn-run" id="btn-run" onclick="runRadar()">⬡ RUN HUNT_RADAR</button>
+
+    <div class="s-section">Intelligence Metrics</div>
+    <div class="kpi blue">
+      <div class="kpi-label">Diamond Harvest</div>
+      <div class="kpi-val blue" id="kpi-diamond">—</div>
+      <div class="kpi-meta">Empresas detectadas <span class="delta" id="kpi-diamond-d"></span></div>
+    </div>
+    <div class="kpi gold">
+      <div class="kpi-label">Gold Leads</div>
+      <div class="kpi-val gold" id="kpi-gold">—</div>
+      <div class="kpi-meta">Señales de alta intención <span class="delta" id="kpi-gold-d"></span></div>
+    </div>
+    <div class="kpi green">
+      <div class="kpi-label">Virgin Territory</div>
+      <div class="kpi-val green" id="kpi-virgin">—</div>
+      <div class="kpi-meta">Cuentas sin explorar <span class="delta" id="kpi-virgin-d"></span></div>
+    </div>
+    <div class="pipeline-box">
+      <div class="pipeline-label">Projected Pipeline</div>
+      <div class="pipeline-val" id="kpi-pipeline">—</div>
+      <div class="pipeline-sub">Próximos 90 días</div>
+    </div>
+  </aside>
+
+  /* MAIN */
+  <main class="main">
+    <div class="main-header">
+      <div class="main-title" id="main-title">LATAM_INTELLIGENCE_GRID</div>
+      <div class="badges">
+        <div class="badge badge-green" id="badge-scan">GEO_SCAN_ACTIVE</div>
+        <div class="badge badge-blue">BATCH: PILOT_AUTO</div>
+        <div class="badge badge-green">ENCRYPTED</div>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('map',this)">Geo Map</div>
+      <div class="tab" onclick="switchTab('leads',this)">Leads Table</div>
+      <div class="tab" onclick="switchTab('pipeline',this)">Pipeline</div>
+      <div class="tab" onclick="switchTab('analytics',this)">Analytics</div>
+    </div>
+
+    <div class="panels">
+      /* MAP */
+      <div class="panel active" id="panel-map">
+        <div class="map-wrap">
+          <svg id="map-svg" viewBox="0 0 960 700"></svg>
+          <div class="map-tooltip" id="map-tooltip">
+            <div class="tt-name" id="tt-name">País</div>
+            <div class="tt-row">Leads <span id="tt-leads">—</span></div>
+            <div class="tt-row">Empresas <span id="tt-companies">—</span></div>
+            <div class="tt-row">Pipeline <span id="tt-pipeline">—</span></div>
+          </div>
+          <div class="map-legend">
+            <div class="leg-item"><div class="leg-dot" style="background:var(--accent)"></div>Activo</div>
+            <div class="leg-item"><div class="leg-dot" style="background:var(--gold)"></div>Alto potencial</div>
+            <div class="leg-item"><div class="leg-dot" style="background:var(--muted)"></div>Sin datos</div>
+          </div>
         </div>
-    </div>
-
-    <!-- Main Dashboard -->
-    <div id="dashboard-screen" class="screen">
-        <div id="watermark">CONFIDENTIAL FOR OPERATOR</div>
-        <header class="terminal-nav">
-            <div class="nav-left">
-                STATUS: <span id="mission-status" class="blink">HUNTING</span>
-                [<span id="countdown">20:00</span>]
-            </div>
-            <div class="nav-center">
-                <span class="header-clock" id="clock-cancun">BASE_OP (CANCUN): --:--:--</span>
-                <span class="header-divider">|</span>
-                <span class="header-clock" id="clock-titan">TITAN_NODE: --:--:--</span>
-            </div>
-            <div class="nav-right">PROPRIETARY: <span class="glow">A. GUTIÉRREZ</span></div>
-        </header>
-
-        <main class="terminal-main">
-            <aside class="sidebar">
-
-                
-                <div class="author-card" id="author-card">
-                    <!-- Dynamic content -->
-                </div>
-
-                <div class="telemetry-box" id="geo-intel">
-                    <div class="telemetry-header">[GEO_INTEL_V7.1]</div>
-                    IP: <span id="guest-ip">SCANNING...</span><br>
-                    LOC: <span id="guest-loc">DETECTION_PENDING...</span><br>
-                    TIME: <span id="live-time">00:00:00</span>
-                </div>
-
-                <div class="telemetry-box" id="heartbeat-monitor">
-                    <div class="telemetry-header">[HEARTBEAT_REPORT_V16.0]</div>
-                    FACTORY: <span id="factory-status" class="blink">OPERATIONAL</span><br>
-                    INVENTORY: <span id="inv-total">22,784</span><br>
-                    SHELLS: <span id="shells-count">14,203</span> | READY: <span id="ready-count">1,684</span><br>
-                    DESTILADOS: <span id="distilled-count">0</span> | PURGED: <span id="purged-count">0</span>
-                </div>
-
-                <div class="telemetry-box" style="margin-top:10px;">
-                    <div class="telemetry-header">[SNIPER_METRICS]</div>
-                    STATUS: <span id="engine-status">IDLE</span><br>
-                    LATAM_21: <span style="color:var(--text-color)">[VERIFIED]</span><br>
-                    ANTI-LEAK: <span style="color:var(--text-color)">[ACTIVE]</span>
-                </div>
-
-                <div class="interaction-panel">
-                    <button id="radar-hunt-btn" class="btn-radar" onclick="radarHunt()">[RADAR_DE_CAZA]</button>
-                    <button id="send-report-btn" class="btn-report" onclick="toggleModal('feedback-modal', true)">[DEJA_REPORTE_O_SUGERENCIAS]</button>
-                    <button id="contact-strategist-btn" class="btn-wa" onclick="window.open('https://wa.me/529981191903?text=Reporte%20Sniper%20Feedback%20V16.2','_blank')">[COMENTARIOS_WHATSAPP]</button>
-                </div>
-            </aside>
-
-            <section class="content-area">
-                <div class="content-header">
-                    <span id="silo-title">> GLOBAL_V7.1 / TITAN_BATTLECARDS</span>
-                    <div id="simulation-mode" class="hidden glow-blue" style="margin-left: 20px;">[MODO_MÁQUINA_VIRTUAL_ACTIVO]</div>
-                </div>
-
-                <!-- Strategic Input Layer V17.0 -->
-                <div class="input-guard-panel">
-                    <div class="input-group">
-                        <label>MI COMPAÑÍA (ORIGEN):</label>
-                        <input type="text" id="company-url-input" placeholder="https://tuempresa.com" class="cyber-input">
-                    </div>
-                    <div class="input-group">
-                        <label>COMPETIDOR (DIAGNÓSTICO):</label>
-                        <input type="text" id="target-url-input" placeholder="https://competencia.com" class="cyber-input">
-                    </div>
-                    <div class="input-group">
-                        <label>MI CLIENTE IDEAL (PERFIL):</label>
-                        <input type="text" id="icp-input" placeholder="Ej: Neobancos, Retail o Fintech B2B" class="cyber-input">
-                    </div>
-                </div>
-
-                <!-- Geo Intelligence Command Center -->
-                <div id="geo-intelligence" class="tactical-map-container">
-                    <div class="telemetry-header">
-                        <span class="status-led green"></span>
-                        <span>GEO-INTELLIGENCE: LATAM COVERAGE</span>
-                    </div>
-                    <div id="latam-map-container" style="height: 350px; display: flex; justify-content: center; align-items: center; overflow: hidden;">
-                        <svg id="latam-svg" viewBox="0 0 800 1000" style="width: 100%; height: 100%; filter: drop-shadow(0 0 10px rgba(0, 236, 255, 0.2));">
-                            <path id="path_MX" d="M150,200 L250,250 L200,350 L100,300 Z" class="country-path" />
-                            <path id="path_CO" d="M280,450 L350,480 L320,550 L250,520 Z" class="country-path" />
-                            <path id="path_BR" d="M400,500 L600,550 L550,850 L350,800 Z" class="country-path" />
-                            <text x="160" y="280" fill="white" font-size="12" pointer-events="none">MEXICO</text>
-                            <text x="270" y="500" fill="white" font-size="12" pointer-events="none">COLOMBIA</text>
-                            <text x="450" y="680" fill="white" font-size="20" pointer-events="none">BRASIL</text>
-                        </svg>
-                    </div>
-                </div>
-
-                <!-- Tactical Map (Knowledge Graph) -->
-                <div id="tactical-map" class="tactical-map-container hidden">
-                    <div class="map-header">MAPA DE RELACIONES ESTRATÉGICAS</div>
-                    <div id="map-svg-container"></div>
-                </div>
-
-                <div class="action-bar-strat">
-                    <button id="load-harvest-btn" class="cyber-btn-mini" onclick="loadHarvestBlock()">CARGAR BLOQUE DE 5 LEADS</button>
-                    <button id="toggle-map-btn" class="cyber-btn-mini" onclick="toggleStrategicMap()">VER MAPA DE RELACIONES</button>
-                </div>
-                
-                <div id="intel-feed" class="intel-feed">
-                    <!-- Cards are rendered here in Packages of 5 -->
-                </div>
-            </section>
-        </main>
-
-        <footer class="terminal-footer">
-            <div id="operator-display" style="font-weight:bold;">OPERATOR: [GUTIÉRREZ]</div>
-            <div id="system-alerts" class="status-ticker">SISTEMA: Conexión establecida | Latencia: 24ms</div>
-            <div id="shadow-indicator" class="hidden" style="color:var(--accent-color)">SHADOW_MODE_ACTIVE</div>
-            <div class="system-tag">SNIPER_V16.2_MASTER_DEPLOY</div>
-        </footer>
-    </div>
-
-    <!-- Detail Modal -->
-    <div id="detail-modal" class="modal hidden">
-        <div class="modal-content">
-            <div id="modal-close" class="modal-close">[CLOSE_FILE]</div>
-            <div id="modal-body"></div>
-            <div id="battlecard-feedback" class="hidden" style="border-top: 1px solid var(--border-color); padding-top: 10px; margin-top: 10px;">
-                <p>¿ESTE REGISTRO YA ES TU CLIENTE?</p>
-                <div style="display:flex; gap: 10px;">
-                    <button onclick="handleBattlecardFeedback('SÍ')" class="cyber-btn-mini">SÍ (UPSELL)</button>
-                    <button onclick="handleBattlecardFeedback('NO')" class="cyber-btn-mini">NO (FLANQUEO)</button>
-                </div>
-            </div>
+        <div class="stats-strip" id="stats-strip">
+          <div class="strip-cell"><div class="strip-label">Cargando...</div><div class="strip-val">—</div></div>
         </div>
-    </div>
+      </div>
 
-    <!-- Feedback Console Modal -->
-    <div id="feedback-modal" class="modal hidden">
-        <div class="modal-content" style="max-width: 500px;">
-            <div class="terminal-header">> INTEL_FEEDBACK_LOOP</div>
-            <p>Déjanos tus sugerencias o reporte de mejora:</p>
-            <textarea id="feedback-text" class="cyber-input" style="width:100%; height: 100px; margin-bottom: 15px;" placeholder="Escribe aquí..."></textarea>
-            <div style="display:flex; gap: 10px;">
-                <button id="send-feedback-btn" class="cyber-btn-mini">ENVIAR_REPORTE</button>
-                <button onclick="toggleModal('feedback-modal', false)" class="cyber-btn-mini">CANCELAR</button>
-            </div>
+      /* LEADS */
+      <div class="panel" id="panel-leads">
+        <div class="table-controls">
+          <input class="search-input" id="lead-search" type="text" placeholder="Buscar empresa, contacto, país..." oninput="filterLeads()">
+          <select class="filter-select" id="lead-status" onchange="filterLeads()">
+            <option value="">Todos los estados</option>
+            <option value="hot">Hot</option>
+            <option value="warm">Warm</option>
+            <option value="cold">Cold</option>
+            <option value="new">New</option>
+          </select>
+          <select class="filter-select" id="lead-country" onchange="filterLeads()">
+            <option value="">Todos los países</option>
+          </select>
+          <span style="font-family:var(--mono);font-size:9px;color:var(--sub);margin-left:4px;" id="lead-count">— registros</span>
         </div>
-    </div>
+        <table class="tbl" id="leads-tbl">
+          <thead>
+            <tr>
+              <th onclick="sortLeads('company')">Empresa ↕</th>
+              <th onclick="sortLeads('country')">País ↕</th>
+              <th onclick="sortLeads('tier')">Tier ↕</th>
+              <th onclick="sortLeads('status')">Status ↕</th>
+              <th onclick="sortLeads('sniper_score')">Score ↕</th>
+              <th>Acción</th>
+            </tr>
+          </thead>
+          <tbody id="leads-tbody">
+            <tr><td colspan="6" class="empty-state"><span class="spinner"></span></td></tr>
+          </tbody>
+        </table>
+      </div>
 
-    <!-- Wipeout Screen -->
-    <div id="wipeout-screen" class="screen">
-        <div class="wipeout-content">
-            [ACCESS_VOID]<br>
-            <span style="font-size: 1.5rem;">SESSION_VOLATILITY_PURGE_COMPLETE</span>
+      /* PIPELINE */
+      <div class="panel" id="panel-pipeline">
+        <div class="pipeline-grid" id="pipeline-board">
+          <div class="pipe-col">
+            <div class="pipe-col-header" style="color:var(--accent)">New Lead <span class="pipe-col-count" id="cnt-new">0</span></div>
+            <div class="pipe-items" id="pipe-new"></div>
+          </div>
+          <div class="pipe-col">
+            <div class="pipe-col-header" style="color:var(--gold)">Qualified <span class="pipe-col-count" id="cnt-qualified">0</span></div>
+            <div class="pipe-items" id="pipe-qualified"></div>
+          </div>
+          <div class="pipe-col">
+            <div class="pipe-col-header" style="color:var(--accent2)">Proposal <span class="pipe-col-count" id="cnt-proposal">0</span></div>
+            <div class="pipe-items" id="pipe-proposal"></div>
+          </div>
+          <div class="pipe-col">
+            <div class="pipe-col-header" style="color:#c084fc">Closing <span class="pipe-col-count" id="cnt-closing">0</span></div>
+            <div class="pipe-items" id="pipe-closing"></div>
+          </div>
         </div>
-    </div>
+      </div>
 
-    <script src="data.js"></script>
-    <script src="app.js"></script>
-    <style>
-        /* Smooth transitions for D3 elements */
-        .node { stroke: #fff; stroke-width: 1.5px; cursor: pointer; transition: all 0.3s; }
-        .link { stroke: var(--electric-cyan); stroke-opacity: 0.3; stroke-width: 1px; }
-        .node:hover { filter: brightness(1.5); r: 8px; }
-        .label { font-size: 10px; fill: var(--text-color); pointer-events: none; text-transform: uppercase; letter-spacing: 1px; }
-    </style>
+      /* ANALYTICS */
+      <div class="panel" id="panel-analytics">
+        <div class="chart-box">
+          <div class="chart-title">Leads por País</div>
+          <div class="bar-chart" id="chart-country"></div>
+        </div>
+        <div class="chart-box">
+          <div class="chart-title">Pipeline por Segmento</div>
+          <div class="donut-wrap">
+            <canvas id="donut-chart" width="120" height="120"></canvas>
+            <div class="donut-legend" id="donut-legend"></div>
+          </div>
+        </div>
+        <div class="chart-box full">
+          <div class="chart-title">Distribución de Tiers</div>
+          <div class="bar-chart" id="chart-tier"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<footer class="footer">
+  <div class="f-item">STEM <span>OPERATIONAL</span></div>
+  <span class="f-sep">|</span>
+  <div class="f-item">DB <span id="f-db">CONNECTING...</span></div>
+  <span class="f-sep">|</span>
+  <div class="f-item">RECORDS <span id="f-records">0</span></div>
+  <span class="f-sep">|</span>
+  <div class="f-item">REALTIME <span id="f-rt">PENDING</span></div>
+  <span class="f-sep">|</span>
+  <div class="f-item">LAST SYNC <span id="f-sync">—</span></div>
+</footer>
+
+<script>
+// ═══════════════════════════════════════════════════
+//  SUPABASE CONFIG — NERV Operational Credentials
+// ═══════════════════════════════════════════════════
+const SUPABASE_URL = 'https://bwbatonvkfcjkfvhcwtc.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_KJi10IMU3rdr-byk06rbIg_kk4UMh74';
+const TABLE_LEADS = 'empresas';
+
+// ═══════════════════════════════════════════════════
+const DEMO_LEADS = [
+  {id:1,name:'Mercado Libre',country:'AR',sector:'ecommerce',status:'ENRIQUECIDO',sniper_score:85, scan_error:'DIAMANTE'},
+  {id:2,name:'Nubank',country:'BR',sector:'fintech',status:'ENRIQUECIDO',sniper_score:92, scan_error:'DIAMANTE'},
+  {id:3,name:'Rappi',country:'CO',sector:'logistics',status:'PENDIENTE',sniper_score:45},
+];
+
+let supabase = null;
+let allLeads = [];
+let filteredLeads = [];
+let sortCol = 'sniper_score';
+let sortDir = -1;
+let usingDemo = false;
+
+async function init() {
+  startClock();
+  loadMap();
+
+  try {
+    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    await fetchLeads();
+    setupRealtime();
+    document.getElementById('f-db').textContent = 'CONNECTED';
+    document.getElementById('f-rt').textContent = 'ACTIVE';
+  } catch(e) {
+    console.error(e);
+    usingDemo = true;
+    allLeads = DEMO_LEADS;
+    document.getElementById('f-db').textContent = 'DEMO_MODE';
+    refreshAll();
+  }
+}
+
+async function fetchLeads() {
+  let query = supabase.from(TABLE_LEADS).select('*');
+  const { data, error } = await query.order('sniper_score', { ascending: false }).limit(200);
+  if (error) throw error;
+  allLeads = data || [];
+  refreshAll();
+  document.getElementById('f-sync').textContent = new Date().toLocaleTimeString('es-MX');
+}
+
+function setupRealtime() {
+  supabase.channel('leads-changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: TABLE_LEADS }, payload => {
+      fetchLeads(); // Simplificado para estabilidad
+    }).subscribe();
+}
+
+function refreshAll() {
+  updateKPIs();
+  filterLeads();
+  renderPipeline();
+  renderAnalytics();
+  updateMapColors();
+  updateStatsStrip();
+  document.getElementById('f-records').textContent = allLeads.length;
+}
+
+function updateKPIs() {
+  const diamond = allLeads.filter(r => r.scan_error === 'DIAMANTE' || (r.description && r.description.includes('DIAMANTE'))).length;
+  const gold = allLeads.filter(r => r.status === 'ENRIQUECIDO').length;
+  const virgin = allLeads.filter(r => r.status === 'PENDIENTE').length;
+  const pipeVal = allLeads.reduce((s,r) => s + (r.sniper_score || 0) * 1000, 0);
+
+  animCount('kpi-diamond', diamond);
+  animCount('kpi-gold', gold);
+  animCount('kpi-virgin', virgin);
+  document.getElementById('kpi-pipeline').textContent = '$' + formatM(pipeVal);
+}
+
+function animCount(id, target) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const start = parseInt(el.textContent.replace(/\D/g,'')) || 0;
+  const dur = 600, t0 = performance.now();
+  const step = now => {
+    const p = Math.min((now-t0)/dur, 1);
+    el.textContent = Math.round(start + (target-start) * (1-Math.pow(1-p,3))).toLocaleString('es-MX');
+    if (p < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
+function formatM(n) {
+  if (n >= 1e6) return (n/1e6).toFixed(1) + 'M';
+  if (n >= 1e3) return (n/1e3).toFixed(0) + 'K';
+  return n.toFixed(0);
+}
+
+function filterLeads() {
+  const search = document.getElementById('lead-search').value.toLowerCase();
+  filteredLeads = allLeads.filter(r => 
+    !search || (r.name||'').toLowerCase().includes(search) || (r.country||'').toLowerCase().includes(search)
+  );
+  sortLeads(sortCol, true);
+}
+
+function sortLeads(col, keepDir = false) {
+  if (!keepDir) sortDir = col === sortCol ? -sortDir : -1;
+  sortCol = col;
+  filteredLeads.sort((a,b) => {
+    let av = a[col] ?? 0, bv = b[col] ?? 0;
+    return av < bv ? sortDir : av > bv ? -sortDir : 0;
+  });
+  renderLeadsTable();
+}
+
+function renderLeadsTable() {
+  const tbody = document.getElementById('leads-tbody');
+  document.getElementById('lead-count').textContent = `${filteredLeads.length} registros`;
+  tbody.innerHTML = filteredLeads.map(r => `
+    <tr>
+      <td><strong>${r.name||'—'}</strong></td>
+      <td>${r.country||'LATAM'}</td>
+      <td class="tier-diamond"><strong>${r.scan_error==='DIAMANTE'?'DIAMOND':'GOLD'}</strong></td>
+      <td><span class="status-pill s-hot">${r.status||'PENDIENTE'}</span></td>
+      <td><strong style="color:var(--gold)">${r.sniper_score||0}</strong></td>
+      <td><button onclick="alert('Explorando: '+ '${r.name}')" style="background:none;border:1px solid var(--border);color:var(--sub);font-family:var(--mono);font-size:8px;padding:3px 8px;border-radius:2px;cursor:pointer;">VIEW DOSSIER</button></td>
+    </tr>
+  `).join('') || '<tr><td colspan="6" class="empty-state">Sin resultados</td></tr>';
+}
+
+function renderPipeline() {
+  const mockStages = ['new', 'qualified', 'proposal', 'closing'];
+  mockStages.forEach((s, idx) => {
+    const items = allLeads.filter((_,i) => i % 4 === idx).slice(0,5);
+    document.getElementById(`cnt-${s}`).textContent = items.length;
+    document.getElementById(`pipe-${s}`).innerHTML = items.map(r => `
+      <div class="pipe-card">
+        <div class="pc-company">${r.name}</div>
+        <div class="pc-value">$${formatM((r.sniper_score||0)*1000)}</div>
+        <div class="pc-meta">${r.country||'LATAM'}</div>
+      </div>
+    `).join('');
+  });
+}
+
+function renderAnalytics() {
+  const byCo = {};
+  allLeads.forEach(r => { byCo[r.country||'LATAM'] = (byCo[r.country||'LATAM']||0) + 1; });
+  const top = Object.entries(byCo).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const max = top[0]?.[1] || 1;
+  document.getElementById('chart-country').innerHTML = top.map(([c,v]) => `
+    <div class="bar-group">
+      <div class="bar-val">${v}</div>
+      <div class="bar" style="height:${(v/max)*100}px;background:var(--accent)"></div>
+      <div class="bar-label">${c}</div>
+    </div>
+  `).join('');
+}
+
+async function runRadar() {
+  const btn = document.getElementById('btn-run');
+  btn.className = 'btn-run loading';
+  btn.textContent = '⬡ SCANNING...';
+  await fetchLeads();
+  setTimeout(() => {
+    btn.className = 'btn-run success';
+    btn.textContent = '✓ SCAN COMPLETE';
+    setTimeout(() => { btn.className = 'btn-run'; btn.textContent = '⬡ RUN HUNT_RADAR'; }, 2000);
+  }, 1000);
+}
+
+function switchTab(tab, el) {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('panel-'+tab).classList.add('active');
+}
+
+function startClock() {
+  const update = () => {
+    document.getElementById('clk').textContent = new Date().toLocaleTimeString('en-US', { hour12: false });
+  };
+  update(); setInterval(update, 1000);
+}
+
+async function loadMap() {
+  const svg = d3.select("#map-svg");
+  const width = 960, height = 700;
+  const projection = d3.geoMercator().center([-60, -15]).scale(450).translate([width/2, height/2]);
+  const path = d3.geoPath().projection(projection);
+  
+  try {
+    const world = await d3.json("https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json");
+    const countries = topojson.feature(world, world.objects.countries).features;
+    const latamCodes = [32, 68, 76, 152, 170, 188, 192, 214, 218, 222, 320, 328, 340, 484, 558, 570, 600, 604, 740, 858, 862];
+    
+    svg.selectAll(".country")
+      .data(countries.filter(d => latamCodes.includes(+d.id)))
+      .enter().append("path")
+      .attr("class", "country")
+      .attr("d", path)
+      .on("mouseover", function(e, d) { d3.select(this).style("fill", "rgba(0,180,255,0.3)"); })
+      .on("mouseout", function(e, d) { d3.select(this).style("fill", "rgba(0,180,255,0.04)"); });
+  } catch(e) { console.error("Map error", e); }
+}
+
+function updateMapColors() {}
+function updateStatsStrip() {}
+
+init();
+</script>
 </body>
 </html>
