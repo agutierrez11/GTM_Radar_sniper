@@ -253,11 +253,18 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
       <label>Segmento ICP</label>
       <select id="f-segment">
         <option value="">Todos los segmentos</option>
-        <option value="saas">SaaS</option>
-        <option value="fintech">Fintech</option>
+        <option value="saas">SaaS (B2B/B2C)</option>
+        <option value="fintech">Fintech & Payments</option>
+        <option value="proptech">Proptech & Real Estate</option>
+        <option value="healthtech">Healthtech</option>
+        <option value="edtech">Edtech</option>
+        <option value="insurtech">Insurtech</option>
+        <option value="agtech">Agtech</option>
+        <option value="cybersecurity">Cybersecurity</option>
         <option value="ecommerce">E-Commerce</option>
         <option value="retail">Retail</option>
-        <option value="logistics">Logística</option>
+        <option value="logistics">Logistics & Supply Chain</option>
+        <option value="hrtech">HRTech</option>
       </select>
     </div>
     <div class="field">
@@ -466,7 +473,9 @@ async function init() {
 
 async function fetchLeads() {
   let query = supabase.from(TABLE_LEADS).select('*');
-  const { data, error } = await query.order('created_at', { ascending: false }).limit(200);
+  // Eliminamos el .order('created_at') porque si la tabla no tiene esa columna, 
+  // la llamada falla silenciosamente y Vercel se queda congelado en "CONNECTING...".
+  const { data, error } = await query.limit(500);
   if (error) throw error;
   
   allLeads = (data || []).map(r => {
