@@ -295,7 +295,7 @@ function BattleCard({ company, onClose }: { company: typeof MOCK_COMPANIES[0]; o
               STAKEHOLDERS (Matriz de Decisión)
             </h3>
             <div className="space-y-3">
-              {company.stakeholders.map((sh, idx) => (
+              {Array.isArray(company.stakeholders) && company.stakeholders.map((sh: any, idx: number) => (
                 <div key={idx} className="bg-slate-800/50 rounded p-3 text-sm">
                   <div className="flex items-center justify-between mb-1">
                     <span className="font-mono text-cyan-400">{sh.role}</span>
@@ -441,22 +441,26 @@ export default function Companies() {
         console.error('Error fetching leads:', error);
       } else {
         const parsedLeads: Company[] = (data || []).map((r: any) => {
+          // Hybrid Logic: Check for direct columns or extract from description JSON
           let extra: any = {};
-          try { extra = JSON.parse(r.description); } catch(e) { 
-             extra = { sniper_score: 50, pain_points: ['Unprocessed'], kill_shot: r.description };
-          }
+          try { 
+            if (r.description && r.description.startsWith('{')) {
+              extra = JSON.parse(r.description);
+            }
+          } catch(e) { /* ignore parse errors */ }
+
           return {
             id: r.id,
             name: r.name || 'Unknown',
             country: r.country || 'MX',
             segment: r.segment || 'saas',
-            tier: extra.tier || (extra.sniper_score > 90 ? 'diamond' : extra.sniper_score > 70 ? 'gold' : 'silver'),
+            tier: r.tier || extra.tier || (extra.sniper_score > 90 ? 'diamond' : extra.sniper_score > 70 ? 'gold' : 'silver'),
             status: r.status || 'target',
             description: r.description || '',
-            painPoints: extra.pain_points || [],
-            solutions: extra.solutions || ['Custom GTM Solution'],
-            killShot: extra.kill_shot || extra.description,
-            stakeholders: extra.stakeholders || [
+            painPoints: r.pain_points || extra.pain_points || (extra.pain_points ? extra.pain_points : (r.description && !r.description.startsWith('{') ? [r.description] : ['Unprocessed'])),
+            solutions: r.solutions || extra.solutions || ['Custom GTM Solution'],
+            killShot: r.kill_shot || extra.kill_shot || extra.description || r.description,
+            stakeholders: r.stakeholders || extra.stakeholders || [
               { role: 'Decision Maker', name: 'Strategic Lead', motivation: 'Revenue Growth' }
             ]
           };
