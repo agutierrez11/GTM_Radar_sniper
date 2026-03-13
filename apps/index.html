@@ -211,7 +211,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 <div class="scan-line"></div>
 <div class="conn-error" id="conn-error">⚠ SUPABASE_NOT_CONFIGURED — usando datos demo</div>
 
-/* TOPBAR */
+<!-- TOPBAR -->
 <header class="topbar">
   <div class="t-left">
     <div class="logo">NERV <em>/</em> SNIPER_GTM</div>
@@ -231,10 +231,11 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 </header>
 
 <div class="app">
-  /* SIDEBAR */
+  <!-- SIDEBAR -->
   <aside class="sidebar">
     <div class="s-section">Hunt Radar</div>
-    <div class="field"><label>Rival Ref (opcional)</label><input id="f-rival" type="text" placeholder="https://stripe.com"></div>
+    <div class="field"><label>Primary Target URL</label><input id="f-url1" type="text" placeholder="https://..." autocomplete="new-password" value=""></div>
+    <div class="field"><label>Secondary Target URL (opcional)</label><input id="f-url2" type="text" placeholder="https://..." autocomplete="new-password" value=""></div>
     <div class="field">
       <label>Región Target</label>
       <select id="f-region">
@@ -312,7 +313,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
     </div>
 
     <div class="panels">
-      /* MAP */
+      <!-- MAP -->
       <div class="panel active" id="panel-map">
         <div class="map-wrap">
           <svg id="map-svg" viewBox="0 0 960 700"></svg>
@@ -333,7 +334,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
         </div>
       </div>
 
-      /* LEADS */
+      <!-- LEADS -->
       <div class="panel" id="panel-leads">
         <div class="table-controls">
           <input class="search-input" id="lead-search" type="text" placeholder="Buscar empresa, contacto, país..." oninput="filterLeads()">
@@ -366,7 +367,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
         </table>
       </div>
 
-      /* PIPELINE */
+      <!-- PIPELINE -->
       <div class="panel" id="panel-pipeline">
         <div class="pipeline-grid" id="pipeline-board">
           <div class="pipe-col">
@@ -388,7 +389,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
         </div>
       </div>
 
-      /* ANALYTICS */
+      <!-- ANALYTICS -->
       <div class="panel" id="panel-analytics">
         <div class="chart-box">
           <div class="chart-title">Leads por País</div>
@@ -465,9 +466,19 @@ async function init() {
 
 async function fetchLeads() {
   let query = supabase.from(TABLE_LEADS).select('*');
-  const { data, error } = await query.order('sniper_score', { ascending: false }).limit(200);
+  const { data, error } = await query.order('created_at', { ascending: false }).limit(200);
   if (error) throw error;
-  allLeads = data || [];
+  
+  allLeads = (data || []).map(r => {
+    let score = 0;
+    try {
+      if (r.description) {
+        const d = JSON.parse(r.description);
+        score = d.sniper_score || 0;
+      }
+    } catch(e) {}
+    return { ...r, sniper_score: score };
+  });
   refreshAll();
   document.getElementById('f-sync').textContent = new Date().toLocaleTimeString('es-MX');
 }
