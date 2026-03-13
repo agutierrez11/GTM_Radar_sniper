@@ -325,15 +325,15 @@ function BattleCard({ company, onClose }: { company: typeof MOCK_COMPANIES[0]; o
 }
 
 // Pipeline Phase Visualizer
-function PipelinePhase({ 
-  phase, 
-  icon: Icon, 
-  companies, 
-  color 
-}: { 
-  phase: string; 
-  icon: React.ReactNode; 
-  companies: typeof MOCK_COMPANIES; 
+function PipelinePhase({
+  phase,
+  icon: Icon,
+  companies,
+  color
+}: {
+  phase: string;
+  icon: React.ReactNode;
+  companies: typeof MOCK_COMPANIES;
   color: string;
 }) {
   return (
@@ -347,8 +347,8 @@ function PipelinePhase({
       </div>
       <div className="space-y-2">
         {companies.map((company) => (
-          <div 
-            key={company.id} 
+          <div
+            key={company.id}
             className={`bg-slate-800/50 border border-${color}-500/20 rounded px-3 py-2 text-xs hover:bg-slate-700/50 transition-colors cursor-pointer group`}
           >
             <p className={`font-mono text-${color}-400} group-hover:text-${color}-300`}>
@@ -363,13 +363,13 @@ function PipelinePhase({
 }
 
 // Knowledge Graph Node
-function GraphNode({ 
-  company, 
-  isSelected, 
-  onClick 
-}: { 
-  company: typeof MOCK_COMPANIES[0]; 
-  isSelected: boolean; 
+function GraphNode({
+  company,
+  isSelected,
+  onClick
+}: {
+  company: typeof MOCK_COMPANIES[0];
+  isSelected: boolean;
   onClick: () => void;
 }) {
   const tierColors = {
@@ -388,7 +388,7 @@ function GraphNode({
     >
       {/* Glow effect */}
       <div className={`absolute inset-0 rounded-full blur-lg opacity-0 group-hover:opacity-100 transition-opacity bg-gradient-to-r ${tierColors[company.tier as keyof typeof tierColors]}`} />
-      
+
       {/* Node */}
       <div className={`relative w-16 h-16 rounded-full bg-gradient-to-br ${tierColors[company.tier as keyof typeof tierColors]} flex items-center justify-center border-2 ${isSelected ? 'border-cyan-300' : 'border-slate-700'} shadow-lg`}>
         <div className="text-center">
@@ -436,34 +436,48 @@ export default function Companies() {
   useEffect(() => {
     const fetchLeads = async () => {
       setLoading(true);
-      const { data, error } = await supabase.from(TABLE_LEADS).select('*').limit(1000);
-      if (error) {
-        console.error('Error fetching leads:', error);
-      } else {
-        const parsedLeads: Company[] = (data || []).map((r: any) => {
-          // Hybrid Logic: Check for direct columns or extract from description JSON
+      try {
+        console.log("Tactical Scan: Initiating connection to Supabase...");
+        const { data, error } = await supabase.from(TABLE_LEADS).select('*').limit(1000);
+
+        if (error) {
+          console.error("Tactical Error: Failed to fetch intel.", error);
+          setLoading(false);
+          return;
+        }
+
+        console.log(`Tactical Scan: ${data?.length || 0} targets identified in intelligence base.`);
+
+        if (!data || data.length === 0) {
+          console.warn("Tactical Warning: Intelligence base is currently empty or unreadable.");
+          setLeads([]);
+          setLoading(false);
+          return;
+        }
+
+        const parsedLeads: Company[] = data.map((r: any) => {
           let extra: any = {};
-          try { 
+          try {
             if (r.description && r.description.startsWith('{')) {
               extra = JSON.parse(r.description);
             }
           } catch(e) { /* ignore parse errors */ }
 
           return {
-            id: r.id,
-            name: r.name || 'Unknown',
+            id: r.id.toString(),
+            name: r.name || 'Unknown Target',
             country: r.country || 'MX',
-            segment: r.segment || 'saas',
+            segment: r.segment || extra.segment || 'saas',
             tier: (() => {
               const t = (r.tier || extra.tier || '').toLowerCase();
               if (t.includes('diamante') || t === 'diamond') return 'diamond';
               if (t.includes('oro') || t === 'gold') return 'gold';
               if (t.includes('plata') || t === 'silver') return 'silver';
               if (t.includes('emerging') || t.includes('nuevo')) return 'emerging';
-              return extra.sniper_score > 90 ? 'diamond' : extra.sniper_score > 70 ? 'gold' : 'silver';
+              return extra.sniper_score > 90 ? 'diamond' : extra.sniper_score > 70 ? 'gold' : 'gold';
             })(),
             status: (() => {
-              const s = (r.status || 'target').toLowerCase();
+              const s = (r.status || extra.status || 'target').toLowerCase();
               if (s.includes('enriquecido') || s.includes('active')) return 'active';
               if (s.includes('target') || s.includes('objetivo')) return 'target';
               return s;
@@ -478,8 +492,11 @@ export default function Companies() {
           };
         });
         setLeads(parsedLeads);
+      } catch (error) {
+        console.error("Tactical Error: An unexpected error occurred during intel processing.", error);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     fetchLeads();
@@ -488,20 +505,29 @@ export default function Companies() {
   // Filter companies
   const filteredCompanies = useMemo(() => {
     return leads.filter((company: Company) => {
-      const matchesSearch = searchQuery.length === 0 || 
+      const matchesSearch = searchQuery.length === 0 ||
         company.name.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesCountry = selectedCountry === 'all' || company.country === selectedCountry;
       const matchesSegment = selectedSegment === 'all' || company.segment === selectedSegment;
       const matchesTier = selectedTier === 'all' || company.tier === selectedTier;
-      
+
       return matchesSearch && matchesCountry && matchesSegment && matchesTier;
     });
-  }, [searchQuery, selectedCountry, selectedSegment, selectedTier]);
+  }, [searchQuery, selectedCountry, selectedSegment, selectedTier, leads]);
 
   // Separate by phase
   const hunting = useMemo(() => filteredCompanies.filter(c => c.tier === 'emerging' || c.tier === 'silver'), [filteredCompanies]);
   const refinery = useMemo(() => filteredCompanies.filter(c => c.tier === 'gold'), [filteredCompanies]);
   const liquidation = useMemo(() => filteredCompanies.filter(c => c.tier === 'diamond'), [filteredCompanies]);
+
+  const stats = useMemo(() => {
+    return {
+      total: leads.length,
+      hunting: leads.filter((c: Company) => c.tier === 'emerging' || c.tier === 'silver').length,
+      refinery: leads.filter((c: Company) => c.tier === 'gold').length,
+      liquidation: leads.filter((c: Company) => c.tier === 'diamond').length
+    };
+  }, [leads]);
 
   const handleReset = useCallback(() => {
     setSearchQuery('');
