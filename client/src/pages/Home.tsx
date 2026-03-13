@@ -169,19 +169,19 @@ export default function Home() {
 
             <div className="space-y-3 pt-4">
               <p className="text-blue-500/70 border-l-2 border-blue-600 pl-2">
-                [11:04:12] BUSCANDO_URL: Stori Card
+                {"[11:04:12] BUSCANDO_URL: Stori Card"}
               </p>
               <p className="text-blue-500/70 border-l-2 border-blue-600 pl-2">
-                [11:04:15] URL_ENCONTRADA: stori.com.mx
+                {"[11:04:15] URL_ENCONTRADA: stori.com.mx"}
               </p>
               <p className="text-emerald-500/70 border-l-2 border-emerald-600 pl-2">
-                [11:04:22] FIRECRAWL_SUCCESS: Intel extraída (4.2kb)
+                {"[11:04:22] FIRECRAWL_SUCCESS: Intel extraída (4.2kb)"}
               </p>
               <p className="text-blue-500/70 border-l-2 border-blue-600 pl-2">
-                [11:04:28] ACTUALIZANDO_DB: Lead #34542 -> status: REFINERY
+                {"[11:04:28] ACTUALIZANDO_DB: Lead #34542 -> status: REFINERY"}
               </p>
               <p className="text-amber-500/70 border-l-2 border-amber-600 pl-2">
-                [11:04:35] FALLBACK: Proxy Scrape.do activado para: Nu México
+                {"[11:04:35] FALLBACK: Proxy Scrape.do activado para: Nu México"}
               </p>
             </div>
 
