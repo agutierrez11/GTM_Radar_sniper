@@ -215,7 +215,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 <header class="topbar">
   <div class="t-left">
     <div class="logo">NERV <em>/</em> SNIPER_GTM</div>
-    <div class="ver-tag">v3.0.0</div>
+    <div class="ver-tag">v3.1.0</div>
   </div>
   <div class="t-center">
     <div class="clock-wrap"><span id="clk">--:--:--</span><span class="tz"> UTC-5</span></div>
@@ -486,8 +486,7 @@ async function fetchLeads() {
   // la llamada falla silenciosamente y Vercel se queda congelado en "CONNECTING...".
   // SHOWROOM MODE: Limit to top 100 high-quality leads
   const { data, error } = await query
-    .or('scan_error.eq.DIAMANTE,status.eq.ENRIQUECIDO')
-    .not('status', 'eq', 'JUNK')
+    .neq('status', 'JUNK')
     .limit(100);
   if (error) throw error;
   
@@ -511,7 +510,7 @@ function getStrategicInference(lead) {
   const score = lead.sniper_score || 0;
   
   // HIGH CONVICTION SIGNALS (The "Investment Board" Logic)
-  if (score > 90) return "<span style='color:var(--accent2)'>● EXPANSION_IMMINENT:</span> Opening new node in BR/MX within 90 days.";
+  if (score > 90 || (lead.scan_error && lead.scan_error.includes("DIAMOND"))) return "<span style='color:var(--accent2)'>● EXPANSION_IMMINENT:</span> Opening new node in BR/MX within 90 days.";
   if (name.includes("Pay") || name.includes("Check")) return "<span style='color:var(--gold)'>● LEGACY_FRICTION:</span> Inferred checkout debt. Replacement opportunity.";
   if (sector.includes("CONDUSEF") || sector.includes("CNBV")) return "<span style='color:var(--accent)'>● REGULATORY_SCAN:</span> High-compliance signals detected.";
   return "<span style='color:var(--sub)'>● MARKET_PULSE:</span> Stable regional activity monitored.";
@@ -535,7 +534,7 @@ function renderLeadsTable() {
     <tr>
       <td><strong>${r.name||'—'}</strong></td>
       <td><span style="color:var(--sub)">${r.country||'LATAM'}</span></td>
-      <td class="tier-diamond"><strong>${r.scan_error==='DIAMANTE'?'DIAMOND':'GOLD'}</strong></td>
+      <td class="tier-diamond"><strong>${(r.scan_error||'').includes('DIAMOND')?'DIAMOND':'GOLD'}</strong></td>
       <td><span class="status-pill s-hot">${getStrategicInference(r)}</span></td>
       <td><strong style="color:var(--accent2); font-size: 14px;">${r.sniper_score||0}%</strong></td>
       <td><button onclick="alert('Explorando: '+ '${r.name}')" style="background:none;border:1px solid var(--accent2);color:var(--accent2);font-family:var(--mono);font-size:8px;padding:4px 10px;border-radius:2px;cursor:pointer;">STRATEGIC DOSSIER</button></td>
