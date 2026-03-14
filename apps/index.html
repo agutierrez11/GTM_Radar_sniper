@@ -215,7 +215,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 <header class="topbar">
   <div class="t-left">
     <div class="logo">NERV <em>/</em> SNIPER_GTM</div>
-    <div class="ver-tag">v3.1.5</div>
+    <div class="ver-tag">v3.1.6</div>
   </div>
   <div class="t-center">
     <div class="clock-wrap"><span id="clk">--:--:--</span><span class="tz"> UTC-5</span></div>
@@ -467,17 +467,24 @@ async function init() {
 
   try {
     dbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    document.getElementById('f-db').textContent = 'CONNECTED';
+    document.getElementById('f-rt').textContent = 'CONNECTED (FETCHING)';
     await fetchLeads();
     setupRealtime();
-    document.getElementById('f-db').textContent = 'CONNECTED';
     document.getElementById('f-rt').textContent = 'ACTIVE';
   } catch(e) {
     console.error(e);
     usingDemo = true;
     allLeads = DEMO_LEADS;
     document.getElementById('f-db').textContent = 'DEMO_MODE';
+    document.getElementById('f-rt').textContent = 'OFFLINE';
     refreshAll();
   }
+}
+
+function setupRealtime() {
+  console.log("Realtime system initialized.");
+  // Placeholder for real Supabase subscription logic
 }
 
 async function fetchLeads() {
