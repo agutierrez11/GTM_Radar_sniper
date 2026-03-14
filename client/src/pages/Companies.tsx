@@ -248,12 +248,28 @@ const LATAM_COUNTRIES = [
 const FINTECH_SEGMENTS = ['pagos', 'lending', 'insurtech', 'wallets', 'neobanks', 'blockchain'];
 
 export default function Companies() {
-  const { data: rawLeads, isLoading: loading } = trpc.companies.list.useQuery({ limit: 1000 });
-  
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCountry, setSelectedCountry] = useState('all');
   const [selectedSegment, setSelectedSegment] = useState('all');
   const [selectedTier, setSelectedTier] = useState('all');
+  
+  // Real-time server-side search
+  const { data: rawLeads, isLoading: loading } = trpc.companies.search.useQuery({ 
+    query: searchQuery,
+    country: selectedCountry,
+    segment: selectedSegment,
+    tier: selectedTier,
+    limit: 200 
+  }, {
+    // Keep data fresh but don't spam during typing
+    staleTime: 5000
+  });
+
+  const updateStatus = trpc.companies.updateStatus.useMutation({
+    onSuccess: () => {
+      // Refresh after update
+    }
+  });
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [activeTab, setActiveTab] = useState('pipeline');
 

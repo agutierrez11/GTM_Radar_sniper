@@ -10,6 +10,7 @@ import time
 import json
 import random
 import logging
+import re
 import requests
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
@@ -43,10 +44,10 @@ TELEGRAM_TOKEN     = "7233842845:AAFInGle_5E0U89_A3E1S1yO5E0U89_A3E1"
 TELEGRAM_CHAT_ID   = "7233842845"
 
 MAX_CREDITS_PER_SESSION = 200
-BATCH_SIZE              = 10 # Reduced for stability
-MAX_WORKERS             = 3  # Reduced for extreme stability
-DELAY_BETWEEN_REQS      = 2.0 # Increased delay
-ERROR_BACKOFF           = 5.0 # Backoff when API fails
+BATCH_SIZE              = 5   # Reduced for recovery
+MAX_WORKERS             = 1   # Forced to 1 to stop CPU spikes
+DELAY_BETWEEN_REQS      = 5.0 # High delay for safety
+ERROR_BACKOFF           = 10.0 # Aggressive backoff
 
 # ─────────────────────────────────────────────
 # LOGGING SETUP
@@ -94,30 +95,104 @@ def get_headers():
     }
 
 def fetch_pending_leads(limit=100):
-    """Retrieves leads that haven't been processed using the tactical marker 'CASCARON_PENDIENTE'."""
-    query = "status=eq.CASCARON_PENDIENTE&select=id,name,website&limit=" + str(limit)
-    url = f"{SUPABASE_URL}/rest/v1/empresas?{query}"
-    try:
-        r = requests.get(url, headers=get_headers(), timeout=20)
-        return r.json() if r.status_code == 200 else []
-    except Exception as e:
-        log.error(f"DB Fetch Err: {e}")
-        return []
+    """Retrieves leads that haven't been processed. Primary targets: PENDIENTE & PREMIUM_PENDING."""
+    headers = get_headers()
+    # Try both statuses
+    leads: list = []
+    for status in ["PENDIENTE", "PREMIUM_PENDING", "PENDIENTE_2"]:
+        query = f"status=eq.{status}&select=id,name,website&limit={limit}"
+        url = f"{SUPABASE_URL}/rest/v1/empresas?{query}"
+        try:
+            r = requests.get(url, headers=headers, timeout=20)
+            if r.status_code == 200:
+                batch = r.json()
+                if isinstance(batch, list):
+                    leads.extend(batch)
+            if len(leads) >= limit: break
+        except Exception as e:
+            log.error(f"DB Fetch Err [{status}]: {e}")
+            
+    return list(leads)[:limit]
 
-def save_intel(lead_id, content):
-    """Persists extracted intelligence to Supabase."""
-    url = f"{SUPABASE_URL}/rest/v1/empresas?id=eq.{lead_id}"
-    payload = {
-        "description": content,
-        "status": "ENRIQUECIDO",
-        "last_scan": datetime.utcnow().isoformat()
+# ─────────────────────────────────────────────
+# TACTICAL INTELLIGENCE (SIMPLIFIED RADAR)
+# ─────────────────────────────────────────────
+
+def calculate_radar_trajectory(name, content):
+    """
+    ANALYZER: Detects if a lead is a "Missile" about to hit (Aaron Ross Logic).
+    Returns: (score, trajectory, recommended_action)
+    """
+    # 1. HARD GATEKEEPER: Reject Noise (Cats, Lasers, Medical, Gossip)
+    noise_patterns = [r"gatos", r"cats", r"laser", r"síntomas", r"salud", r"viral", r"horóscopo"]
+    if any(re.search(p, content.lower()) for p in noise_patterns):
+        return None # Hard Rejection
+
+    # 2. SIGNAL DETECTION (Predictable Revenue)
+    signals = {
+        "FUNDING": [r"funding", r"series [abc]", r"ronda", r"raised", r"capital"],
+        "EXPANSION": [r"expansion", r"crecimiento", r"new office", r"hiring", r"vacantes"],
+        "TECH": [r"stripe", r"aws", r"api", r"checkout", r"payments"]
     }
+    
+    score = 20
+    detected: list[str] = []
+    content_l = content.lower()
+    
+    for cat, patterns in signals.items():
+        matches = [p for p in patterns if re.search(p, content_l)]
+        if matches:
+            score += 25
+            detected.extend(matches)
+    
+    # 3. TRAJECTORY MAPPING
+    score = min(score, 100)
+    if score >= 70:
+        trajectory = "INTERCEPCION (99% Probabilidad)"
+        action = f"AGRESIVE: Contact ASAP. Hook: Expansion/Funding detected ({', '.join(detected)})."
+    elif score >= 45:
+        trajectory = "ASCENDENTE (En Crecimiento)"
+        action = "NURTURE: Track for next 30 days."
+    else:
+        trajectory = "ESTATICA (Ruido)"
+        action = "IGNORE"
+
+    return {
+        "score": score,
+        "trajectory": trajectory,
+        "action": action,
+        "signals": list(set(detected))
+    }
+
+def save_intel(lead_id, name, content):
+    """
+    PERSISTENCE: Saves only high-quality data to Supabase.
+    """
+    radar = calculate_radar_trajectory(name, content)
+    
+    url = f"{SUPABASE_URL}/rest/v1/empresas?id=eq.{lead_id}"
+    
+    # HARD GATEKEEPER: If no radar signal or low score, mark as JUNK
+    if radar is None or radar.get("score", 0) < 40:
+        payload = {
+            "status": "JUNK", 
+            "scan_error": "TACTICAL_REJECTION: NOISE_OR_LOW_SIGNAL",
+            "last_scan": datetime.utcnow().isoformat()
+        }
+    else:
+        # STRATEGIC MULTIPLICATION: Save structured intelligence
+        payload = {
+            "description": json.dumps(radar),
+            "status": "ENRIQUECIDO",
+            "infra_potential": radar["trajectory"],
+            "last_scan": datetime.utcnow().isoformat()
+        }
         
     try:
         r = requests.patch(url, headers=get_headers(), json=payload, timeout=20)
         if r.status_code in [200, 204]:
+            log.info(f"DONE: {name} processed and filtered.")
             return True
-        log.error(f"DB Save Fail: {r.status_code} - {r.text}")
         return False
     except Exception as e:
         log.error(f"DB Save Exception: {e}")
@@ -157,11 +232,14 @@ def process_lead(lead):
         requests.patch(f"{SUPABASE_URL}/rest/v1/empresas?id=eq.{lid}", headers=get_headers(), json=payload_no_url)
         return False
 
-    # QUALITY FILTER: If name is too long, it's likely a description/junk
-    if len(name) > 60:
-        log.warning(f"SKIP [Junk Name]: {name[:30]}...")
-        # Mark as junk to avoid reprocessing
-        payload_junk = {"status": "JUNK", "scan_error": "NAME_TOO_LONG"}
+    # QUALITY FILTER: If name is too long or contains junk phrases, skip.
+    junk_patterns = [
+        r"que buscan", r"empresa de", r"plataforma para", 
+        r"solución de", r"instituciones financieras", r"en busca de"
+    ]
+    if len(name) > 60 or any(re.search(p, name, re.I) for p in junk_patterns):
+        log.warning(f"SKIP [Junk Pattern]: {name[:30]}...")
+        payload_junk = {"status": "JUNK", "scan_error": "DESCRIPTIVE_OR_LONG_NAME"}
         requests.patch(f"{SUPABASE_URL}/rest/v1/empresas?id=eq.{lid}", headers=get_headers(), json=payload_junk)
         return False
 
@@ -184,7 +262,7 @@ def process_lead(lead):
         
         if r.status_code == 200:
             intel = r.json().get("data", {}).get("markdown", "")
-            if is_quality_content(intel) and save_intel(lid, intel):
+            if is_quality_content(intel) and save_intel(lid, name, intel):
                 log.info(f"SUCCESS [Firecrawl]: {name} Indexed.")
                 return True
             else:
@@ -203,7 +281,7 @@ def process_lead(lead):
                 r_s = requests.get(s_url, timeout=40)
                 if r_s.status_code == 200:
                     intel = r_s.text[:10000] # Simple capture for now
-                    if is_quality_content(intel) and save_intel(lid, f"Captured via Scrape.do:\n\n{intel}"):
+                    if is_quality_content(intel) and save_intel(lid, name, f"Captured via Scrape.do:\n\n{intel}"):
                         log.info(f"SUCCESS [Scrape.do]: {name} Indexed.")
                         return True
                     else:
@@ -222,7 +300,7 @@ def process_lead(lead):
                 if r_sn.status_code == 200:
                     results = r_sn.json().get("organic", [])
                     snippets = "\n".join([f"- {it.get('title')}: {it.get('snippet')}" for it in results[:5]])
-                    if save_intel(lid, f"Serper Intel (Search Fallback):\n\n{snippets}"):
+                    if save_intel(lid, name, f"Serper Intel (Search Fallback):\n\n{snippets}"):
                         log.info(f"SUCCESS [Serper]: {name} indexed via Search Snippets.")
                         return True
                 log.warning(f"SERPER_FAIL: {name} (HTTP {r_sn.status_code}).")
@@ -259,18 +337,19 @@ def get_db_counts():
         return 22784, 1561 # Fallback to last known
 
 def execute_hunt():
-    last_report_time = 0
+    last_report_time: float = 0.0
     REPORT_INTERVAL = 3600 # 1 hour
     
     notify_operator("SNIPER_FACTORY_v6.0: Engine Online. Starting Hunt Session.", "BOOT")
     
     while True:
         # Periodic Stats Report
-        current_time = time.time()
-        if current_time - last_report_time > REPORT_INTERVAL:
+        current_time: float = time.time()
+        if (current_time - last_report_time) > REPORT_INTERVAL:
             total, enriched = get_db_counts()
             pending = total - enriched
-            progress = (enriched / total) * 100 if total > 0 else 0
+            # Float-safe progress
+            progress = (float(enriched) / float(max(total, 1))) * 100
             
             stats_msg = (
                 f"DAILY PROGRESS REPORT\n"
@@ -284,8 +363,8 @@ def execute_hunt():
 
         leads = fetch_pending_leads(BATCH_SIZE)
         if not leads:
-            log.info("No targets found. Waiting for perimeter expansion...")
-            time.sleep(300) # Wait 5 mins for Reverse ICP or manual inject
+            log.info("No targets found. Entering Deep Sleep for 15 minutes to prevent CPU spikes...")
+            time.sleep(900) # 15 minutes
             continue
 
         log.info(f"Deploying {MAX_WORKERS} workers for batch.")
