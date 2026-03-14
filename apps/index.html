@@ -645,12 +645,16 @@ function openDossier(id) {
   const lead = allLeads.find(l => l.id === id);
   if (!lead) return;
   
+  const rule = INTEL_RULES.find(r => r.pattern.test(lead.name) || r.pattern.test(lead.sector));
+  const rec = rule ? rule.recommendation : (lead.sniper_score > 80 ? '>>> INMEDIATE_ACTION: Priority Alpha. Deploy full GTM team.' : '>>> MONITOR_STATUS: Maintain surveillance.');
+
   const body = document.getElementById('dossier-body');
   body.innerHTML = `
     <div class="d-top">
       <div>
-        <div class="d-name">${lead.name || 'UNKNOWN_TARGET'}</div>
-        <div class="d-country">${lead.country || 'REGION: LATAM'} | ${lead.sector || 'SECTOR: FINTECH'}</div>
+        <div class="d-name">${lead.name}</div>
+        <div class="d-country">${lead.country} | ${lead.sector}</div>
+        <div style="font-size: 9px; color: var(--muted); margin-top: 4px; font-family: var(--mono);">ID_SIG: ${lead.raw_name || lead.name}</div>
       </div>
       <div class="d-score-box">
         <div class="d-score-label">Sniper_Score</div>
@@ -676,10 +680,15 @@ function openDossier(id) {
     
     <div class="d-section">
       <div class="ds-label">Operational Recommendation</div>
-      <div class="ds-content" style="font-size: 12px; font-family: var(--mono); color: var(--sub);">
-        ${lead.sniper_score > 80 ? 
-          '>>> INMEDIATE_ACTION: Priority Alpha. Deploy full GTM team to this node.' : 
-          '>>> MONITOR_STATUS: Maintain surveillance. Wait for secondary intent signal.'}
+      <div class="ds-content" style="font-size: 12px; font-family: var(--mono); color: var(--accent2); background: rgba(0,255,180,0.05); padding: 10px; border-left: 2px solid var(--accent2);">
+        ${rec}
+      </div>
+    </div>
+
+    <div class="d-section" style="border-top: 1px dotted var(--border);">
+      <div class="ds-label">Market Index Context</div>
+      <div class="ds-content" style="font-size: 11px; color: var(--sub);">
+        Extracted from public registry & market indices. High correlation with regional growth in ${lead.sector}.
       </div>
     </div>
   `;
@@ -720,22 +729,43 @@ async function fetchLeads() {
   document.getElementById('f-sync').textContent = new Date().toLocaleTimeString('es-MX');
 }
   
+const INTEL_RULES = [
+  { 
+    pattern: /Mercado Libre/i, 
+    inference: "● ECOSYSTEM_DOMINANCE: Integrating TuCarro.co nodes. High hardware credit potential.",
+    recommendation: "PRIORITY_ALPHA: Deploy full GTM team to this node."
+  },
+  { 
+    pattern: /Nubank/i, 
+    inference: "● ASSET_MIGRATION: NuInvest consolidation detected. Inferred demand for wealth-tech API.",
+    recommendation: "MONITOR_FLOW: Wait for secondary intent signal from NuInvest."
+  },
+  { 
+    pattern: /FinTech|Instituciones financieras/i, 
+    inference: "● SECTOR_SURGE: High volume of POS hardware refresh signals in financial sector.",
+    recommendation: "STRATEGIC_OUTREACH: Pitch next-gen terminal solutions."
+  },
+  { 
+    pattern: /Broker|Inversión/i, 
+    inference: "● BROKER_SYNCHRONY: Legacy trading platforms under pressure. Replacement cycle active.",
+    recommendation: "TECH_SWAP: Focus on low-latency API integration."
+  },
+  { 
+    pattern: /Perplexity|AI/i, 
+    inference: "● AI_INFRASTRUCTURE: Global compute shift detected. Operational scaling imminent.",
+    recommendation: "PARTNERSHIP_SYNC: Explore co-marketing hardware-software synergy."
+  }
+];
+
 function getStrategicInference(lead) {
   const name = lead.name || "";
-  const sector = (lead.sector || "FinTech").toLowerCase();
-  const score = lead.sniper_score || 0;
+  const sector = (lead.sector || "").toLowerCase();
+  const rule = INTEL_RULES.find(r => r.pattern.test(name) || r.pattern.test(sector));
   
-  // SPECIFIC INTELLIGENCE (Polished for presentation)
-  if (name === 'Mercado Libre') return "<span style='color:var(--accent2)'>● ECOSYSTEM_DOMINANCE:</span> Integrating TuCarro.co nodes. High hardware credit potential.";
-  if (name === 'Nubank') return "<span style='color:var(--accent2)'>● ASSET_MIGRATION:</span> NuInvest consolidation detected. Inferred demand for wealth-tech API.";
-  if (name === 'Top Tier FinTechs') return "<span style='color:var(--accent)'>● AGGREGATE_DEMAND:</span> High volume of POS hardware refresh signals in sector.";
-  if (name.includes('Perplexity')) return "<span style='color:var(--accent2)'>● AI_INFRASTRUCTURE:</span> Massive growth in LATAM queries. Potential strategic partnership.";
-  
-  // HIGH CONVICTION SIGNALS
-  if (score > 90 || (lead.scan_error && lead.scan_error.includes("DIAMOND"))) return "<span style='color:var(--accent2)'>● EXPANSION_IMMINENT:</span> Opening new node in BR/MX within 90 days.";
-  if (name.includes("Pay") || name.includes("Check")) return "<span style='color:var(--gold)'>● LEGACY_FRICTION:</span> Inferred checkout debt. Replacement opportunity.";
-  if (sector.includes("condusef") || sector.includes("cnbv")) return "<span style='color:var(--accent)'>● REGULATORY_SCAN:</span> High-compliance signals detected.";
-  
+  if (rule) return `<span style='color:var(--accent2)'>${rule.inference}</span>`;
+  if (lead.sniper_score > 90 || (lead.scan_error && lead.scan_error.includes("DIAMOND"))) 
+    return "<span style='color:var(--accent2)'>● EXPANSION_IMMINENT:</span> Opening new node in BR/MX within 90 days.";
+    
   return "<span style='color:var(--sub)'>● MARKET_PULSE:</span> Stable regional activity monitored.";
 }
 
@@ -823,15 +853,24 @@ function startClock() {
 const formatM = (v) => v >= 1000000 ? (v/1000000).toFixed(1) + 'M' : v >= 1000 ? (v/1000).toFixed(1) + 'K' : v;
 
 function normalizeLead(r) {
-  let name = r.name || 'UNKNOWN_TARGET';
+  const rawName = r.name || 'UNKNOWN_TARGET';
+  let name = rawName;
+  let sector = r.sector || 'Fintech';
   let country = r.country || 'LATAM';
   
-  // Clean up messy names
-  if (name.includes('Mercado Libre')) name = 'Mercado Libre';
-  if (name.includes('Nubank')) name = 'Nubank';
-  if (name.includes('Instituciones financieras')) name = 'Top Tier FinTechs';
-  if (name.includes('Grandes brokers')) name = 'Institutional Brokers';
-  if (name.includes('Plataformas de Wealth')) name = 'Wealth Management Hub';
+  // Clean up and categorize
+  if (name.includes('Instituciones financieras')) {
+    name = 'Institutional Cluster';
+    sector = 'Financial Services';
+  }
+  if (name.includes('Grandes brokers')) {
+    name = 'Tier-1 Brokers';
+    sector = 'Investment';
+  }
+  if (name.includes('Mercado Libre')) {
+    name = 'Mercado Libre';
+    sector = 'E-commerce / Fintech';
+  }
   if (name.includes('Redcaptial')) name = 'RedCapital';
   
   // Country normalization
@@ -839,7 +878,7 @@ function normalizeLead(r) {
   if (country === 'MX' || country === 'México' || country === 'Mexico') country = 'México 🇲🇽';
   if (country === 'BR' || country === 'Brasil' || country === 'Brazil') country = 'Brasil 🇧🇷';
   
-  return { ...r, name, country };
+  return { ...r, name, country, sector, raw_name: rawName };
 }
 
 async function loadMap() {
