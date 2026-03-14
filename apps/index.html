@@ -215,7 +215,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 <header class="topbar">
   <div class="t-left">
     <div class="logo">NERV <em>/</em> SNIPER_GTM</div>
-    <div class="ver-tag">v3.1.0</div>
+    <div class="ver-tag">v3.1.5</div>
   </div>
   <div class="t-center">
     <div class="clock-wrap"><span id="clk">--:--:--</span><span class="tz"> UTC-5</span></div>
@@ -529,7 +529,7 @@ function filterLeads() {
 
 function renderLeadsTable() {
   const tbody = document.getElementById('leads-tbody');
-  document.getElementById('lead-count').textContent = `${filteredLeads.length} registros (MODO SHOWROOM)`;
+  document.getElementById('lead-count').textContent = `${filteredLeads.length} leads (LIVE_INTEL)`;
   tbody.innerHTML = filteredLeads.map(r => `
     <tr>
       <td><strong>${r.name||'—'}</strong></td>
@@ -596,6 +596,8 @@ function startClock() {
   };
   update(); setInterval(update, 1000);
 }
+
+const formatM = (v) => v >= 1000000 ? (v/1000000).toFixed(1) + 'M' : v >= 1000 ? (v/1000).toFixed(1) + 'K' : v;
 
 async function loadMap() {
   const svg = d3.select("#map-svg");
