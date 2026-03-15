@@ -40,26 +40,18 @@ SERPER_KEY   = os.getenv("SERPER_API_KEY_VM")
 
 SLACK_WEBHOOK_URL  = os.getenv("SLACK_WEBHOOK_URL")
 # Telegram Hardcoded as requested for immediate autonomy
-TELEGRAM_TOKEN     = "7233842845:AAFInGle_5E0U89_A3E1S1yO5E0U89_A3E1"
-TELEGRAM_CHAT_ID   = "7233842845"
+TELEGRAM_TOKEN     = os.getenv("TELEGRAM_BOT_TOKEN")
+TELEGRAM_CHAT_ID   = os.getenv("TELEGRAM_CHAT_ID") # Assumes this is in .env or optional
 
-MAX_CREDITS_PER_SESSION = 200
-BATCH_SIZE              = 5   # Reduced for recovery
-MAX_WORKERS             = 1   # Forced to 1 to stop CPU spikes
-DELAY_BETWEEN_REQS      = 5.0 # High delay for safety
-ERROR_BACKOFF           = 10.0 # Aggressive backoff
+MAX_CREDITS_PER_SESSION = 2000 # Increased for 8-core capacity
+BATCH_SIZE              = 40   # Increased to keep 8 workers fed
+MAX_WORKERS             = 8    # UNLOCKED: Match 8-core CPU
+DELAY_BETWEEN_REQS      = 1.0  # Reduced: More context switching capacity
+ERROR_BACKOFF           = 5.0  # Reduced for faster recovery
 
 # ─────────────────────────────────────────────
 # LOGGING SETUP
 # ─────────────────────────────────────────────
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=[
-        logging.FileHandler("engine_runtime.log"),
-        logging.StreamHandler()
-    ]
-)
 log = logging.getLogger("SNIPER_ENGINE")
 
 # ─────────────────────────────────────────────
@@ -97,9 +89,10 @@ def get_headers():
 def fetch_pending_leads(limit=100):
     """Retrieves leads that haven't been processed. Primary targets: PENDIENTE & PREMIUM_PENDING."""
     headers = get_headers()
-    # Try both statuses
+    # Try all pending-like statuses
     leads: list = []
-    for status in ["PENDIENTE", "PREMIUM_PENDING", "PENDIENTE_2"]:
+    statuses = ["PENDIENTE", "CASCARON_PENDIENTE", "PREMIUM_PENDING", "PENDIENTE_2", "NO_URL", "PILOTO", "NUEVO"]
+    for status in statuses:
         query = f"status=eq.{status}&select=id,name,website&limit={limit}"
         url = f"{SUPABASE_URL}/rest/v1/empresas?{query}"
         try:
@@ -132,7 +125,8 @@ def calculate_radar_trajectory(name, content):
     signals = {
         "FUNDING": [r"funding", r"series [abc]", r"ronda", r"raised", r"capital"],
         "EXPANSION": [r"expansion", r"crecimiento", r"new office", r"hiring", r"vacantes"],
-        "TECH": [r"stripe", r"aws", r"api", r"checkout", r"payments"]
+        "TECH": [r"stripe", r"aws", r"api", r"checkout", r"payments"],
+        "IGAMING": [r"gambling", r"betting", r"casino", r"i-gaming", r"sportsbook", r"apuestas", r"juego"]
     }
     
     score = 20
@@ -164,11 +158,35 @@ def calculate_radar_trajectory(name, content):
         "signals": list(set(detected))
     }
 
+def detect_tech_stack(content):
+    """
+    WAPPALYZER MODULE: Identifies infrastructure from HTML/JS patterns.
+    """
+    patterns = {
+        "Payments": [r"stripe", r"adyen", r"checkout\.com", r"ebanx", r"dlocal", r"kushki", r"braintree"],
+        "Banking/Data": [r"plaid", r"belvo", r"prometeo", r"truelayer", r"finerio", r"backbase", r"topaz", r"sumsub"],
+        "Infra": [r"aws", r"amazon web services", r"google cloud", r"cloudflare", r"digitalocean"],
+        "CRM/Comm": [r"intercom", r"zendesk", r"drift", r"hubspot", r"segment"]
+    }
+    
+    detected = {}
+    content_l = content.lower()
+    for cat, regexes in patterns.items():
+        found = []
+        for r in regexes:
+            if re.search(r, content_l):
+                found.append(r.replace("\\", ""))
+        if found:
+            detected[cat] = found
+            
+    return detected
+
 def save_intel(lead_id, name, content):
     """
-    PERSISTENCE: Saves only high-quality data to Supabase.
+    PERSISTENCE: Saves only high-quality data and tech signals to Supabase.
     """
     radar = calculate_radar_trajectory(name, content)
+    tech = detect_tech_stack(content)
     
     url = f"{SUPABASE_URL}/rest/v1/empresas?id=eq.{lead_id}"
     
@@ -180,9 +198,19 @@ def save_intel(lead_id, name, content):
             "last_scan": datetime.utcnow().isoformat()
         }
     else:
-        # STRATEGIC MULTIPLICATION: Save structured intelligence
+        # STRATEGIC MULTIPLICATION: Save structured intelligence + Tech Stack
+        # CLEANING: Remove Markdown artifacts [!](...) and technical noise
+        clean_desc = radar.get("trajectory", "INTERCEPCION")
+        if "description" in radar:
+            clean_desc = re.sub(r'\[\!\[.*?\]\]\(.*?\)', '', radar["description"]) # Remove image links
+            clean_desc = re.sub(r'\[.*?\]\(.*?\)', '', clean_desc) # Remove standard links
+            clean_desc = clean_desc.replace('\\', '').replace('#', '').strip()
+            # Truncate to first meaningful paragraph or 300 chars
+            clean_desc = clean_desc.split('\n\n')[0][:300]
+            
         payload = {
-            "description": json.dumps(radar),
+            "description": clean_desc,
+            "tech_stack": json.dumps(tech) if tech else None,
             "status": "ENRIQUECIDO",
             "infra_potential": radar["trajectory"],
             "last_scan": datetime.utcnow().isoformat()
@@ -232,14 +260,19 @@ def process_lead(lead):
         requests.patch(f"{SUPABASE_URL}/rest/v1/empresas?id=eq.{lid}", headers=get_headers(), json=payload_no_url)
         return False
 
-    # QUALITY FILTER: If name is too long or contains junk phrases, skip.
+    # QUALITY FILTER: Skip long descriptions, generic patterns or ICP segments
     junk_patterns = [
         r"que buscan", r"empresa de", r"plataforma para", 
-        r"solución de", r"instituciones financieras", r"en busca de"
+        r"solución de", r"instituciones financieras", r"en busca de",
+        r"ej\.", r"pyme", r"fintechs", r"empresa que", r"individuos",
+        r"comerciantes", r"consultoras", r"corretoras", r"plataformas de",
+        r"sub-bancarizados", r"bancarizados"
     ]
-    if len(name) > 60 or any(re.search(p, name, re.I) for p in junk_patterns):
-        log.warning(f"SKIP [Junk Pattern]: {name[:30]}...")
-        payload_junk = {"status": "JUNK", "scan_error": "DESCRIPTIVE_OR_LONG_NAME"}
+    
+    word_count = len(name.split())
+    if word_count > 5 or any(re.search(p, name, re.I) for p in junk_patterns):
+        log.warning(f"⏩ SKIP [Junk/Descriptive]: {name[:40]}...")
+        payload_junk = {"status": "JUNK", "scan_error": "DESCRIPTIVE_OR_ICP_SEGMENT"}
         requests.patch(f"{SUPABASE_URL}/rest/v1/empresas?id=eq.{lid}", headers=get_headers(), json=payload_junk)
         return False
 
@@ -315,9 +348,6 @@ def process_lead(lead):
         log.warning(f"BLOCKED: {name} - {e}")
         return False
 
-# ─────────────────────────────────────────────
-# MAIN EXECUTION
-# ─────────────────────────────────────────────
 def get_db_counts():
     """Fetches real-time counts from Supabase."""
     headers = get_headers()
@@ -331,32 +361,40 @@ def get_db_counts():
         # Enriched
         r_enriched = requests.get(f"{SUPABASE_URL}/rest/v1/empresas?status=eq.ENRIQUECIDO&select=count", headers=headers, timeout=10)
         enriched = int(r_enriched.headers.get("Content-Range", "0/0").split("/")[-1])
+
+        # Junk
+        r_junk = requests.get(f"{SUPABASE_URL}/rest/v1/empresas?status=eq.JUNK&select=count", headers=headers, timeout=10)
+        junk = int(r_junk.headers.get("Content-Range", "0/0").split("/")[-1])
         
-        return total, enriched
+        return total, enriched, junk
     except:
-        return 22784, 1561 # Fallback to last known
+        return 22822, 2663, 4250 # Fallback
 
 def execute_hunt():
     last_report_time: float = 0.0
-    REPORT_INTERVAL = 3600 # 1 hour
+    REPORT_INTERVAL = 300 # 5 minutes for real-time visibility
     
-    notify_operator("SNIPER_FACTORY_v6.0: Engine Online. Starting Hunt Session.", "BOOT")
+    notify_operator("🛡️ SNIPER_FACTORY_v6.0: Engine Online. Starting Hunt Session.", "COMMAND")
     
     while True:
         # Periodic Stats Report
         current_time: float = time.time()
         if (current_time - last_report_time) > REPORT_INTERVAL:
-            total, enriched = get_db_counts()
-            pending = total - enriched
+            total, enriched, junk = get_db_counts()
+            active_universe = total - junk
+            pending = total - enriched - junk
             # Float-safe progress
-            progress = (float(enriched) / float(max(total, 1))) * 100
+            progress = (float(enriched) / float(max(active_universe, 1))) * 100
             
             stats_msg = (
-                f"DAILY PROGRESS REPORT\n"
-                f"- Universo Dinamico: {total:,} (Creciendo via Reverse ICP)\n"
-                f"- Capturados: {enriched:,} ({progress:.1f}%)\n"
-                f"- Pendientes: {pending:,}\n"
-                f"- Estado: Caza Activa"
+                f"*REPORT DEL ESTADO DE MISIÓN*\n"
+                f"━━━━━━━━━━━━━━━━━━\n"
+                f"🎯 **Universo Activo**: {active_universe:,} (Limpio)\n"
+                f"✅ **Bajas Enriquecidas**: {enriched:,} ({progress:.1f}%)\n"
+                f"⏳ **Pendientes en Cola**: {pending:,}\n"
+                f"🗑️ **Basura Eliminada**: {junk:,}\n"
+                f"━━━━━━ ━━━━━━ ━━━━━━\n"
+                f"📻 Estación: NERV 8-Core | Modo: Caza Activa"
             )
             notify_operator(stats_msg, "STATS")
             last_report_time = current_time

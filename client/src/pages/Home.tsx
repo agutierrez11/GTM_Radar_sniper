@@ -1,215 +1,369 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  Activity, 
-  Target, 
-  BarChart3, 
-  Database, 
-  Globe, 
-  Zap, 
-  Cpu,
-  ArrowUpRight,
-  TrendingUp,
-  ShieldAlert
-} from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import { Link } from "wouter";
-import { 
-  AreaChart, 
-  Area, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer 
-} from 'recharts';
+import { useEffect, useState } from 'react';
+import { fetchLiveLeads } from '@/lib/dataService';
+import Sidebar from '@/components/Sidebar';
+import Topbar from '@/components/Topbar';
+import MetricCard from '@/components/MetricCard';
+import LeadsTable from '@/components/LeadsTable';
+import GraphView from '@/components/GraphView/GraphView';
+import BattleCards from '@/components/BattleCards/BattleCards';
+import { TrendingUp, Target, Zap, LayoutList, Network, Swords } from 'lucide-react';
 
-const data = [
-  { name: '00:00', leads: 400 },
-  { name: '04:00', leads: 1200 },
-  { name: '08:00', leads: 900 },
-  { name: '12:00', leads: 2400 },
-  { name: '16:00', leads: 1800 },
-  { name: '20:00', leads: 3200 },
-  { name: '23:59', leads: 2800 },
-];
+export interface Lead {
+  id: string;
+  company: string;
+  contact?: string;
+  country: string;
+  tier: 'diamond' | 'gold' | 'silver';
+  status: 'active' | 'pending' | 'high-potential';
+  score: number;
+  signal: string;
+  opportunity: string;
+}
+
+// Leads will be populated from Supabase
+
+type ViewMode = 'table' | 'graph' | 'battle-cards';
 
 export default function Home() {
-  const [pulseScale, setPulseScale] = useState(1);
-  
+  const [viewMode, setViewMode] = useState<ViewMode>('table');
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [selectedLeadId, setSelectedLeadId] = useState<string>('');
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
-    const interval = setInterval(() => {
-      setPulseScale(s => s === 1 ? 1.05 : 1);
-    }, 2000);
-    return () => clearInterval(interval);
+    async function load() {
+      const rawLeads = await fetchLiveLeads();
+      const mapped = rawLeads.map((l: any) => ({
+        id: l.id.toString(),
+        company: l.name,
+        contact: 'Analizado por NERV',
+        country: l.sector || 'Global',
+        tier: l.infra_potential ? 'diamond' as const : 'gold' as const,
+        status: 'active' as const,
+        score: l.infra_potential ? 95 : 75,
+        signal: l.description ? l.description.substring(0, 50) + '...' : 'Señal estratégica detectada',
+        opportunity: 'Surgical Strike GTM'
+      }));
+      setLeads(mapped);
+      if (mapped.length > 0) setSelectedLeadId(mapped[0].id);
+      setLoading(false);
+    }
+    load();
   }, []);
 
+  const handleRowClick = (lead: Lead) => {
+    setSelectedLeadId(lead.id);
+    setViewMode('graph');
+  };
+
   return (
-    <div className="p-8 space-y-8 max-w-[1600px] mx-auto animate-in fade-in duration-700">
-      {/* Upper Status Bar */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-blue-900/30 pb-6">
-        <div>
-          <h1 className="text-3xl font-bold text-white tracking-tight flex items-center gap-3">
-            <span className="bg-blue-600 w-3 h-8 rounded-full shadow-[0_0_15px_rgba(37,99,235,0.6)]"></span>
-            Centro de Mando GTM
-          </h1>
-          <p className="text-slate-400 text-sm mt-1 flex items-center gap-2">
-            <Activity className="h-4 w-4 text-emerald-400 animate-pulse" /> 
-            Motor SNIPER_FACTORY v20.0 • Operación Activa
-          </p>
-        </div>
-        
-        <div className="flex gap-3">
-          <Link href="/companies">
-            <Button className="bg-blue-600 hover:bg-blue-500 text-white font-bold border-b-4 border-blue-800 active:border-b-0 transition-all">
-              VER INTELIGENCIA
-            </Button>
-          </Link>
-          <Button variant="outline" className="border-blue-900/50 text-slate-300 hover:bg-white/5">
-            REPORTE ESTRATÉGICO
-          </Button>
-        </div>
-      </div>
+    <div className="flex h-screen bg-white">
+      <Sidebar />
 
-      {/* Primary Metrics Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {[
-          { icon: Database, label: "Universo Total", value: "22,785", sub: "+432 hoy", color: "blue" },
-          { icon: Zap, label: "Enriquecidos", value: "3,115", sub: "13.6% completado", color: "emerald" },
-          { icon: Target, label: "Targets Diamond", value: "84", sub: "Alta Prioridad", color: "amber" },
-          { icon: Globe, label: "Países Cubiertos", value: "14", sub: "LATAM Focus", color: "indigo" },
-        ].map((stat, i) => (
-          <Card key={i} className="bg-[#0D1629] border-blue-900/30 shadow-xl overflow-hidden group hover:border-blue-500/50 transition-all">
-            <CardContent className="p-6">
-              <div className="flex justify-between items-start">
-                <div className={`p-2 rounded-lg bg-${stat.color}-500/10 border border-${stat.color}-500/20`}>
-                  <stat.icon className={`h-6 w-6 text-${stat.color}-400`} />
-                </div>
-                <ArrowUpRight className="h-4 w-4 text-slate-500 group-hover:text-white transition-colors" />
-              </div>
-              <div className="mt-4">
-                <p className="text-sm font-medium text-slate-400 uppercase tracking-wider">{stat.label}</p>
-                <div className="flex items-baseline gap-2">
-                  <h2 className="text-2xl font-bold text-white">{stat.value}</h2>
-                  <span className="text-[10px] text-emerald-400 font-mono">{stat.sub}</span>
-                </div>
-              </div>
-              <div className="mt-4 h-1 bg-slate-900 rounded-full overflow-hidden">
-                <div className={`h-full bg-${stat.color}-500 w-[60%] opacity-50`}></div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <Topbar />
 
-      {/* Main Content Area */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Harvesting Chart */}
-        <Card className="lg:col-span-2 bg-[#0D1629] border-blue-900/30 shadow-2xl overflow-hidden">
-          <CardHeader className="border-b border-blue-900/20 bg-blue-950/20">
-            <div className="flex justify-between items-center">
+        <main className="flex-1 overflow-auto bg-gray-50/30">
+          <div className="p-8 max-w-7xl mx-auto h-full flex flex-col">
+
+            {/* Header */}
+            <div className="mb-8 flex items-start justify-between">
               <div>
-                <CardTitle className="text-white text-lg">Velocidad de Caza (Real-time)</CardTitle>
-                <CardDescription className="text-slate-500">Volumen de leads enriquecidos por el motor factory_worker</CardDescription>
+                <h1 className="text-2xl font-semibold text-foreground mb-1">
+                  Dashboard
+                </h1>
+                <p className="text-muted-foreground text-sm">
+                  Inteligencia GTM en tiempo real para tu equipo de ventas
+                </p>
               </div>
-              <BarChart3 className="h-5 w-5 text-blue-400" />
-            </div>
-          </CardHeader>
-          <CardContent className="p-6">
-            <div className="h-[300px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={data}>
-                  <defs>
-                    <linearGradient id="colorLeads" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#2563eb" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: '#0A1428', border: '1px solid #1e3a8a', color: '#fff' }}
-                  />
-                  <Area 
-                    type="monotone" 
-                    dataKey="leads" 
-                    stroke="#3b82f6" 
-                    strokeWidth={3}
-                    fillOpacity={1} 
-                    fill="url(#colorLeads)" 
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
 
-        {/* Live Factory Telemetry */}
-        <Card className="bg-[#050B18] border-blue-900/40 shadow-2xl relative overflow-hidden">
-          <div className="absolute top-0 right-0 p-3 opacity-20">
-            <Cpu className="h-20 w-20 text-blue-500 animate-[spin_10s_linear_infinite]" />
+              {/* Toggle Vista */}
+              <div
+                style={{
+                  display: 'flex',
+                  background: '#f3f4f6',
+                  borderRadius: '10px',
+                  padding: '3px',
+                  gap: '2px',
+                  border: '1px solid #e5e7eb',
+                }}
+              >
+                <button
+                  onClick={() => setViewMode('table')}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '7px 14px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: '13px',
+                    fontWeight: 500,
+                    fontFamily: 'Inter, system-ui, sans-serif',
+                    transition: 'all 0.15s ease',
+                    background: viewMode === 'table' ? '#ffffff' : 'transparent',
+                    color: viewMode === 'table' ? '#111827' : '#6b7280',
+                    boxShadow: viewMode === 'table' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                  }}
+                >
+                  <LayoutList size={15} />
+                  Tabla
+                </button>
+                <button
+                  onClick={() => setViewMode('graph')}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '7px 14px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: '13px',
+                    fontWeight: 500,
+                    fontFamily: 'Inter, system-ui, sans-serif',
+                    transition: 'all 0.15s ease',
+                    background: viewMode === 'graph' ? '#ffffff' : 'transparent',
+                    color: viewMode === 'graph' ? '#378ADD' : '#6b7280',
+                    boxShadow: viewMode === 'graph' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                  }}
+                >
+                  <Network size={15} />
+                  Mapa Conceptual
+                </button>
+                <button
+                  onClick={() => setViewMode('battle-cards')}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '7px 14px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: '13px',
+                    fontWeight: 500,
+                    fontFamily: 'Inter, system-ui, sans-serif',
+                    transition: 'all 0.15s ease',
+                    background: viewMode === 'battle-cards' ? '#ffffff' : 'transparent',
+                    color: viewMode === 'battle-cards' ? '#ef4444' : '#6b7280',
+                    boxShadow: viewMode === 'battle-cards' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                  }}
+                >
+                  <Swords size={15} />
+                  Battle Cards
+                </button>
+              </div>
+            </div>
+
+            {/* Metric Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <MetricCard
+            title="GTM Sniper Score"
+            value="8.4"
+            subtitle="Basado en 156 leads activos"
+            icon={<Target className="w-5 h-5" />}
+            trend={{ value: 12, direction: 'up' }}
+            accentColor="blue"
+          />
+          <MetricCard
+            title="Surgical Opportunities"
+            value="24"
+            subtitle="Listas para detonar"
+            icon={<Zap className="w-5 h-5" />}
+            trend={{ value: 8, direction: 'up' }}
+            accentColor="orange"
+          />
+          <MetricCard
+            title="Speed Score"
+            value="98%"
+            subtitle="Eficiencia en captura de señales"
+            icon={<TrendingUp className="w-5 h-5" />}
+            accentColor="green"
+          />
+          <MetricCard
+            title="Latencia de Respuesta"
+            value="1.2s"
+            subtitle="Tiempo de inferencia"
+            icon={<Network className="w-5 h-5" />}
+            accentColor="purple"
+          />
+        </div>
+
+        {/* Live Signal Feed Section */}
+        <div className="mb-8 p-4 bg-blue-50/20 border border-blue-100 rounded-lg">
+          <div className="flex items-center gap-2 mb-3">
+            <Zap className="w-4 h-4 text-blue-500 animate-pulse" />
+            <h3 className="text-sm font-semibold text-blue-900 uppercase tracking-wider">Surgical Signal Feed (Live)</h3>
           </div>
-          
-          <CardHeader className="border-b border-blue-900/30">
-            <CardTitle className="text-blue-400 text-sm font-mono tracking-tighter flex items-center gap-2">
-              <span className="w-2 h-2 bg-blue-500 rounded-full animate-ping"></span>
-              TELEMETRÍA_MOTOR
-            </CardTitle>
-          </CardHeader>
-          
-          <CardContent className="p-6 font-mono text-[10px] space-y-4">
-            <div className="space-y-2">
-              <div className="flex justify-between text-slate-500">
-                <span>ESTADO_NODO</span>
-                <span className="text-emerald-400">OPTIMAL</span>
+          <div className="flex gap-4 overflow-x-auto pb-2 no-scrollbar">
+            <div className="flex-shrink-0 bg-white p-2 rounded border border-blue-100 text-[10px] space-y-1 w-48 shadow-sm">
+              <p className="font-bold text-blue-800">MEXICO: REGULATORY</p>
+              <p className="text-gray-600 truncate">Actualización SEGOB: Juego online...</p>
+              <p className="text-[8px] text-gray-400">Hace 2 min</p>
+            </div>
+            <div className="flex-shrink-0 bg-white p-2 rounded border border-blue-100 text-[10px] space-y-1 w-48 shadow-sm">
+              <p className="font-bold text-blue-800">LATAM: EXPANSION</p>
+              <p className="text-gray-600 truncate">VTEX anuncia hub en Colombia</p>
+              <p className="text-[8px] text-gray-400">Hace 5 min</p>
+            </div>
+            <div className="flex-shrink-0 bg-white p-2 rounded border border-blue-100 text-[10px] space-y-1 w-48 shadow-sm">
+              <p className="font-bold text-blue-800">SaaS: FUNDING</p>
+              <p className="text-gray-600 truncate">Fracttal levanta $10M Serie B</p>
+              <p className="text-[8px] text-gray-400">Hace 12 min</p>
+            </div>
+          </div>
+        </div>
+            {/* Filtros */}
+            <div className="mb-6 flex gap-3 flex-wrap items-center">
+              <select className="px-4 py-2 bg-white border border-border rounded-lg text-sm font-medium text-foreground hover:bg-gray-50 transition-colors">
+                <option>Todas las regiones</option>
+                <option>México</option>
+                <option>Brasil</option>
+                <option>Colombia</option>
+                <option>Argentina</option>
+              </select>
+              <select className="px-4 py-2 bg-white border border-border rounded-lg text-sm font-medium text-foreground hover:bg-gray-50 transition-colors">
+                <option>Todos los segmentos</option>
+                <option>SaaS (B2B/B2C)</option>
+                <option>Fintech & Pagos</option>
+                <option>Proptech</option>
+                <option>Healthtech</option>
+              </select>
+              <select className="px-4 py-2 bg-white border border-border rounded-lg text-sm font-medium text-foreground hover:bg-gray-50 transition-colors">
+                <option>Todos los tiers</option>
+                <option>Diamond</option>
+                <option>Gold</option>
+                <option>Silver</option>
+              </select>
+              <button className="px-6 py-2 bg-[#378ADD] text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors shadow-sm">
+                Analizar
+              </button>
+            </div>
+
+            {/* Vista principal: Tabla o Grafo */}
+            {viewMode === 'table' ? (
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-base font-semibold text-foreground">
+                    Leads <span className="text-muted-foreground font-normal">({leads.length})</span>
+                  </h2>
+                  <p className="text-xs text-muted-foreground">
+                    Haz clic en un lead para ver su mapa conceptual o battle cards
+                  </p>
+                </div>
+                <LeadsTable leads={leads} onRowClick={handleRowClick} />
               </div>
-              <Progress value={85} className="h-1 bg-blue-900/30 overflow-hidden">
-                <div className="bg-blue-500 h-full w-[85%]"></div>
-              </Progress>
-            </div>
+            ) : viewMode === 'battle-cards' ? (
+              <div>
+                {/* Lead selector en vista battle cards */}
+                <div className="flex items-center gap-3 mb-5">
+                  <h2 className="text-base font-semibold text-foreground">
+                    Battle Cards
+                  </h2>
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                    {leads.map((lead) => {
+                      const isActive = selectedLeadId === lead.id;
+                      return (
+                        <button
+                          key={lead.id}
+                          onClick={() => setSelectedLeadId(lead.id)}
+                          style={{
+                            padding: '4px 12px',
+                            borderRadius: '20px',
+                            border: `1px solid ${isActive ? '#ef4444' : '#e5e7eb'}`,
+                            background: isActive ? '#fef2f2' : '#ffffff',
+                            color: isActive ? '#ef4444' : '#6b7280',
+                            fontSize: '12px',
+                            fontWeight: isActive ? 500 : 400,
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease',
+                            fontFamily: 'Inter, system-ui, sans-serif',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                          }}
+                        >
+                          {lead.company}
+                          {lead.tier === 'diamond' && (
+                            <span style={{ fontSize: '9px', color: '#7c3aed' }}>◆</span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <BattleCards leadId={selectedLeadId} />
+              </div>
+            ) : (
+              <div style={{ flex: 1, minHeight: '500px', display: 'flex', flexDirection: 'column' }}>
+                {/* Lead selector en vista grafo */}
+                <div className="flex items-center gap-3 mb-4">
+                  <h2 className="text-base font-semibold text-foreground">
+                    Mapa Conceptual
+                  </h2>
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                    {leads.map((lead) => {
+                      const isActive = selectedLeadId === lead.id;
+                      return (
+                        <button
+                          key={lead.id}
+                          onClick={() => setSelectedLeadId(lead.id)}
+                          style={{
+                            padding: '4px 12px',
+                            borderRadius: '20px',
+                            border: `1px solid ${isActive ? '#378ADD' : '#e5e7eb'}`,
+                            background: isActive ? '#eff6ff' : '#ffffff',
+                            color: isActive ? '#378ADD' : '#6b7280',
+                            fontSize: '12px',
+                            fontWeight: isActive ? 500 : 400,
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease',
+                            fontFamily: 'Inter, system-ui, sans-serif',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                          }}
+                        >
+                          {lead.company}
+                          {/* Indicador tier */}
+                          {lead.tier === 'diamond' && (
+                            <span style={{ fontSize: '9px', color: '#7c3aed' }}>◆</span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <button
+                    onClick={() => setViewMode('table')}
+                    style={{
+                      marginLeft: 'auto',
+                      padding: '5px 12px',
+                      borderRadius: '8px',
+                      border: '1px solid #e5e7eb',
+                      background: '#ffffff',
+                      color: '#6b7280',
+                      fontSize: '12px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      fontFamily: 'Inter, system-ui, sans-serif',
+                    }}
+                  >
+                    <LayoutList size={13} />
+                    Ver tabla
+                  </button>
+                </div>
 
-            <div className="space-y-3 pt-4">
-              <p className="text-blue-500/70 border-l-2 border-blue-600 pl-2">
-                {"[11:04:12] BUSCANDO_URL: Stori Card"}
-              </p>
-              <p className="text-blue-500/70 border-l-2 border-blue-600 pl-2">
-                {"[11:04:15] URL_ENCONTRADA: stori.com.mx"}
-              </p>
-              <p className="text-emerald-500/70 border-l-2 border-emerald-600 pl-2">
-                {"[11:04:22] FIRECRAWL_SUCCESS: Intel extraída (4.2kb)"}
-              </p>
-              <p className="text-blue-500/70 border-l-2 border-blue-600 pl-2">
-                {"[11:04:28] ACTUALIZANDO_DB: Lead #34542 -> status: REFINERY"}
-              </p>
-              <p className="text-amber-500/70 border-l-2 border-amber-600 pl-2">
-                {"[11:04:35] FALLBACK: Proxy Scrape.do activado para: Nu México"}
-              </p>
-            </div>
-
-            <div className="pt-6">
-              <div className="bg-blue-600/10 border border-blue-500/30 p-4 rounded-lg flex items-center gap-4">
-                <TrendingUp className="h-8 w-8 text-blue-400" />
-                <div>
-                  <p className="text-white font-bold text-xs">EFICIENCIA_PROCESO</p>
-                  <p className="text-[18px] text-blue-400 font-bold">98.2%</p>
+                <div style={{ flex: 1, minHeight: '480px' }}>
+                  <GraphView leadId={selectedLeadId} />
                 </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Strategic Alerts */}
-      <div className="bg-amber-500/5 border border-amber-500/20 p-4 rounded-xl flex items-center gap-4">
-        <div className="bg-amber-500/20 p-2 rounded-lg">
-          <ShieldAlert className="h-5 w-5 text-amber-500" />
-        </div>
-        <div>
-          <h4 className="text-amber-500 font-bold text-sm tracking-tight">ALERTA DE PRIORIDAD</h4>
-          <p className="text-slate-400 text-[11px]">Se han detectado 3 nuevos targets de nivel DIAMOND en el segmento Fintech México. Requiere auditoría manual inmediata.</p>
-        </div>
-        <Button variant="link" className="text-amber-500 ml-auto text-xs underline decoration-amber-500/30">
-          INVESTIGAR AHORA
-        </Button>
+            )}
+          </div>
+        </main>
       </div>
     </div>
   );

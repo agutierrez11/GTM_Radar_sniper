@@ -16,46 +16,32 @@ export function RadarProvider({ children }: { children: React.ReactNode }) {
     if (!url1) return;
     
     setIsRadarRunning(true);
-    toast.message("Radar Detonated", {
-      description: `Iniciando caza táctica para: ${url1}`,
+    toast.message("Radar Detonado", {
+      description: `Iniciando ataque quirúrgico para: ${url1}`,
     });
 
     try {
-      // 1. Insert/Update the primary target
-      const { error: error1 } = await supabase.from(TABLE_LEADS).insert([
-        { 
-          name: url1.replace(/https?:\/\/(www\.)?/, '').split('.')[0].toUpperCase(), 
-          website: url1, 
-          status: 'CASCARON_PENDIENTE',
-          description: 'RADAR_HUNT_INITIATED'
-        }
-      ]);
+      // Call the high-priority surgical strike mutation
+      // This triggers the Python code that does deep research and saves the dossier
+      const { trpc } = await import('@/lib/trpc');
+      // We need to use the trpc client directly here as we are in a callback
+      // For the demo, we'll use a fetch-based approach or just rely on the effect
+      // Actually, since this is a context, we can't easily use the hook.
+      // We'll use a simple fetch to the endpoint or update via the TRPC util.
+      
+      const response = await fetch('/api/trpc/scoring.detonateSurgicalRadar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetUrl: url1, competitorUrl: url2 })
+      });
 
-      if (error1) {
-        // If duplicate, try to update status to re-trigger
-        await supabase.from(TABLE_LEADS).update({ status: 'CASCARON_PENDIENTE' }).eq('website', url1);
-      }
-
-      // 2. If secondary URL exists, insert it too
-      if (url2) {
-        const { error: error2 } = await supabase.from(TABLE_LEADS).insert([
-          { 
-            name: url2.replace(/https?:\/\/(www\.)?/, '').split('.')[0].toUpperCase(), 
-            website: url2, 
-            status: 'CASCARON_PENDIENTE',
-            description: 'RADAR_COMPETITOR_HUNT'
-          }
-        ]);
-        if (error2) {
-          await supabase.from(TABLE_LEADS).update({ status: 'CASCARON_PENDIENTE' }).eq('website', url2);
-        }
-      }
+      if (!response.ok) throw new Error("FALLO_TRPC_BRIDGE");
 
       // Simulate some processing delay for UX
       await new Promise(resolve => setTimeout(resolve, 2000));
       
       toast.success("Misión Asignada", {
-        description: "El Sniper Engine ha recibido las coordenadas. Intel real en camino.",
+        description: "El Comando Central ha recibido las coordenadas. Generando Dossier de Inteligencia...",
       });
 
     } catch (err) {
@@ -66,6 +52,29 @@ export function RadarProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsRadarRunning(false);
     }
+  }, []);
+
+  // Real-time listener for lead updates
+  React.useEffect(() => {
+    const channel = supabase
+      .channel('leads-realtime')
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: TABLE_LEADS },
+        (payload) => {
+          const updated = payload.new as any;
+          if (updated.status === 'ENRIQUECIDO') {
+            toast.success(`Objetivo Identificado: ${updated.name}`, {
+              description: "Inteligencia profunda disponible en la refinería.",
+            });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   return (

@@ -63,6 +63,25 @@ def analyze_strategic_fit(technical_intel, market_focus="México"):
         cards[3]["example"] = "Ingreso Predecible: Strategic Tier 1 para Q4."
         confidence = 0.85
 
+    # RULE 3: Infrastructure Disruption (Cards/BIN/Stablecoins)
+    if re.search(r"bin sponsor|card issuance|genius act|stablecoin|bcb.*519|bcb.*521", content, re.I):
+        cards[0]["title"] = "Schwerpunkt: Kill the Middleman"
+        cards[0]["description"] = "Disrupción de rieles heredados. Colapso de barrera de entrada ($500k -> SDK)."
+        cards[0]["example"] = "Rieles USDC/Stablecoin detectados como settlement layer."
+        
+        cards[1]["title"] = "Flanking: The Compliance Bypass"
+        cards[1]["description"] = "Entrada vía GENIUS Act o Resoluciones BCB para VASPs brasil."
+        cards[1]["example"] = "Pitch: 'Tarjetas en horas, no en 6 meses de negociación BIN'."
+        
+        cards[2]["title"] = "Blue Ocean: Programmable Money"
+        cards[2]["description"] = "Océano azul en emisión de tarjetas para apps sin licencias bancarias."
+        cards[2]["example"] = "Lookalike: Bloque.app detected pattern."
+        
+        cards[3]["title"] = "MEDDIC: High Friction Displacement"
+        cards[3]["description"] = "Displacement de incumbentes (Pomelo/Ebanx) por velocidad de SDK."
+        cards[3]["example"] = "Frictionless Onboarding: Strategic Intent Detected."
+        confidence = 0.95
+
     return {
         "cards": cards,
         "confidence": confidence

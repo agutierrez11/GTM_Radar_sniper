@@ -137,8 +137,16 @@ function BattleCard({ company, onClose }: { company: Company; onClose: () => voi
               <Zap className="h-4 w-4 mr-2" />
               EJECUTAR CAMPAÑA
             </Button>
-            <Button variant="outline" className="flex-1 border-white/10 hover:bg-white/5 text-slate-300 font-bold h-11">
-              DESCARGAR DOSSIER
+            <Button 
+               variant="outline" 
+               className="flex-1 border-cyan-500/20 hover:bg-cyan-500/10 text-cyan-400 font-bold h-11"
+               onClick={() => {
+                 // Trigger a custom event that the main component will listen to
+                 window.dispatchEvent(new CustomEvent('trigger-scan', { detail: { id: parseInt(company.id) } }));
+               }}
+            >
+              <Target className="h-4 w-4 mr-2" />
+              RE-ESCANEAR
             </Button>
           </div>
         </div>
@@ -265,13 +273,20 @@ export default function Companies() {
     staleTime: 5000
   });
 
-  const updateStatus = trpc.companies.updateStatus.useMutation({
-    onSuccess: () => {
-      // Refresh after update
-    }
-  });
+  const updateStatus = trpc.companies.updateStatus.useMutation();
+  const triggerScan = trpc.scoring.triggerScan.useMutation();
+  
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [activeTab, setActiveTab] = useState('pipeline');
+
+  // Handle cross-component events (for the BattleCard trigger)
+  useEffect(() => {
+    const handleScan = (e: any) => {
+      triggerScan.mutate({ companyId: e.detail.id });
+    };
+    window.addEventListener('trigger-scan', handleScan);
+    return () => window.removeEventListener('trigger-scan', handleScan);
+  }, [triggerScan]);
 
   const leads = useMemo(() => {
     if (!rawLeads) return [];
