@@ -1,2 +1,0 @@
-# Activos en Costa
-

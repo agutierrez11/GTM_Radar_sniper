@@ -1,2 +1,0 @@
-# Neobancos en México
-

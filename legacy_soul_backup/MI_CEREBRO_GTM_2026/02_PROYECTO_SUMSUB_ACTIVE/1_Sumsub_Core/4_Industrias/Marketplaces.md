@@ -1,3 +1,0 @@
-# Marketplaces
-
-## Empresas

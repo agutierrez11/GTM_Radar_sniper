@@ -1,2 +1,0 @@
-# Regtech en Venezuela
-

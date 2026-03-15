@@ -1,2 +1,0 @@
-# WealthTech en Guyana
-

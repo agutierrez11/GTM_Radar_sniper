@@ -1,2 +1,0 @@
-# Paytech en Chile
-
