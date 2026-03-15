@@ -30,110 +30,114 @@ import { Button } from '@/components/ui/button';
 
 import { motion, AnimatePresence } from 'framer-motion';
 
-function StrategicDossierCard({ dossier }: { dossier: any }) {
+function BattleCardDeck({ dossier }: { dossier: any }) {
+  const [currentCard, setCurrentCard] = React.useState(0);
   let data;
   try {
     data = JSON.parse(dossier.description);
+    if (!data.cards) throw new Error("Format V1 detected");
   } catch (e) {
+    // Fallback for old dossiers
     return (
       <Card className="bg-[#050B18] border-red-900/30 border rounded-2xl p-4">
-        <span className="text-xs text-red-500 font-mono">ERR_RECO_DATA: El formato de inteligencia no es pulcro.</span>
+        <span className="text-xs text-red-500 font-mono italic">
+          [!] INFO_LEGACY: Este dossier requiere re-detonación para activar el Mazo de Batalla.
+        </span>
       </Card>
     );
   }
 
+  const cards = data.cards;
+
+  const nextCard = () => setCurrentCard((prev) => (prev + 1) % cards.length);
+  const prevCard = () => setCurrentCard((prev) => (prev - 1 + cards.length) % cards.length);
+
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      whileHover={{ y: -5, boxShadow: "0 20px 40px rgba(0,0,0,0.4)" }}
-      transition={{ duration: 0.4, ease: "easeOut" }}
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="relative group"
     >
-      <Card className="bg-[#051125] border-blue-500/20 shadow-2xl rounded-2xl overflow-hidden group border-2 hover:border-blue-500/60 transition-all duration-500">
-        <CardHeader className="bg-gradient-to-r from-blue-600/20 to-indigo-600/5 p-6 border-b border-blue-500/10">
-          <div className="flex justify-between items-start">
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                 <Zap className="h-3 w-3 text-yellow-400 fill-current" />
-                 <span className="text-[10px] font-bold text-blue-400 uppercase tracking-widest">Ataque Quirúrgico Detonado</span>
+      <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-1000"></div>
+      
+      <Card className="relative bg-[#051125] border-white/10 shadow-2xl rounded-2xl overflow-hidden border-2 min-h-[400px] flex flex-col">
+        {/* Upper HUD */}
+        <div className="p-4 border-b border-white/5 flex justify-between items-center bg-black/20">
+          <div className="flex items-center gap-2">
+            <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
+            <span className="text-[10px] font-mono text-blue-400 font-bold uppercase tracking-widest">
+              NERV // STRATEGIC_DECK // {data.target}
+            </span>
+          </div>
+          <span className="text-[10px] font-mono text-slate-500 uppercase">{data.date}</span>
+        </div>
+
+        <CardContent className="flex-1 flex flex-col p-8 relative overflow-hidden">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={currentCard}
+              initial={{ x: 50, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: -50, opacity: 0 }}
+              transition={{ duration: 0.3, ease: "easeInOut" }}
+              className="flex-1 flex flex-col"
+            >
+              <div className="flex justify-between items-start mb-6">
+                <Badge variant="outline" className="bg-blue-500/10 text-blue-400 border-blue-500/30 font-bold px-3 py-1 text-[10px] uppercase tracking-tighter">
+                  {cards[currentCard].type}
+                </Badge>
+                <span className="text-[10px] font-mono text-slate-600 font-black tracking-widest">
+                   {cards[currentCard].id}
+                </span>
               </div>
-              <CardTitle className="text-xl font-bold text-white tracking-tight leading-none">{data.target}</CardTitle>
-            </div>
-            <div className="text-right">
-               <span className="text-[10px] bg-blue-500/20 text-blue-300 px-2 py-1 rounded font-bold">{data.date}</span>
-            </div>
-          </div>
-        </CardHeader>
-        
-        <CardContent className="p-0">
-          <div className="p-6 space-y-6">
-            {/* Schwerpunkt Section */}
-            <div className="space-y-3">
-               <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                  <Target className="h-3 w-3" /> {data.schwerpunkt.title}
-               </h3>
-               <p className="text-sm text-slate-300 font-medium leading-relaxed italic border-l-2 border-blue-500/40 pl-4 py-1 bg-blue-500/5 rounded-r">
-                  "{data.schwerpunkt.description}"
-               </p>
-               <ul className="flex flex-wrap gap-2 pt-1">
-                  {data.schwerpunkt.signals.map((s: string, idx: number) => (
-                    <li key={idx} className="text-[9px] font-bold bg-slate-800 text-slate-400 px-2 py-1 rounded uppercase border border-slate-700">
-                       • {s}
-                    </li>
-                  ))}
-               </ul>
-            </div>
 
-            {/* Flanking Maneuvers Table */}
-            <div className="space-y-3">
-               <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Análisis de Flanqueo</h3>
-               <div className="rounded-xl border border-white/5 overflow-hidden bg-black/20">
-                  <table className="w-full text-left text-[10px]">
-                     <thead className="bg-white/[0.03] text-slate-500 font-bold uppercase">
-                        <tr>
-                           <th className="px-3 py-2">Vector</th>
-                           <th className="px-3 py-2">Falla Competidor</th>
-                           <th className="px-3 py-2 text-blue-400">Victoria Sumsub</th>
-                        </tr>
-                     </thead>
-                     <tbody className="divide-y divide-white/[0.05]">
-                        {data.flanking_maneuvers.map((m: any, idx: number) => (
-                          <tr key={idx} className="hover:bg-blue-500/5 transition-colors">
-                             <td className="px-3 py-2 font-bold text-slate-300">{m.vector}</td>
-                             <td className="px-3 py-2 text-slate-400">{m.comp_fail}</td>
-                             <td className="px-3 py-2 font-bold text-blue-400">{m.victory}</td>
-                          </tr>
-                        ))}
-                     </tbody>
-                  </table>
-               </div>
-            </div>
+              <h2 className="text-3xl font-black text-white mb-2 tracking-tight leading-none uppercase">
+                {cards[currentCard].title}
+              </h2>
+              
+              <p className="text-lg text-slate-400 font-medium italic mb-8 border-l-4 border-blue-500/30 pl-4 py-1 leading-tight">
+                "{cards[currentCard].quote}"
+              </p>
 
-            {/* Kill Shot Strategy */}
-            <div className="space-y-3">
-               <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Estrategia Kill Shot (30-60-90)</h3>
-               <div className="grid grid-cols-1 gap-2">
-                  {data.kill_shot.map((step: any, idx: number) => (
-                    <div key={idx} className="flex gap-3 items-start p-2 rounded-lg bg-white/[0.02] border border-white/[0.03]">
-                       <span className="text-xs font-bold text-blue-500 mt-0.5">{idx + 1}.</span>
-                       <div className="text-[10px]">
-                          <span className="block font-bold text-slate-200 mb-0.5">{step.phase}</span>
-                          <span className="text-slate-400">{step.action}</span>
-                       </div>
-                    </div>
-                  ))}
-               </div>
-            </div>
-          </div>
+              <div className="flex-1 bg-white/[0.02] border border-white/5 rounded-xl p-5 mb-6">
+                <p className="text-sm text-slate-300 leading-relaxed font-medium">
+                  {cards[currentCard].description}
+                </p>
+              </div>
 
-          <div className="bg-blue-600/10 p-4 flex justify-between items-center border-t border-blue-500/10">
-             <div className="flex items-center gap-2">
-                <ShieldCheck className="h-4 w-4 text-emerald-500" />
-                <span className="text-[9px] font-bold text-emerald-500 uppercase tracking-wider">Verificación Técnica OK</span>
+              <div className="border-t border-white/5 pt-4">
+                <span className="text-[10px] uppercase text-slate-500 font-black tracking-widest block mb-1">Ejemplo Táctico</span>
+                <span className="text-sm text-blue-400 font-mono font-bold">{cards[currentCard].example}</span>
+              </div>
+            </motion.div>
+          </AnimatePresence>
+
+          {/* Navigation Controls */}
+          <div className="mt-8 flex justify-between items-center bg-black/40 -mx-8 -mb-8 px-8 py-4 border-t border-white/5">
+             <div className="flex gap-2">
+                {cards.map((_: any, i: number) => (
+                  <div 
+                    key={i} 
+                    className={`h-1 w-6 rounded-full transition-all duration-500 ${i === currentCard ? 'bg-blue-500' : 'bg-white/10'}`} 
+                  />
+                ))}
              </div>
-             <Button variant="outline" className="h-8 text-[10px] font-bold border-blue-500/30 text-blue-400 hover:bg-blue-500 hover:text-white transition-all transform hover:scale-105">
-                GENERAR PDF EJECUTIVO
-             </Button>
+             <div className="flex gap-3">
+                <Button 
+                  onClick={prevCard}
+                  variant="outline" 
+                  className="h-8 w-8 p-0 rounded-full border-white/10 bg-white/5 hover:bg-blue-500/20 text-white"
+                >
+                  <Map className="h-3 w-3 rotate-180" />
+                </Button>
+                <Button 
+                   onClick={nextCard}
+                   variant="outline" 
+                   className="h-8 w-8 p-0 rounded-full border-white/10 bg-white/5 hover:bg-blue-500/20 text-white"
+                >
+                  <Map className="h-3 w-3" />
+                </Button>
+             </div>
           </div>
         </CardContent>
       </Card>
@@ -182,7 +186,7 @@ export default function TacticalRadar() {
                ) : (
                  <AnimatePresence>
                    {dossiers?.map((d: any, i: number) => (
-                     <StrategicDossierCard key={i} dossier={d} />
+                     <BattleCardDeck key={i} dossier={d} />
                    ))}
                  </AnimatePresence>
                )}

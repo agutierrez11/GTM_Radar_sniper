@@ -61,33 +61,15 @@ def generate_battle_card(target_url, competitor_url, target_intel, comp_intel):
     comp_name = competitor_url.replace('https://', '').replace('www.', '').split('.')[0].upper() if competitor_url else "MERCADO ABIERTO"
 
     # DETONAR EL CEREBRO DE NERV
-    # Usamos México como mercado default para la inferencia de latencia/fricción
     analysis = analyze_strategic_fit(target_intel, "México")
 
     dossier = {
-        "title": f"Dossier de Inteligencia: {target_name}",
+        "title": f"BATTLE CARD DECK: {target_name}",
         "target": target_name,
         "competitor": comp_name,
         "date": datetime.now().strftime('%d %b, %Y'),
-        "schwerpunkt": {
-            "title": "Punto de Máximo Esfuerzo",
-            "description": analysis["pain_points"][0] if analysis["pain_points"] else "Fricción operativa detectada.",
-            "signals": [
-                "Señal de infraestructura detectada via Tavily",
-                "Patrón de expansión regional identificado",
-                "Intersección de señales GTM v6.2"
-            ]
-        },
-        "flanking_maneuvers": [
-            {"vector": "Infraestructura", "target_pain": "Respuesta tardía", "comp_fail": "Rieles fragmentados", "victory": analysis["strategic_moves"][0] if analysis["strategic_moves"] else "Optimización Ops"},
-            {"vector": "Conversión", "target_pain": "Abandono alto", "comp_fail": "Manual KYC", "victory": "Instant Verify"},
-            {"vector": "Costo", "target_pain": "FX Markup", "comp_fail": "Altas comisiones", "victory": "Rieles Locales"}
-        ],
-        "kill_shot": [
-            {"phase": "EL ATAQUE MAESTRO", "action": analysis["kill_shot"]},
-            {"phase": "PLAN DE ACCIÓN", "action": "Presentar este benchmark al CTO/CPO directamente."},
-            {"phase": "DOMINIO", "action": "Sustitución quirúrgica del proveedor legacy."}
-        ],
+        "cards": analysis["cards"],
+        "confidence": analysis["confidence"],
         "tech_truth": target_intel[:500]
     }
     return dossier
