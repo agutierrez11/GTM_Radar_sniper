@@ -41,7 +41,7 @@ export const NODE_COLORS: Record<string, { bg: string; border: string; text: str
 };
 
 // Edges estándar para todos los leads
-const STANDARD_EDGES: LeadEdge[] = [
+export const STANDARD_EDGES: LeadEdge[] = [
   { id: 'e1', source: 'main', target: 'who',           label: 'Contactos' },
   { id: 'e2', source: 'main', target: 'market',        label: 'Opera en' },
   { id: 'e3', source: 'market', target: 'gaps',        label: 'Genera' },
