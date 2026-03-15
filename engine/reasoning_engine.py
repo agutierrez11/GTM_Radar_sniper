@@ -1,45 +1,60 @@
 import json
 import re
 
-def analyze_strategic_fit(company_data, competitor_data=None):
+# NERV_STRATEGIC_RULESET: The "Master Mind" logic
+STRATEGIC_RULES = [
+    {
+        "id": "AWS_LATENCY_FLANK",
+        "keywords": ["aws", "amazon web services", "brazil", "brasil"],
+        "target_keywords": ["mexico", "mex", "méxico"],
+        "pain": "Latencia Transaccional Crítica: Datos viajan AWS-BR -> MX.",
+        "attack": "Vi que operan sobre AWS Brasil para su wallet; nosotros tenemos nodos locales en México que reducen el tiempo de respuesta del checkout en un 40%.",
+        "victory": "Aumentar conversión bajando abandono por timeout."
+    },
+    {
+        "id": "KUSHKI_REPLACEMENT",
+        "keywords": ["kushki", "stripe", "dlocal", "checkout legacy"],
+        "target_keywords": ["expansion", "colombia", "latam", "est expansión"],
+        "pain": "Costos de Rieles Fragmentados: Uso de agregadores globales con fees altos.",
+        "attack": "Detectamos su expansión regional; los rieles locales de nuestra plataforma eliminan el 'FX markup' y las comisiones de intermediarios.",
+        "victory": "Mejorar margen neto en un 15% inmediato."
+    }
+]
+
+def analyze_strategic_fit(company_data, target_market="México"):
     """
-    Simulates a 'DeepSeek' style reasoning engine that infers strategic 
-    moves based on raw intelligence.
+    Automated Strategic Inference Engine with Regex support.
     """
-    # This is a heuristic-driven inference engine to move beyond scraping
     content = str(company_data).lower()
+    target = target_market.lower()
     
     analysis = {
-        "strategic_inference": [],
-        "gtm_signals": [],
-        "ml_weights": {
-            "market_urgency": 0.5,
-            "tech_friction": 0.4,
-            "expansion_probability": 0.3
-        }
+        "kill_shot": "ATAQUE DE FLANQUEO: Infiltración via Optimización Ops.",
+        "pain_points": [],
+        "strategic_moves": [],
+        "confidence": 0.5
     }
     
-    # SEÑAL 1: Expansión
-    if any(k in content for k in ["expansión", "lanzamiento", "nuevo mercado", "opening", "crecimiento regional"]):
-        analysis["strategic_inference"].append("ALTA PROBABILIDAD DE EXPANSIÓN: La empresa muestra señales activas de apertura de mercados. EBANX puede actuar como el partner de rieles de pago inmediato.")
-        analysis["ml_weights"]["expansion_probability"] = 0.9
-        analysis["gtm_signals"].append("MARKET_BREAKER")
-
-    # SEÑAL 2: Legacy / Mejora Técnica
-    if any(k in content for k in ["optimización", "reemplazo", "modernización", "legacy", "costos operativos"]):
-        analysis["strategic_inference"].append("DETECCIÓN DE FRICCIÓN TÉCNICA: Buscan optimizar costos. La propuesta de 'Blindaje' y reducción del 50% de costos operativos de EBANX es clave.")
-        analysis["ml_weights"]["tech_friction"] = 0.8
-        analysis["gtm_signals"].append("COST_OPTIMIZER")
-
-    # SEÑAL 3: Competencia (si hay data de competidor)
-    if competitor_data:
-        analysis["strategic_inference"].append(f"CONFLUENCIA COMPETITIVA: Se detectan movimientos tácticos similares a {competitor_data}. Riesgo de pérdida de mercado si no se actúa en < 30 días.")
-        analysis["ml_weights"]["market_urgency"] = 0.95
-
+    for rule in STRATEGIC_RULES:
+        # Check logic: if any keyword in content AND target matches
+        has_keywords = any(re.search(fr"\b{k}\b", content) for k in rule["keywords"])
+        target_matches = any(re.search(fr"\b{k}\b", target) for k in rule["target_keywords"])
+        
+        if has_keywords and target_matches:
+            analysis["pain_points"].append(rule["pain"])
+            analysis["strategic_moves"].append(rule["victory"])
+            analysis["kill_shot"] = rule["attack"]
+            analysis["confidence"] = 0.9
+            break # Take the first high-confidence match
+            
+    if not analysis["pain_points"]:
+        analysis["pain_points"].append("Fricción operativa en procesamiento de pagos regionales.")
+        analysis["strategic_moves"].append("Reducción de costos via rieles directos.")
+        
     return analysis
 
 if __name__ == "__main__":
-    # Test with mockup data
-    test_content = "Vtex está buscando expansión en Paraguay y modernización de su checkout legacy."
-    result = analyze_strategic_fit(test_content)
-    print(json.dumps(result, indent=2, ensure_ascii=False))
+    # Test DNA: Vtex México using AWS Brazil
+    test_data = "Vtex is a global retail platform using AWS in Brazil Region. Expanding Mexico."
+    res = analyze_strategic_fit(test_data, "México")
+    print(json.dumps(res, indent=2, ensure_ascii=False))

@@ -24,6 +24,22 @@ export const db = {
         throw e;
       }
     },
+    listWithFilters: async (filters: { source?: string, status?: string, limit?: number }) => {
+      try {
+        let q = supabase.from('empresas').select('*');
+        if (filters.source) q = q.eq('source', filters.source);
+        if (filters.status) q = q.eq('status', filters.status);
+        
+        const { data, error } = await q
+          .order('created_at', { ascending: false })
+          .limit(filters.limit || 50);
+        
+        if (error) throw error;
+        return { data, error: null };
+      } catch (e) {
+        return { data: null, error: e };
+      }
+    },
     countByStatus: async () => {
       try {
         const { data, error } = await supabase
@@ -89,6 +105,21 @@ export const db = {
       } catch (e) {
         console.error(`DB_ERROR (update): ${e}`);
         throw new Error('FALLO_ACTUALIZACION_STATUS');
+      }
+    },
+    patch: async (id: number, updates: any) => {
+      try {
+        const { data, error } = await supabase
+          .from('empresas')
+          .update(updates)
+          .eq('id', id)
+          .select()
+          .single();
+        if (error) throw error;
+        return data;
+      } catch (e) {
+        console.error(`DB_ERROR (patch): ${e}`);
+        throw new Error('FALLO_ACTUALIZACION_DB');
       }
     }
   }
