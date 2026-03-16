@@ -6,8 +6,9 @@ export async function fetchLiveLeads() {
     const { data, error } = await supabase
         .from('empresas')
         .select('*')
+        .eq('infra_potential', true) // Filtro quirúrgico para los 5.8K
         .order('last_scan', { ascending: false })
-        .limit(20);
+        .limit(100);
 
     if (error) {
         console.error('Error fetching leads:', error);
