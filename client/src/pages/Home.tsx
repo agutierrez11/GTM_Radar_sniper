@@ -40,17 +40,29 @@ export default function Home() {
   useEffect(() => {
     async function load() {
       const rawLeads = await fetchLiveLeads();
-      const mapped = rawLeads.map((l: any) => ({
-        id: l.id.toString(),
-        company: l.name,
-        contact: 'Analizado por NERV',
-        country: l.sector || 'Global',
-        tier: l.infra_potential ? 'diamond' as const : 'gold' as const,
-        status: 'active' as const,
-        score: l.infra_potential ? 95 : 75,
-        signal: l.description ? l.description.substring(0, 50) + '...' : 'Señal estratégica detectada',
-        opportunity: 'Surgical Strike GTM'
-      }));
+      const mapped = rawLeads.map((l: any) => {
+        // Handle potential JSON in description
+        let displaySignal = 'Señal estratégica detectada';
+        if (l.description) {
+           try {
+             const parsed = typeof l.description === 'string' ? JSON.parse(l.description) : l.description;
+             displaySignal = parsed.signal || parsed.description || parsed.reason || l.description.substring(0, 60);
+           } catch (e) {
+             displaySignal = l.description.substring(0, 60);
+           }
+        }
+
+        return {
+          id: l.id.toString(),
+          company: l.name,
+          country: l.sector || 'Global',
+          tier: l.infra_potential ? 'diamond' as const : 'gold' as const,
+          status: 'active' as const,
+          score: l.infra_potential ? 95 : 75,
+          signal: displaySignal,
+          opportunity: l.opportunity || 'GTM Growth'
+        };
+      });
       setLeads(mapped);
       if (mapped.length > 0) setSelectedLeadId(mapped[0].id);
       setLoading(false);
@@ -65,34 +77,33 @@ export default function Home() {
 
   const handleAnalyze = () => {
     if (!formData.rol || !formData.vertical || !formData.region || !formData.angulo) {
-      toast.error("Faltan parámetros", { description: "Configura los 4 campos de poder." });
+      toast.error("Parámetros incompletos", { description: "Configura los 4 campos de poder." });
       return;
     }
-    toast.message("Nexus Power Syntax Activado", {
-       description: `Buscando ${formData.vertical} en ${formData.region} para ${formData.rol}`,
-       icon: <Activity className="animate-spin text-blue-500" />
+    toast.message("Sincronizando Radar", {
+       description: `Analizando ${formData.vertical} para ${formData.rol} en ${formData.region}`,
+       icon: <Activity className="animate-spin text-blue-600" />
     });
-    // In a real scenario, this would trigger the backend
   };
 
   return (
-    <div className="flex h-screen bg-white">
+    <div className="flex h-screen bg-white text-slate-900">
       <Sidebar />
 
       <div className="flex-1 flex flex-col overflow-hidden">
         <Topbar />
 
-        <main className="flex-1 overflow-auto bg-gray-50/30">
+        <main className="flex-1 overflow-auto bg-gray-50/20">
           <div className="p-8 max-w-7xl mx-auto h-full flex flex-col">
 
             {/* Header */}
             <div className="mb-8 flex items-start justify-between">
               <div>
-                <h1 className="text-2xl font-semibold text-foreground mb-1">
-                  Portal Neural v24.0 (Nexus Edition)
+                <h1 className="text-2xl font-bold tracking-tight mb-1">
+                  Radar de Inteligencia GTM
                 </h1>
-                <p className="text-muted-foreground text-sm">
-                  Configura tu vector de ataque táctico para detonar la red Sniper.
+                <p className="text-slate-500 text-sm">
+                  Explora señales estratégicas y oportunidades de mercado en tiempo real.
                 </p>
               </div>
 
@@ -176,37 +187,6 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Metric Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-              <MetricCard
-                title="GTM Sniper Score"
-                value="8.4"
-                subtitle="Basado en 5.8k leads"
-                icon={<Target className="w-5 h-5" />}
-                accentColor="blue"
-              />
-              <MetricCard
-                title="Surgical Opportunities"
-                value="124"
-                subtitle="Listas para detonar"
-                icon={<Zap className="w-5 h-5" />}
-                accentColor="orange"
-              />
-              <MetricCard
-                title="Speed Score"
-                value="98%"
-                subtitle="Eficiencia en captura"
-                icon={<TrendingUp className="w-5 h-5" />}
-                accentColor="green"
-              />
-              <MetricCard
-                title="Estatus Sistema"
-                value="ACTIVE"
-                subtitle="Nexus v24.0 Online"
-                icon={<Shield className="w-5 h-5" />}
-                accentColor="purple"
-              />
-            </div>
 
             {/* LOS 4 CAMPOS TÁCTICOS - INTEGRACIÓN QUIRÚRGICA */}
             <div className="mb-8 p-6 bg-white border border-gray-200 rounded-xl shadow-sm space-y-4">
