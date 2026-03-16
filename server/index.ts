@@ -1,4 +1,7 @@
-import './env.js';
+const SUPABASE_URL = 'https://bwbatonvkfcjkfvhcwtc.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_KJi10IMU3rdr-byk06rbIg_kk4UMh74';
+process.env.VITE_SUPABASE_URL = SUPABASE_URL;
+process.env.VITE_SUPABASE_ANON_KEY = SUPABASE_ANON_KEY;
 import express from "express";
 import { createServer } from "http";
 import path from "path";

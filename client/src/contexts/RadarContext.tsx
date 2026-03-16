@@ -1,10 +1,15 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
-import { supabase, TABLE_LEADS } from '@/lib/supabase';
+const SUPABASE_URL = 'https://bwbatonvkfcjkfvhcwtc.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_KJi10IMU3rdr-byk06rbIg_kk4UMh74';
+import { createClient } from '@supabase/supabase-js';
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const TABLE_LEADS = 'empresas';
 import { toast } from "sonner";
 
 interface RadarContextType {
   isRadarRunning: boolean;
-  runRadar: (url1: string, url2: string) => Promise<void>;
+  runRadar: (url1: string, url2: string, context?: any) => Promise<void>;
+  runNexusHunt: (rol: string, vertical: string, region: string, angulo: string) => Promise<void>;
 }
 
 const RadarContext = createContext<RadarContextType | undefined>(undefined);
@@ -12,7 +17,42 @@ const RadarContext = createContext<RadarContextType | undefined>(undefined);
 export function RadarProvider({ children }: { children: React.ReactNode }) {
   const [isRadarRunning, setIsRadarRunning] = useState(false);
 
-  const runRadar = useCallback(async (url1: string, url2: string) => {
+  const runNexusHunt = useCallback(async (rol: string, vertical: string, region: string, angulo: string) => {
+    setIsRadarRunning(true);
+    toast.message("Iniciando Misión Nexus", {
+      description: `Buscando ${vertical} en ${region} con el rol de ${rol}`,
+    });
+
+    try {
+      // For PoC: We create a "Mission Context" as a special lead or update 50 existing leads
+      // Here we store the mission parameters in a way the backend can read
+      const missionPayload = {
+        name: `MISIÓN_${vertical.toUpperCase()}_${region.toUpperCase()}`,
+        website: `mission://nexus_poc_50`,
+        status: 'PENDIENTE',
+        description: JSON.stringify({
+          type: 'nexus_mission',
+          rol,
+          vertical,
+          region,
+          angulo_ataque: angulo
+        })
+      };
+
+      const { error } = await supabase.from(TABLE_LEADS).insert([missionPayload]);
+      if (error) console.error("Error saving mission:", error);
+
+      toast.success("Misión Sincronizada", {
+        description: "El motor Nexus ha sido configurado con tu ángulo de ataque.",
+      });
+    } catch (err) {
+      toast.error("Error de Sincronización");
+    } finally {
+      setIsRadarRunning(false);
+    }
+  }, []);
+
+  const runRadar = useCallback(async (url1: string, url2: string, context?: any) => {
     if (!url1) return;
     
     setIsRadarRunning(true);
@@ -69,7 +109,7 @@ export function RadarProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <RadarContext.Provider value={{ isRadarRunning, runRadar }}>
+    <RadarContext.Provider value={{ isRadarRunning, runRadar, runNexusHunt }}>
       {children}
     </RadarContext.Provider>
   );

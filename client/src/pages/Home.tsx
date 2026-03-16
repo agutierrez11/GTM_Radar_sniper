@@ -35,8 +35,17 @@ const data = [
   { name: '23:59', leads: 2800 },
 ];
 
+import { useRadar } from '@/contexts/RadarContext';
+
 export default function Home() {
+  const { runNexusHunt, isRadarRunning } = useRadar();
   const [pulseScale, setPulseScale] = useState(1);
+  const [formData, setFormData] = useState({
+    rol: '',
+    vertical: '',
+    region: '',
+    angulo: ''
+  });
   
   useEffect(() => {
     const interval = setInterval(() => {
@@ -44,6 +53,11 @@ export default function Home() {
     }, 2000);
     return () => clearInterval(interval);
   }, []);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    runNexusHunt(formData.rol, formData.vertical, formData.region, formData.angulo);
+  };
 
   return (
     <div className="p-8 space-y-8 max-w-[1600px] mx-auto animate-in fade-in duration-700">
@@ -197,6 +211,92 @@ export default function Home() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Nexus Power Syntax Form */}
+      <Card className="bg-[#0D1629]/80 backdrop-blur-xl border-blue-500/20 shadow-2xl relative overflow-hidden group">
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-600/5 to-emerald-600/5 opacity-50"></div>
+        <CardHeader className="relative z-10">
+          <CardTitle className="text-xl font-bold text-white flex items-center gap-2">
+            <Zap className="h-5 w-5 text-blue-400" />
+            Sintaxis de Poder Nexus
+          </CardTitle>
+          <CardDescription>Configura tu vector de ataque estratégico con precisión Finnovista 2026.</CardDescription>
+        </CardHeader>
+        <CardContent className="relative z-10">
+          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold text-blue-400 uppercase tracking-[0.2em]">Tu Rol</label>
+              <select 
+                value={formData.rol}
+                onChange={(e) => setFormData({...formData, rol: e.target.value})}
+                className="w-full bg-black/40 border border-blue-900/50 rounded-lg p-3 text-sm text-white focus:border-blue-500 outline-none transition-all appearance-none"
+                required
+              >
+                <option value="" disabled className="bg-[#0D1629]">Selecciona Rol...</option>
+                <option value="Adquirente Local" className="bg-[#0D1629]">Adquirente Local</option>
+                <option value="Orquestador de Pagos" className="bg-[#0D1629]">Orquestador de Pagos</option>
+                <option value="MoR (Merchant of Record)" className="bg-[#0D1629]">MoR (Merchant of Record)</option>
+                <option value="PSP Agregador" className="bg-[#0D1629]">PSP Agregador</option>
+                <option value="BaaS Provider" className="bg-[#0D1629]">BaaS Provider</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold text-blue-400 uppercase tracking-[0.2em]">Target Vertical</label>
+              <select 
+                value={formData.vertical}
+                onChange={(e) => setFormData({...formData, vertical: e.target.value})}
+                className="w-full bg-black/40 border border-blue-900/50 rounded-lg p-3 text-sm text-white focus:border-blue-500 outline-none transition-all appearance-none"
+                required
+              >
+                <option value="" disabled className="bg-[#0D1629]">Selecciona Vertical...</option>
+                <option value="Payments_&_Remittances" className="bg-[#0D1629]">Payments & Remittances</option>
+                <option value="Lending" className="bg-[#0D1629]">Lending</option>
+                <option value="Tech_Infrastructure" className="bg-[#0D1629]">Tech Infrastructure</option>
+                <option value="Crypto_&_Blockchain" className="bg-[#0D1629]">Crypto & Blockchain</option>
+                <option value="Digital_Banking" className="bg-[#0D1629]">Digital Banking</option>
+                <option value="Digital_Goods / iGaming" className="bg-[#0D1629]">iGaming / Digital Goods</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold text-blue-400 uppercase tracking-[0.2em]">Región / Vector</label>
+              <select 
+                value={formData.region}
+                onChange={(e) => setFormData({...formData, region: e.target.value})}
+                className="w-full bg-black/40 border border-blue-900/50 rounded-lg p-3 text-sm text-white focus:border-blue-500 outline-none transition-all appearance-none"
+                required
+              >
+                <option value="" disabled className="bg-[#0D1629]">Selecciona Región...</option>
+                <option value="México" className="bg-[#0D1629]">México</option>
+                <option value="Brasil" className="bg-[#0D1629]">Brasil</option>
+                <option value="Colombia" className="bg-[#0D1629]">Colombia</option>
+                <option value="Chile" className="bg-[#0D1629]">Chile</option>
+                <option value="Perú" className="bg-[#0D1629]">Perú</option>
+                <option value="Cross-border Global" className="bg-[#0D1629]">Cross-border Global</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold text-blue-400 uppercase tracking-[0.2em]">Ángulo de Ataque</label>
+              <div className="flex gap-2">
+                <input 
+                  type="text" 
+                  placeholder="Ej: Payouts A2A / KYC First"
+                  value={formData.angulo}
+                  onChange={(e) => setFormData({...formData, angulo: e.target.value})}
+                  className="w-full bg-black/40 border border-blue-900/50 rounded-lg p-3 text-sm text-white placeholder:text-slate-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/50 outline-none transition-all"
+                  required
+                />
+                <Button 
+                  type="submit" 
+                  disabled={isRadarRunning}
+                  className="bg-blue-600 hover:bg-blue-500 shadow-[0_0_20px_rgba(37,99,235,0.4)] px-6"
+                >
+                  {isRadarRunning ? <Activity className="h-4 w-4 animate-spin text-white" /> : "DETONAR"}
+                </Button>
+              </div>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
 
       {/* Strategic Alerts */}
       <div className="bg-amber-500/5 border border-amber-500/20 p-4 rounded-xl flex items-center gap-4">
