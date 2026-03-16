@@ -9,6 +9,7 @@ import Home from "./pages/Home";
 
 
 function Router() {
+  console.log("[NERV] Configurando Router...");
   return (
     <Switch>
       <Route path={"/"} component={Home} />
