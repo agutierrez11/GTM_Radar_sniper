@@ -1,4 +1,5 @@
 import { Toaster } from "@/components/ui/sonner";
+import { RadarProvider } from "@/contexts/RadarContext";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
@@ -28,8 +29,10 @@ function App() {
     <ErrorBoundary>
       <ThemeProvider defaultTheme="light">
         <TooltipProvider>
-          <Toaster />
-          <Router />
+          <RadarProvider>
+            <Toaster />
+            <Router />
+          </RadarProvider>
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>
