@@ -38,36 +38,8 @@ export default function Home() {
   });
 
   useEffect(() => {
-    async function load() {
-      const rawLeads = await fetchLiveLeads();
-      const mapped = rawLeads.map((l: any) => {
-        // Handle potential JSON in description
-        let displaySignal = 'Señal estratégica detectada';
-        if (l.description) {
-           try {
-             const parsed = typeof l.description === 'string' ? JSON.parse(l.description) : l.description;
-             displaySignal = parsed.signal || parsed.description || parsed.reason || l.description.substring(0, 60);
-           } catch (e) {
-             displaySignal = l.description.substring(0, 60);
-           }
-        }
-
-        return {
-          id: l.id.toString(),
-          company: l.name,
-          country: l.sector || 'Global',
-          tier: l.infra_potential ? 'diamond' as const : 'gold' as const,
-          status: 'active' as const,
-          score: l.infra_potential ? 95 : 75,
-          signal: displaySignal,
-          opportunity: l.opportunity || 'GTM Growth'
-        };
-      });
-      setLeads(mapped);
-      if (mapped.length > 0) setSelectedLeadId(mapped[0].id);
-      setLoading(false);
-    }
-    load();
+    // No auto-load on mount for POC purity
+    setLoading(false);
   }, []);
 
   const handleRowClick = (lead: Lead) => {
@@ -75,15 +47,45 @@ export default function Home() {
     setViewMode('graph');
   };
 
-  const handleAnalyze = () => {
+  const handleAnalyze = async () => {
     if (!formData.rol || !formData.vertical || !formData.region || !formData.angulo) {
       toast.error("Parámetros incompletos", { description: "Configura los 4 campos de poder." });
       return;
     }
+    
+    setLoading(true);
     toast.message("Sincronizando Radar", {
        description: `Analizando ${formData.vertical} para ${formData.rol} en ${formData.region}`,
        icon: <Activity className="animate-spin text-blue-600" />
     });
+
+    const rawLeads = await fetchLiveLeads();
+    const mapped = rawLeads.map((l: any) => {
+      let displaySignal = 'Señal estratégica detectada';
+      if (l.description) {
+         try {
+           const parsed = typeof l.description === 'string' ? JSON.parse(l.description) : l.description;
+           displaySignal = parsed.signal || parsed.description || parsed.reason || l.description.substring(0, 60);
+         } catch (e) {
+           displaySignal = l.description.substring(0, 60);
+         }
+      }
+
+      return {
+        id: l.id.toString(),
+        company: l.name,
+        country: l.sector || 'Global',
+        tier: l.infra_potential ? 'diamond' as const : 'gold' as const,
+        status: 'active' as const,
+        score: l.infra_potential ? 95 : 75,
+        signal: displaySignal,
+        opportunity: l.opportunity || 'GTM Growth'
+      };
+    });
+    
+    setLeads(mapped);
+    if (mapped.length > 0) setSelectedLeadId(mapped[0].id);
+    setLoading(false);
   };
 
   return (
