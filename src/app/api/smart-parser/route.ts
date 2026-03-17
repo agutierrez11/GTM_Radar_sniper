@@ -1,25 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
-
-const apiKeys = [
-  process.env.GEMINI_API_KEY!,
-  process.env.GEMINI_API_KEY_2!
-].filter(Boolean);
-
-let currentKeyIndex = 0;
-
-function getNextApiKey() {
-  const key = apiKeys[currentKeyIndex];
-  currentKeyIndex = (currentKeyIndex + 1) % apiKeys.length;
-  return key;
-}
+import { generateWithFallback } from "@/lib/gemini";
 
 export async function POST(req: NextRequest) {
   try {
     const { prompt } = await req.json();
-
-    const genAI = new GoogleGenerativeAI(getNextApiKey());
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
     const systemPrompt = `
 Eres el PARSER TÁCTICO de Nexus Architect.
@@ -59,19 +43,13 @@ TEXTO DEL USUARIO:
 "${prompt}"
 `;
 
-    const result = await model.generateContent(systemPrompt);
-    const text = result.response.text();
-    const cleaned = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-    
-    return NextResponse.json(JSON.parse(cleaned));
+    const response = await generateWithFallback(systemPrompt);
+    return NextResponse.json({ ...response.data, cached: response.cached });
   } catch (error: any) {
     console.error("Smart Parser Error:", error);
-    if (error?.status === 429) {
-      return NextResponse.json(
-        { error: "Sistema ocupado. Intenta en 30 segundos." },
-        { status: 429 }
-      );
-    }
-    return NextResponse.json({ error: "Error parsing prompt" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Sistema ocupado. Intenta en unos momentos." },
+      { status: 503 }
+    );
   }
 }

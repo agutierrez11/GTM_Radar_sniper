@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { generateWithFallback } from "@/lib/gemini";
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
@@ -7,29 +7,10 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-const apiKeys = [
-  process.env.GEMINI_API_KEY!,
-  process.env.GEMINI_API_KEY_2!
-].filter(Boolean);
-
-let currentKeyIndex = 0;
-
-function getNextApiKey() {
-  const key = apiKeys[currentKeyIndex];
-  currentKeyIndex = (currentKeyIndex + 1) % apiKeys.length;
-  return key;
-}
-
 export async function POST(req: NextRequest) {
-  console.log(`NEXUS_API_DEPLOY_VERSION: 1.2.0 - ROUND_ROBIN_MODE - KEYS: ${apiKeys.length}`);
+  console.log(`NEXUS_API_DEPLOY_VERSION: 1.3.0 - RESILIENT_MODE - CACHE_ENABLED`);
   try {
     const { brief, empresa_supabase, benchmark, competidores } = await req.json();
-
-    // Initialize with first available key
-    let genAI = new GoogleGenerativeAI(getNextApiKey());
-    let model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-
-    // ... rest of logic remains but we use 'model' instance
 
     const prompt = `
 Eres el NEXUS ARCHITECT — sistema de inteligencia GTM especializado en el ecosistema Fintech y Pagos de Latam.
@@ -101,16 +82,9 @@ El campo "markdown" debe ser una ficha completa con:
 ## 🧠 Auditoría RaiSE
 `;
 
-    const result = await model.generateContent(prompt);
-    const text = result.response.text();
-
-    // Limpiar markdown si Gemini lo agrega
-    const cleaned = text
-      .replace(/```json\n?/g, "")
-      .replace(/```\n?/g, "")
-      .trim();
-
-    const data = JSON.parse(cleaned);
+    // USAR MOTOR RESILIENTE
+    const response = await generateWithFallback(prompt);
+    const data = response.data;
 
     // LOGGING: Registrar búsqueda para análisis de la PoC y Bucle de Calidad
     let logId = null;
@@ -133,15 +107,12 @@ El campo "markdown" debe ser una ficha completa con:
       console.error("Logging error catch:", logError);
     }
 
-    return NextResponse.json({ ...data, logId });
+    return NextResponse.json({ ...data, logId, cached: response.cached });
   } catch (error: any) {
     console.error("Nexus Architect Error:", error);
-    if (error?.status === 429) {
-      return NextResponse.json(
-        { error: "Nexus está saturado. Reintentando en 30 segundos..." },
-        { status: 429 }
-      );
-    }
-    return NextResponse.json({ error: "Error generando estrategia" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Nexus está tardando más de lo esperado debido a alta demanda. Reintenta en unos momentos." },
+      { status: 503 }
+    );
   }
 }
