@@ -7,14 +7,29 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+const apiKeys = [
+  process.env.GEMINI_API_KEY!,
+  process.env.GEMINI_API_KEY_2!
+].filter(Boolean);
+
+let currentKeyIndex = 0;
+
+function getNextApiKey() {
+  const key = apiKeys[currentKeyIndex];
+  currentKeyIndex = (currentKeyIndex + 1) % apiKeys.length;
+  return key;
+}
 
 export async function POST(req: NextRequest) {
-  console.log("NEXUS_API_DEPLOY_VERSION: 1.1.0 - FLASH_MODE");
+  console.log(`NEXUS_API_DEPLOY_VERSION: 1.2.0 - ROUND_ROBIN_MODE - KEYS: ${apiKeys.length}`);
   try {
     const { brief, empresa_supabase, benchmark, competidores } = await req.json();
 
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    // Initialize with first available key
+    let genAI = new GoogleGenerativeAI(getNextApiKey());
+    let model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+
+    // ... rest of logic remains but we use 'model' instance
 
     const prompt = `
 Eres el NEXUS ARCHITECT — sistema de inteligencia GTM especializado en el ecosistema Fintech y Pagos de Latam.
