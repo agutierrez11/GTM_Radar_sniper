@@ -83,7 +83,7 @@ export async function generateWithFallback(prompt: string): Promise<GeminiRespon
 
     try {
       const genAI = new GoogleGenerativeAI(key);
-      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
       const result = await model.generateContent(prompt);
       const responseText = result.response.text();
@@ -146,5 +146,5 @@ export async function generateWithFallback(prompt: string): Promise<GeminiRespon
     }
   }
 
-  throw new Error("Gemini falló tras 5 intentos. El sistema de cola fue superado.");
+  throw new Error("Gemini falló tras 12 intentos. El sistema de resiliencia fue superado.");
 }

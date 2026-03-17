@@ -10,7 +10,9 @@ const supabase = createClient(
 export async function POST(req: NextRequest) {
   console.log(`NEXUS_API_DEPLOY_VERSION: 1.3.0 - RESILIENT_MODE - CACHE_ENABLED`);
   try {
-    const { brief, empresa_supabase, benchmark, competidores } = await req.json();
+    const body = await req.json();
+    console.log("NEXUS_REQUEST_BODY:", JSON.stringify(body, null, 2));
+    const { brief, empresa_supabase, benchmark, competidores } = body;
 
     const prompt = `
 Eres el NEXUS ARCHITECT — sistema de inteligencia GTM especializado en el ecosistema Fintech y Pagos de Latam.
@@ -113,9 +115,12 @@ El campo "markdown" debe ser una ficha completa con:
 
     return NextResponse.json({ ...data, logId, cached: response.cached });
   } catch (error: any) {
-    console.error("Nexus Architect Error:", error);
+    console.error("NEXUS_CRITICAL_ERROR:", error);
     return NextResponse.json(
-      { error: "Nexus está tardando más de lo esperado debido a alta demanda. Reintenta en unos momentos." },
+      { 
+        error: "Nexus está tardando más de lo esperado debido a alta demanda. Reintenta en unos momentos.",
+        details: error?.message || "Error desconocido en el servidor"
+      },
       { status: 503 }
     );
   }
