@@ -1,12 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+const apiKeys = [
+  process.env.GEMINI_API_KEY!,
+  process.env.GEMINI_API_KEY_2!
+].filter(Boolean);
+
+let currentKeyIndex = 0;
+
+function getNextApiKey() {
+  const key = apiKeys[currentKeyIndex];
+  currentKeyIndex = (currentKeyIndex + 1) % apiKeys.length;
+  return key;
+}
 
 export async function POST(req: NextRequest) {
   try {
     const { prompt } = await req.json();
 
+    const genAI = new GoogleGenerativeAI(getNextApiKey());
     const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
     const systemPrompt = `
