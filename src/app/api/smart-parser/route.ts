@@ -52,8 +52,14 @@ TEXTO DEL USUARIO:
     const cleaned = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
     
     return NextResponse.json(JSON.parse(cleaned));
-  } catch (error) {
+  } catch (error: any) {
     console.error("Smart Parser Error:", error);
+    if (error?.status === 429) {
+      return NextResponse.json(
+        { error: "Sistema ocupado. Intenta en 30 segundos." },
+        { status: 429 }
+      );
+    }
     return NextResponse.json({ error: "Error parsing prompt" }, { status: 500 });
   }
 }

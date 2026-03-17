@@ -119,11 +119,14 @@ El campo "markdown" debe ser una ficha completa con:
     }
 
     return NextResponse.json({ ...data, logId });
-  } catch (error) {
-    console.error("Nexus API error:", error);
-    return NextResponse.json(
-      { error: "Error generando análisis" },
-      { status: 500 }
-    );
+  } catch (error: any) {
+    console.error("Nexus Architect Error:", error);
+    if (error?.status === 429) {
+      return NextResponse.json(
+        { error: "Nexus está saturado. Reintentando en 30 segundos..." },
+        { status: 429 }
+      );
+    }
+    return NextResponse.json({ error: "Error generando estrategia" }, { status: 500 });
   }
 }
