@@ -73,9 +73,9 @@ export async function generateWithFallback(prompt: string): Promise<GeminiRespon
   }
 
   // --- PRIORIDAD 1 & 2: BACKOFF Y ROTACIÓN ---
-  const waitTimes = [15000, 30000, 60000]; // 15s, 30s, 60s
+  const waitTimes = [10000, 20000, 30000]; // 10s, 20s, 30s
   let attempts = 0;
-  const maxAttempts = 5;
+  const maxAttempts = 12; // Permitir rotación completa de las 5 keys
 
   while (attempts < maxAttempts) {
     const key = apiKeys[currentKeyIndex];
