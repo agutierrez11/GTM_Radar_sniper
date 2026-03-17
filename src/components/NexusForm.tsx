@@ -437,7 +437,7 @@ export default function NexusForm() {
           </div>
 
           {/* Similares */}
-          {result.similares.length > 0 && (
+          {(result.similares?.length ?? 0) > 0 && (
             <div style={styles.card}>
               <h3 style={styles.cardTitle}>🔗 Similares en el ecosistema</h3>
               <div style={styles.tagsWrap}>
@@ -449,7 +449,7 @@ export default function NexusForm() {
           )}
 
           {/* Competidores */}
-          {result.competidores.length > 0 && (
+          {(result.competidores?.length ?? 0) > 0 && (
             <div style={styles.card}>
               <h3 style={styles.cardTitle}>⚔️ Competidores directos</h3>
               <div style={styles.tagsWrap}>

@@ -69,7 +69,7 @@ Genera el análisis completo. Responde SOLO con JSON válido:
   },
   "similares": ["empresa1", "empresa2", "empresa3"],
   "competidores": ["comp1", "comp2", "comp3"],
-  "discovery_mode": ${!empresa_supabase && competidores.length === 0 ? "true" : "false"},
+  "discovery_mode": ${!empresa_supabase && (!competidores || competidores.length === 0) ? "true" : "false"},
   "markdown": "<ficha completa en formato Markdown para Obsidian>"
 }
 
@@ -87,7 +87,10 @@ El campo "markdown" debe ser una ficha completa con:
     const data = response.data;
 
     // LOGGING: Registrar búsqueda para análisis de la PoC y Bucle de Calidad
+    // LOGGING DESACTIVADO TEMPORALMENTE
+    // hasta crear tabla logs_busquedas
     let logId = null;
+    /*
     try {
       const { data: logEntry, error: logError } = await supabase
         .from('logs_busquedas')
@@ -106,6 +109,7 @@ El campo "markdown" debe ser una ficha completa con:
     } catch (logError) {
       console.error("Logging error catch:", logError);
     }
+    */
 
     return NextResponse.json({ ...data, logId, cached: response.cached });
   } catch (error: any) {
