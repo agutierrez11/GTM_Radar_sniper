@@ -10,6 +10,7 @@ const supabase = createClient(
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
 export async function POST(req: NextRequest) {
+  console.log("NEXUS_API_DEPLOY_VERSION: 1.1.0 - FLASH_MODE");
   try {
     const { brief, empresa_supabase, benchmark, competidores } = await req.json();
 
