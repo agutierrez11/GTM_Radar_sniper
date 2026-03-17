@@ -41,10 +41,10 @@ DATOS DE SUPABASE (empresas_v2):
 ${empresa_supabase ? JSON.stringify(empresa_supabase, null, 2) : "No encontrada en base de datos"}
 
 BENCHMARK (empresas similares):
-${benchmark.length > 0 ? benchmark.map((b: any) => b.empresa_similar).join(", ") : "Sin datos"}
+${(benchmark?.length ?? 0) > 0 ? benchmark?.map((b: any) => b.empresa_similar).join(", ") : "Sin datos"}
 
 COMPETIDORES EN MISMA VERTICAL:
-${competidores.length > 0 ? competidores.map((c: any) => c.name).join(", ") : "Sin datos"}
+${(competidores?.length ?? 0) > 0 ? competidores?.map((c: any) => c.name).join(", ") : "Sin datos"}
 
 Genera el análisis completo. Responde SOLO con JSON válido:
 {
