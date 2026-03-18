@@ -9,6 +9,7 @@ export interface GeminiResponse {
 }
 
 const apiKeys = [
+  process.env.GEMINI_API_KEY_PROFESSIONAL, // PRIORIDAD 1: Professional (Paid)
   process.env.GEMINI_API_KEY_1,
   process.env.GEMINI_API_KEY_2,
   process.env.GEMINI_API_KEY_3,
@@ -70,7 +71,7 @@ export async function generateWithFallback(prompt: string): Promise<GeminiRespon
   // --- PRIORIDAD 1 & 2: BACKOFF Y ROTACIÓN ---
   const waitTimes = [10000, 20000, 30000]; // 10s, 20s, 30s
   let attempts = 0;
-  const maxAttempts = 12; // Permitir rotación completa de las 5 keys
+  const maxAttempts = 50; // Permitir rotación completa y múltiples ciclos de espera en Free Tier
 
   while (attempts < maxAttempts) {
     const key = apiKeys[currentKeyIndex];
@@ -78,44 +79,57 @@ export async function generateWithFallback(prompt: string): Promise<GeminiRespon
 
     try {
       const genAI = new GoogleGenerativeAI(key);
-      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+      const modelsToTry = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"];
+      let lastError: any = null;
 
-      const result = await model.generateContent(prompt);
-      const responseText = result.response.text();
+      for (const modelName of modelsToTry) {
+        try {
+          const model = genAI.getGenerativeModel({ model: modelName });
+          const result = await model.generateContent(prompt);
+          const responseText = result.response.text();
 
-      // Limpieza de Markdown si existe
-      const cleanedText = responseText
-        .replace(/```json\n?/g, "")
-        .replace(/```\n?/g, "")
-        .trim();
+          // Limpieza de Markdown si existe
+          const cleanedText = responseText
+            .replace(/```json\n?/g, "")
+            .replace(/```\n?/g, "")
+            .trim();
 
-      let data;
-      try {
-        data = JSON.parse(cleanedText);
-      } catch {
-        data = cleanedText; // Fallback a texto plano
+          let data;
+          try {
+            data = JSON.parse(cleanedText);
+          } catch {
+            data = cleanedText; // Fallback a texto plano
+          }
+
+          const timestamp = new Date().toISOString();
+
+          // Guardar en Caché
+          try {
+            await supabase.from("gemini_cache").upsert({
+              prompt_hash,
+              response: data,
+              created_at: timestamp,
+              expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+            });
+          } catch (cacheStoreError) {
+            console.error("[CACHÉ STORE ERROR]:", cacheStoreError);
+          }
+
+          return {
+            data,
+            cached: false,
+            timestamp,
+          };
+        } catch (innerError: any) {
+          lastError = innerError;
+          if (innerError?.status === 404 || innerError?.message?.includes("404")) {
+            console.warn(`[GEMINI WARN] Modelo ${modelName} no disponible para esta llave. Probando siguiente...`);
+            continue;
+          }
+          throw innerError; // Si no es 404, salir al catch exterior para rotar llave
+        }
       }
-
-      const timestamp = new Date().toISOString();
-
-      // Guardar en Caché
-      try {
-        await supabase.from("gemini_cache").upsert({
-          prompt_hash,
-          response: data,
-          created_at: timestamp,
-          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-        });
-      } catch (cacheStoreError) {
-        console.error("[CACHÉ STORE ERROR]:", cacheStoreError);
-      }
-
-      return {
-        data,
-        cached: false,
-        timestamp,
-      };
-
+      throw lastError; // Si llega aquí es que todos los modelos del loop fallaron
     } catch (error: any) {
       const maskedKey = key ? `${key.substring(0, 6)}...${key.substring(key.length - 4)}` : "NULL";
       console.error(`[GEMINI ERROR] Attempt ${attempts + 1} with Key Index ${currentKeyIndex} (${maskedKey}):`, error?.status || error?.message);
@@ -126,18 +140,21 @@ export async function generateWithFallback(prompt: string): Promise<GeminiRespon
 
       // Si es error de cuota (429) o similar
       if (error?.status === 429 || error?.message?.includes("429")) {
-        const wait = waitTimes[attempts] || 60000;
-        console.log(`[BACKOFF] Esperando ${wait / 1000}s antes de reintentar...`);
+        // Rotar inmediatamente sin esperar si tenemos más llaves disponibles en este ciclo
+        currentKeyIndex = (currentKeyIndex + 1) % apiKeys.length;
+        console.log(`[QUICK ROTATION] Reintentando inmediatamente con Key Index: ${currentKeyIndex}`);
         
-        await sleep(wait);
-        
-        // Rotar llave si ya falló 2 veces con la misma
-        if (attempts >= 2) {
-          currentKeyIndex = (currentKeyIndex + 1) % apiKeys.length;
-          console.log(`[ROTATION] Cambiando a Key Index: ${currentKeyIndex}`);
+        // Si ya dimos una vuelta completa al pool (cada 5 intentos), entonces sí aplicamos backoff
+        if ((attempts + 1) % apiKeys.length === 0) {
+          const wait = waitTimes[Math.floor(attempts / apiKeys.length)] || 60000;
+          console.log(`[POOL SATURATED] Esperando ${wait / 1000}s antes de siguiente ciclo de pool...`);
+          await sleep(wait);
+        } else {
+          // Breve delay preventivo para no saturar el siguiente socket inmediatamente
+          await sleep(500); 
         }
       } else {
-        // Otros errores graves: rotar inmediatamente
+        // Otros errores graves (500, etc): rotar inmediatamente
         currentKeyIndex = (currentKeyIndex + 1) % apiKeys.length;
         await sleep(1000);
       }
@@ -146,5 +163,5 @@ export async function generateWithFallback(prompt: string): Promise<GeminiRespon
     }
   }
 
-  throw new Error("Gemini falló tras 12 intentos. El sistema de resiliencia fue superado.");
+  throw new Error("Gemini falló tras agotar todos los intentos. El sistema de resiliencia fue superado.");
 }

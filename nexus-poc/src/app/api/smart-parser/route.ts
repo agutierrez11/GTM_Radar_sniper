@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
     const { prompt } = await req.json();
 
     const systemPrompt = `
-Eres el PARSER TÁCTICO de Nexus Architect.
+Eres el PARSER TÁCTICO de NERV (El sistema nervioso del ecosistema Fintech Latam).
 Tu misiones recibir un texto de un usuario y extraer los campos necesarios para rellenar un formulario de estrategia GTM.
 
 JSON SCHEMA DE SALIDA:

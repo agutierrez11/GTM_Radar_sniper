@@ -1,4 +1,4 @@
-import NexusForm from "@/components/NexusForm";
+import NervForm from "@/components/NervForm";
 
 export default function Home() {
   return (
@@ -16,7 +16,7 @@ export default function Home() {
             PoC Live: Operación Nexo Fintech
           </div>
           <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-white mb-6">
-            Nexus <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-500">Architect</span>
+            NERV <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-500">Architect</span>
           </h1>
           <p className="text-lg text-zinc-400 max-w-2xl mx-auto leading-relaxed">
             Orquestador de Inteligencia GTM especializado en el ecosistema Fintech Latam. 
@@ -26,16 +26,16 @@ export default function Home() {
 
         <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl overflow-hidden p-1">
           <div className="bg-white rounded-[22px] overflow-hidden">
-            <NexusForm />
+            <NervForm />
           </div>
         </div>
       </div>
 
       {/* Footer */}
       <footer className="relative z-10 py-12 border-t border-zinc-900 text-center">
-        <p className="text-sm text-zinc-500">
-          © 2026 Nexus Architect | Powered by RaiSE Engine & Supabase Intelligence.
-        </p>
+          <p className="text-gray-400 text-lg max-w-2xl mx-auto mb-8">
+            El sistema nervioso del ecosistema Fintech Latam.
+          </p>
       </footer>
     </main>
   );

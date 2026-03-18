@@ -2,16 +2,19 @@ import OpenAI from 'openai';
 import crypto from 'crypto';
 import { supabase } from './supabase';
 
-const groq = new OpenAI({
-  apiKey: process.env.GROQ_API_KEY || '',
-  baseURL: "https://api.groq.com/openai/v1",
+/**
+ * xAI Grok Integration (OpenAI Compatible)
+ */
+const xai = new OpenAI({
+  apiKey: process.env.XAI_API_KEY || '',
+  baseURL: "https://api.x.ai/v1",
 });
 
 function hashPrompt(prompt: string): string {
   return crypto.createHash("sha256").update(prompt).digest("hex");
 }
 
-export async function generateWithGroq(prompt: string) {
+export async function generateWithGrok(prompt: string) {
   const prompt_hash = hashPrompt(prompt);
 
   // 1. Intentar leer de caché (TTL 24h)
@@ -26,21 +29,23 @@ export async function generateWithGroq(prompt: string) {
       const createdAt = new Date(cacheEntry.created_at);
       const now = new Date();
       if ((now.getTime() - createdAt.getTime()) < 24 * 60 * 60 * 1000) {
-        console.log(`[GROQ CACHÉ HIT] Hash: ${prompt_hash}`);
+        console.log(`[GROK (xAI) CACHÉ HIT] Hash: ${prompt_hash}`);
         return cacheEntry.response;
       }
     }
   } catch (err) {
-    console.warn("[GROQ CACHÉ ERROR] Falló lectura de caché:", err);
+    console.warn("[GROK (xAI) CACHÉ ERROR] Falló lectura de caché:", err);
   }
 
-  // 2. Si no hay caché, llamar a la API de Groq
+  // 2. Si no hay caché, llamar a la API de xAI
   try {
-    const completion = await groq.chat.completions.create({
-      model: "llama-3.3-70b-versatile",
-      messages: [{ role: "user", content: prompt }],
+    const completion = await xai.chat.completions.create({
+      model: "grok-beta", // Modelo estándar de xAI
+      messages: [
+        { role: "system", content: "Eres un analista experto en señales de mercado y Fintech en Latam. Proporciona respuestas concisas y estructuradas en JSON." },
+        { role: "user", content: prompt }
+      ],
       temperature: 0.1,
-      max_tokens: 4096,
       response_format: { type: "json_object" }
     });
 
@@ -50,7 +55,7 @@ export async function generateWithGroq(prompt: string) {
     try {
       data = JSON.parse(responseText);
     } catch (parseError) {
-      console.warn("Groq response parsing failed, returning text object:", parseError);
+      console.warn("Grok response parsing failed, returning text object:", parseError);
       data = { text: responseText };
     }
 
@@ -63,12 +68,12 @@ export async function generateWithGroq(prompt: string) {
         expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
       });
     } catch (cacheStoreError) {
-      console.error("[GROQ CACHÉ STORE ERROR]:", cacheStoreError);
+      console.error("[GROK (xAI) CACHÉ STORE ERROR]:", cacheStoreError);
     }
 
     return data;
   } catch (error) {
-    console.error('Error en Groq API:', error);
+    console.error('Error en xAI Grok API:', error);
     throw error;
   }
 }

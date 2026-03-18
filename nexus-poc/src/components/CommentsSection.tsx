@@ -46,7 +46,7 @@ export default function CommentsSection() {
       <form onSubmit={handleSubmit} style={styles.form}>
         <textarea
           style={styles.textarea}
-          placeholder="¿Qué te pareció Nexus? Deja tus comentarios para mejorar la demo..."
+          placeholder="¿Qué te pareció NERV? Deja tus comentarios para mejorar el ecosistema..."
           value={newComment}
           onChange={(e) => setNewComment(e.target.value)}
         />

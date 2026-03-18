@@ -8,7 +8,7 @@ const dmSans = DM_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Nexus Architect | Inteligencia GTM Fintech Latam",
+  title: "NERV | El sistema nervioso del ecosistema Fintech Latam",
   description: "Operación Nexo: Consolidando el universo Fintech de Latinoamérica.",
 };
 

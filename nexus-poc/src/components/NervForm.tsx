@@ -4,6 +4,7 @@ import { useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 import ContactCard from "./ContactCard";
 import CommentsSection from "./CommentsSection";
+import { detectProductCategory } from "@/lib/product-categories";
 
 // ── Types ──────────────────────────────────────────────────────────────
 interface GTMBrief {
@@ -17,7 +18,7 @@ interface GTMBrief {
   url_cliente_ideal: string;
 }
 
-interface NexusResult {
+interface NervResult {
   empresa: string;
   tier: string;
   icp_score: number;
@@ -38,16 +39,28 @@ interface NexusResult {
     confianza: string;
   };
   similares: string[];
-  competidores: string[];
+  competidores: { name: string; url: string | null }[];
+  clientes_potenciales?: { name: string; url: string | null }[];
+  evidencia?: string[];
   markdown: string;
   discovery_mode?: boolean;
   logId?: number;
 }
 
 // ── Constants ──────────────────────────────────────────────────────────
-const PAISES = [
+const HUBS = [
+  { id: "latam", name: "Latam Hub", icon: "🌎" },
+  { id: "europe", name: "Europe Hub", icon: "🇪🇺" },
+];
+
+const PAISES_LATAM = [
   "México", "Colombia", "Brasil", "Chile",
   "Argentina", "Perú", "Toda Latam",
+];
+
+const PAISES_EUROPA = [
+  "UK", "Germany", "Sweden", "Netherlands",
+  "France", "Spain", "Toda Europa",
 ];
 
 const VERTICALES = [
@@ -117,7 +130,7 @@ function FeedbackWidget({ logId, empresa }: { logId: number; empresa: string }) 
   return (
     <div style={styles.feedbackWrap}>
       <h4 style={styles.feedbackTitle}>¿Es este plan relevante para {empresa}?</h4>
-      <p style={styles.feedbackSubtitle}>Ayúdanos a calibrar la inteligencia de Nexus Architect.</p>
+      <p style={styles.feedbackSubtitle}>Ayúdanos a calibrar la inteligencia de NERV.</p>
       
       {!submitted ? (
         <>
@@ -163,7 +176,8 @@ function FeedbackWidget({ logId, empresa }: { logId: number; empresa: string }) 
 }
 
 // ── Main Component ─────────────────────────────────────────────────────
-export default function NexusForm() {
+export default function NervForm() {
+  const [activeHub, setActiveHub] = useState<"latam" | "europe">("latam");
   const [brief, setBrief] = useState<GTMBrief>({
     empresa: "",
     producto: "",
@@ -178,7 +192,7 @@ export default function NexusForm() {
   const [loading, setLoading] = useState(false);
   const [smartPrompt, setSmartPrompt] = useState("");
   const [parsing, setParsing] = useState(false);
-  const [result, setResult] = useState<NexusResult | null>(null);
+  const [result, setResult] = useState<NervResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [step, setStep] = useState<"form" | "loading" | "result">("form");
   const [loadingMsg, setLoadingMsg] = useState("");
@@ -189,7 +203,7 @@ export default function NexusForm() {
 
   const LOADING_MSGS = [
     "Consultando universo Fintech Latam...",
-    "Activando protocolo Nexus Architect...",
+    "Activando protocolo NERV...",
     "Detectando latido del mercado...",
     "Calculando Schwerpunkt...",
     "Identificando el pañuelo antes del estornudo...",
@@ -212,7 +226,7 @@ export default function NexusForm() {
         // 1. Validar Relevancia (Lead Guard)
         if (data.es_relevante === false) {
           setNexusResponse({ 
-            msg: `🛡️ Acceso Denegado: ${data.motivo_rechazo || "Nexus se enfoca solo en Fintech, Payments y Retailers de alto impacto para garantizar calidad."}`, 
+            msg: `🛡️ Acceso Denegado: ${data.motivo_rechazo || "NERV se enfoca solo en Fintech, Payments y Retailers de alto impacto para garantizar calidad."}`, 
             type: "error" 
           });
           return;
@@ -231,7 +245,7 @@ export default function NexusForm() {
       }
     } catch (err) {
       console.error("Parser error:", err);
-      setNexusResponse({ msg: "Hubo un error en la conexión con el motor Nexus.", type: "error" });
+      setNexusResponse({ msg: "Hubo un error en la conexión con el motor NERV.", type: "error" });
     } finally {
       setParsing(false);
     }
@@ -266,16 +280,20 @@ export default function NexusForm() {
     try {
       // 1. Buscar empresa en Supabase
       let empresaData = null;
-      let benchmarkData = [];
-      let competidoresData = [];
+      let benchmarkData: any[] = [];
+      let competidoresData: { name: string; url: string | null }[] = [];
+      let clientesPotencialesData: any[] = [];
 
       try {
-        const { data } = await supabase
+        const { data: searchData } = await supabase
           .from("empresas_v2")
           .select("*")
           .ilike("name", `%${brief.empresa}%`)
-          .limit(5);
-        empresaData = data;
+          .limit(1);
+        
+        if (searchData && searchData.length > 0) {
+          empresaData = searchData[0];
+        }
       } catch (e) { console.warn("Supabase fetch empresa_v2 failed", e); }
 
       // 2. Buscar similares en benchmark
@@ -283,32 +301,73 @@ export default function NexusForm() {
         const { data } = await supabase
           .from("benchmark_raw")
           .select("empresa_similar, segmento")
-          .ilike("empresa_origen", `%${brief.empresa}%`)
+          .ilike("empresa_origen", brief.empresa)
           .limit(10);
         benchmarkData = data || [];
       } catch (e) { console.warn("Supabase fetch benchmark_raw failed", e); }
 
-      // 3. Buscar competidores en misma vertical
+      // 3. Buscar Competidores Reales y Clientes Potenciales
       try {
-        const { data } = await supabase
+        // --- QUERY 1: COMPETIDORES REALES (Priorizando Verificados) ---
+        // Buscamos directamente la fila de la empresa para ver sus rivales verificados
+        const companyNameTrimmed = brief.empresa?.trim();
+        const { data: verifiedRow } = await supabase
+          .from("empresas_v2")
+          .select("competitors_verified")
+          .ilike("name", `%${companyNameTrimmed}%`)
+          .maybeSingle();
+
+        if (verifiedRow?.competitors_verified && verifiedRow.competitors_verified.length > 0) {
+          console.log("✅ Usando competidores VERIFICADOS del Enjambre");
+          competidoresData = verifiedRow.competitors_verified.map((name: string) => ({ name, url: null }));
+        } else {
+          // Fallback: Búsqueda por Categoría de Producto (DETECTADA, NO DEL DROPDOWN)
+          console.log("⚠️ Fallback: Buscando competidores por categoría detectada");
+          const categoriaProducto = detectProductCategory(brief.producto);
+          const { data: compData } = await supabase
+            .from("empresas_v2")
+            .select("name, website")
+            .eq("vertical_finnovista", categoriaProducto)
+            .neq("name", brief.empresa)
+            .order("icp_score", { ascending: false })
+            .limit(8);
+            
+          competidoresData = compData?.map(c => ({ name: c.name, url: c.website })) || [];
+        }
+
+        // --- QUERY 2: CUENTAS OBJETIVO / LEADS ---
+        const verticalObjetivo = empresaData?.vertical_finnovista || brief.vertical;
+        const verticalKeyword = verticalObjetivo.split(" ")[0];
+
+        let queryLeads = supabase
           .from("empresas_v2")
           .select("name, website")
-          .eq("country", brief.pais.replace("México", "Mexico"))
-          .ilike("vertical_finnovista", `%${brief.vertical.split(" ")[0]}%`)
+          .ilike("vertical_finnovista", `%${verticalKeyword}%`);
+
+        if (brief.pais && brief.pais !== "Toda Latam") {
+          queryLeads = queryLeads.eq("country", brief.pais.replace("México", "Mexico"));
+        }
+
+        const { data: leadsData } = await queryLeads
           .order("icp_score", { ascending: false })
           .limit(8);
-        competidoresData = data || [];
-      } catch (e) { console.warn("Supabase fetch competidores failed", e); }
+          
+        clientesPotencialesData = leadsData?.map(l => ({ name: l.name, url: l.website })) || [];
+      } catch (e) {
+        console.warn("Supabase fetch competidores/leads failed", e);
+      }
 
-      // 4. Llamar al Nexus Architect API
-      const response = await fetch("/api/nexus", {
+      // 4. Llamar al NERV API
+      console.log("COMPETIDORES QUE SE MANDAN A LA API:", JSON.stringify(competidoresData));
+      const response = await fetch("/api/nexus", { // Mantenemos la ruta API por ahora para no romper el backend
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           brief,
           empresa_supabase: empresaData?.[0] || null,
           benchmark: benchmarkData || [],
-          competidores: competidoresData || [],
+          competidores: competidoresData || [], // Ya son los rivales reales
+          clientes_potenciales: clientesPotencialesData || [], // Nueva variable para la IA
         }),
       });
 
@@ -317,7 +376,7 @@ export default function NexusForm() {
         throw new Error(errorData.message || "Error en el análisis");
       }
 
-      const data: NexusResult = await response.json();
+      const data: NervResult = await response.json();
       setResult(data);
       setStep("result");
     } catch (err: any) {
@@ -342,7 +401,7 @@ export default function NexusForm() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${result.empresa.replace(/\s+/g, "_")}_nexus.md`;
+    a.download = `${result.empresa.replace(/\s+/g, "_")}_nerv.md`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -398,7 +457,7 @@ export default function NexusForm() {
 
           {/* Diagnóstico */}
           <div style={styles.card}>
-            <h3 style={styles.cardTitle}>🔬 Diagnóstico Nexus</h3>
+            <h3 style={styles.cardTitle}>🔬 Diagnóstico NERV</h3>
             <table style={styles.diagTable}>
               <tbody>
                 <tr>
@@ -450,6 +509,28 @@ export default function NexusForm() {
             <div style={styles.confidenceBadge}>
               Confianza general: {result.auditoria.confianza}
             </div>
+            {result.evidencia && result.evidencia.length > 0 && (
+              <div style={{ marginTop: 12, borderTop: "1px solid #eee", paddingTop: 8 }}>
+                <span style={{ fontSize: "0.75rem", color: "#666", fontWeight: "bold" }}>🌍 EVIDENCIA VERIFICADA:</span>
+                <ul style={{ margin: "4px 0 0 0", paddingLeft: 18, fontSize: "0.75rem", color: "#444" }}>
+                  {Array.isArray(result.evidencia) && result.evidencia.map((ev, i) => {
+                    const urlRegex = /(https?:\/\/[^\s]+)/g;
+                    const parts = ev.split(urlRegex);
+                    return (
+                      <li key={i}>
+                        {parts.map((part, j) => 
+                          urlRegex.test(part) ? (
+                            <a key={j} href={part} target="_blank" rel="noopener noreferrer" style={{ color: "#3b82f6", textDecoration: "underline" }}>
+                              {part}
+                            </a>
+                          ) : part
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
           </div>
 
           {/* Similares */}
@@ -457,22 +538,51 @@ export default function NexusForm() {
             <div style={styles.card}>
               <h3 style={styles.cardTitle}>🔗 Similares en el ecosistema</h3>
               <div style={styles.tagsWrap}>
-                {result.similares.map((s) => (
-                  <span key={s} style={styles.tag}>{s}</span>
+                {Array.isArray(result.similares) && result.similares.map((s, idx) => (
+                  <span key={`sim-${idx}-${typeof s === 'string' ? s : (s as any).name || 'rel'}`} style={styles.tag}>
+                    {typeof s === 'string' ? s : (s as any).name || 'Empresa Similar'}
+                  </span>
                 ))}
               </div>
             </div>
           )}
 
-          {/* Competidores */}
+          {/* Competidores Reales */}
           {(result.competidores?.length ?? 0) > 0 && (
             <div style={styles.card}>
-              <h3 style={styles.cardTitle}>⚔️ Competidores directos</h3>
+              <h3 style={styles.cardTitle}>⚔️ Competidores Reales</h3>
               <div style={styles.tagsWrap}>
-                {result.competidores.map((c) => (
-                  <span key={c} style={{ ...styles.tag, background: "#fff0f0", color: "#c0392b" }}>
-                    {c}
+                {Array.isArray(result.competidores) && result.competidores.map((c: any, idx) => (
+                  <span key={`real-comp-${idx}`} style={{...styles.tag, background: "#fff1f2", color: "#9f1239", border: "1px solid #fecdd3"}}>
+                    {typeof c === 'string' ? c : c.name}
                   </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Cuentas Objetivo (Leads) */}
+          {(result.clientes_potenciales?.length ?? 0) > 0 && (
+            <div style={styles.card}>
+              <h3 style={styles.cardTitle}>🎯 Cuentas Objetivo (Leads)</h3>
+              <div style={styles.tagsWrap}>
+                {Array.isArray(result.clientes_potenciales) && result.clientes_potenciales.map((l: any, idx) => (
+                  <a 
+                    key={`lead-${idx}`} 
+                    href={l.url || '#'}
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    style={{ 
+                      ...styles.tag, 
+                      background: "#f0f9ff", 
+                      color: "#0369a1",
+                      border: "1px solid #bae6fd",
+                      textDecoration: l.url ? "underline" : "none",
+                      cursor: l.url ? "pointer" : "default"
+                    }}
+                  >
+                    {l.name}
+                  </a>
                 ))}
               </div>
             </div>
@@ -492,12 +602,41 @@ export default function NexusForm() {
   // ── Render: Form ─────────────────────────────────────────────────────
   return (
     <div style={styles.wrap}>
+      {/* HUB SELECTOR */}
+      <div style={{ display: "flex", gap: 12, marginBottom: 20 }}>
+        {HUBS.map(hub => (
+          <button
+            key={hub.id}
+            onClick={() => {
+              setActiveHub(hub.id as any);
+              setBrief(prev => ({ ...prev, pais: "" })); // Reset pais when switching hubs
+            }}
+            style={{
+              flex: 1,
+              padding: "16px",
+              borderRadius: "16px",
+              border: "2px solid",
+              borderColor: activeHub === hub.id ? "#1a1a2e" : "#eee",
+              background: activeHub === hub.id ? "#1a1a2e" : "white",
+              color: activeHub === hub.id ? "white" : "#666",
+              cursor: "pointer",
+              fontWeight: "bold",
+              fontSize: "1rem",
+              transition: "all 0.2s",
+              boxShadow: activeHub === hub.id ? "0 4px 15px rgba(26,26,46,0.2)" : "none"
+            }}
+          >
+            {hub.icon} {hub.name}
+          </button>
+        ))}
+      </div>
+
       <div style={styles.header}>
         <span style={styles.headerIcon}>🛰️</span>
         <div>
-          <h1 style={styles.title}>Nexus Architect</h1>
+          <h1 style={styles.title}>NERV</h1>
           <p style={styles.subtitle}>
-            Inteligencia GTM — Ecosistema Fintech Latam
+            El sistema nervioso del ecosistema Fintech Latam
           </p>
         </div>
       </div>
@@ -542,8 +681,8 @@ export default function NexusForm() {
               onChange={handleChange}
             >
               <option value="">Selecciona...</option>
-              {PAISES.map((p) => (
-                <option key={p}>{p}</option>
+              {((activeHub === "latam" ? PAISES_LATAM : PAISES_EUROPA) as string[]).map((p) => (
+                <option key={p} value={p}>{p}</option>
               ))}
             </select>
           </div>
@@ -626,13 +765,13 @@ export default function NexusForm() {
           </div>
         </div>
         <div style={styles.infoBox}>
-          El Nexus Architect consultará las 2,500+ empresas del ecosistema
+          NERV consultará las 2,500+ empresas del ecosistema
           Fintech Latam para generar tu ficha de ataque personalizada.
         </div>
       </div>
 
       <div style={styles.smartPanel}>
-        <label style={styles.sectionLabel}>🛰️ Nexus Smart Discovery</label>
+        <label style={styles.sectionLabel}>🛰️ NERV Smart Discovery</label>
         
         {/* Nexus Dialogue Bubble */}
         {nexusResponse.msg && (
