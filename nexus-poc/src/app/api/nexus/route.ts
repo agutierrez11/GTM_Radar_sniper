@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateWithFallback } from "../../../lib/gemini";
 import { generateWithClaude } from "../../../lib/claude";
+import { generateWithGroq } from "../../../lib/groq";
 
 export const dynamic = "force-dynamic";
 
@@ -81,15 +82,19 @@ El campo "markdown" debe ser una ficha completa con:
 ## 🧠 Auditoría RaiSE
 `;
 
-    // USAR MOTOR RESILIENTE (Priorizar Claude)
+    // USAR MOTOR RESILIENTE (Priorizar GROQ)
     let response: any;
     try {
-      if (process.env.ANTHROPIC_API_KEY) {
-        console.log("USING_CLAUDE_ENGINE");
+      if (process.env.GROQ_API_KEY) {
+        console.log("USING_GROQ_ENGINE");
+        const groqData = await generateWithGroq(prompt);
+        response = { Object: groqData, cached: false };
+      } else if (process.env.ANTHROPIC_API_KEY) {
+        console.log("USING_CLAUDE_ENGINE_FALLBACK");
         const claudeData = await generateWithClaude(prompt);
         response = { Object: claudeData, cached: false };
       } else {
-        console.log("NO_ANTHROPIC_KEY_FOUND_FALLING_BACK_TO_GEMINI");
+        console.log("NO_ENGINE_KEYS_FOUND_FALLING_BACK_TO_GEMINI");
         response = await generateWithFallback(prompt);
       }
       

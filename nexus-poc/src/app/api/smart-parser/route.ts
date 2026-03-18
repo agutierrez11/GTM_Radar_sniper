@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 // import { generateWithFallback } from "@/lib/gemini";
 import { generateWithClaude } from "@/lib/claude";
+import { generateWithGroq } from "@/lib/groq";
 
 export const dynamic = "force-dynamic";
 
@@ -50,12 +51,15 @@ TEXTO DEL USUARIO:
     let responseData;
     let isCached = false;
     
-    if (process.env.ANTHROPIC_API_KEY) {
+    if (process.env.GROQ_API_KEY) {
+        console.log("USING_GROQ_ENGINE_FOR_SMART_PARSER");
+        responseData = await generateWithGroq(systemPrompt);
+    } else if (process.env.ANTHROPIC_API_KEY) {
         console.log("USING_CLAUDE_ENGINE_FOR_SMART_PARSER");
         responseData = await generateWithClaude(systemPrompt);
     } else {
-        console.log("NO_ANTHROPIC_KEY_FOUND_FOR_SMART_PARSER");
-        throw new Error("Missing Anthropic API Key");
+        console.log("NO_GROQ_OR_CLAUDE_KEY_FOUND_FOR_SMART_PARSER");
+        throw new Error("Missing AI API Keys");
     }
 
     return NextResponse.json({ ...responseData, cached: isCached });

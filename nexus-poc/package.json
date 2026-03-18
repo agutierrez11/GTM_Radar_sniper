@@ -16,6 +16,7 @@
     "lucide-react": "^0.475.0",
     "markdown-to-jsx": "^9.7.9",
     "next": "15.2.9",
+    "openai": "^6.32.0",
     "react": "19.0.0",
     "react-dom": "19.0.0"
   },
