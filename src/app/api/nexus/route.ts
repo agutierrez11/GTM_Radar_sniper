@@ -1,12 +1,3 @@
-The provided instruction describes changes for `next.config.ts` and `gemini.ts`, but the code document you provided is an API route file (e.g., `app/api/nexus/route.ts`). The "Code Edit" section attempts to insert snippets from `next.config.ts` and `gemini.ts` directly into this API route file, which would result in syntactically incorrect and non-functional code.
-
-Since my task is to make the change faithfully and ensure the resulting file is syntactically correct, and the provided "Code Edit" cannot be applied to the given document without breaking it, I cannot fulfill the request as stated.
-
-Please provide the correct `next.config.ts` and `gemini.ts` files if you wish for those specific changes to be applied, or clarify how the provided "Code Edit" should be integrated into the current document.
-
-I will return the original content as no valid change can be made to the provided document based on the instructions.
-
-```
 import { NextRequest, NextResponse } from "next/server";
 import { generateWithFallback } from "../../../lib/gemini";
 
@@ -33,28 +24,28 @@ REGLAS DE INTELIGENCIA ACTUALIZADAS (Reportes VISA/The Paypers 2026):
 - Marca nivel de confianza: CONFIRMADO (Datos Supabase o LatamFintech Hub) / INFERIDO (IA Knowledge + Patrones de Mercado) / PENDIENTE (Sin datos)
 
 BRIEF GTM:
-- Empresa consultante: ${brief.empresa}
-- Producto/Servicio: ${brief.producto}
-- País objetivo: ${brief.pais}
-- Vertical objetivo: ${brief.vertical}
-- Buyer persona: ${brief.buyer || "no especificado"}
-- Tier de deal: ${brief.tier}
-- Competidor URL: ${brief.url_competidor || "no proporcionado"}
-- Cliente ideal URL: ${brief.url_cliente_ideal || "no proporcionado"}
+- Empresa consultante: \${brief.empresa}
+- Producto/Servicio: \${brief.producto}
+- País objetivo: \${brief.pais}
+- Vertical objetivo: \${brief.vertical}
+- Buyer persona: \${brief.buyer || "no especificado"}
+- Tier de deal: \${brief.tier}
+- Competidor URL: \${brief.url_competidor || "no proporcionado"}
+- Cliente ideal URL: \${brief.url_cliente_ideal || "no proporcionado"}
 
 DATOS DE SUPABASE (empresas_v2):
-${empresa_supabase ? JSON.stringify(empresa_supabase, null, 2) : "No encontrada en base de datos"}
+\${empresa_supabase ? JSON.stringify(empresa_supabase, null, 2) : "No encontrada en base de datos"}
 
 BENCHMARK (empresas similares):
-${(benchmark?.length ?? 0) > 0 ? benchmark?.map((b: any) => b.empresa_similar).join(", ") : "Sin datos"}
+\${(benchmark?.length ?? 0) > 0 ? benchmark?.map((b: any) => b.empresa_similar).join(", ") : "Sin datos"}
 
 COMPETIDORES EN MISMA VERTICAL:
-${(competidores?.length ?? 0) > 0 ? competidores?.map((c: any) => c.name).join(", ") : "Sin datos"}
+\${(competidores?.length ?? 0) > 0 ? competidores?.map((c: any) => c.name).join(", ") : "Sin datos"}
 
 Genera el análisis completo. Responde SOLO con JSON válido:
 {
-  "empresa": "${brief.empresa}",
-  "tier": "${brief.tier}",
+  "empresa": "\${brief.empresa}",
+  "tier": "\${brief.tier}",
   "icp_score": <número 0-100>,
   "latido_mercado": "<señal reciente del mercado o [PENDIENTE - sin datos en tiempo real]>",
   "diagnostico": {
@@ -74,7 +65,7 @@ Genera el análisis completo. Responde SOLO con JSON válido:
   },
   "similares": ["empresa1", "empresa2", "empresa3"],
   "competidores": ["comp1", "comp2", "comp3"],
-  "discovery_mode": ${!empresa_supabase && (!competidores || competidores.length === 0) ? "true" : "false"},
+  "discovery_mode": \${!empresa_supabase && (!competidores || competidores.length === 0) ? "true" : "false"},
   "markdown": "<ficha completa en formato Markdown para Obsidian>"
 }
 
@@ -82,7 +73,7 @@ El campo "markdown" debe ser una ficha completa con:
 # {empresa}
 ## 💓 Latido del Mercado
 ## 🔬 Diagnóstico Nexus
-## ⚔️ Plan de Ataque (con ${brief.tier === "Tier1" ? "MEDDICII" : brief.tier === "Tier2" ? "SPIN" : "BANT"})
+## ⚔️ Plan de Ataque (con \${brief.tier === "Tier1" ? "MEDDICII" : brief.tier === "Tier2" ? "SPIN" : "BANT"})
 ## 🌊 Océano Azul
 ## 🧠 Auditoría RaiSE
 `;
@@ -95,26 +86,6 @@ El campo "markdown" debe ser una ficha completa con:
     // LOGGING DESACTIVADO TEMPORALMENTE
     // hasta crear tabla logs_busquedas
     let logId = null;
-    /*
-    try {
-      const { data: logEntry, error: logError } = await supabase
-        .from('logs_busquedas')
-        .insert([{
-          empresa_consultada: brief.empresa,
-          producto: brief.producto,
-          pais: brief.pais,
-          tier: brief.tier,
-          resultado_json: data
-        }])
-        .select('id')
-        .single();
-      
-      if (logEntry) logId = logEntry.id;
-      if (logError) console.error("Logging error details:", logError);
-    } catch (logError) {
-      console.error("Logging error catch:", logError);
-    }
-    */
 
     return NextResponse.json({ ...data, logId, cached: response.cached });
   } catch (error: any) {
@@ -128,4 +99,3 @@ El campo "markdown" debe ser una ficha completa con:
     );
   }
 }
-```
