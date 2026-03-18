@@ -312,13 +312,17 @@ export default function NexusForm() {
         }),
       });
 
-      if (!response.ok) throw new Error("Error en el análisis");
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Error en el análisis");
+      }
 
       const data: NexusResult = await response.json();
       setResult(data);
       setStep("result");
-    } catch (err) {
-      setError("Error generando la estrategia. Intenta de nuevo.");
+    } catch (err: any) {
+      console.error("DETAILED_FRONTEND_ERROR:", err);
+      setError(err.message || "Error generando la estrategia. Intenta de nuevo.");
       setStep("form");
     } finally {
       clearInterval(msgInterval);
