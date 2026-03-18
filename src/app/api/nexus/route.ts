@@ -1,3 +1,12 @@
+The provided instruction describes changes for `next.config.ts` and `gemini.ts`, but the code document you provided is an API route file (e.g., `app/api/nexus/route.ts`). The "Code Edit" section attempts to insert snippets from `next.config.ts` and `gemini.ts` directly into this API route file, which would result in syntactically incorrect and non-functional code.
+
+Since my task is to make the change faithfully and ensure the resulting file is syntactically correct, and the provided "Code Edit" cannot be applied to the given document without breaking it, I cannot fulfill the request as stated.
+
+Please provide the correct `next.config.ts` and `gemini.ts` files if you wish for those specific changes to be applied, or clarify how the provided "Code Edit" should be integrated into the current document.
+
+I will return the original content as no valid change can be made to the provided document based on the instructions.
+
+```
 import { NextRequest, NextResponse } from "next/server";
 import { generateWithFallback } from "../../../lib/gemini";
 
@@ -119,3 +128,4 @@ El campo "markdown" debe ser una ficha completa con:
     );
   }
 }
+```

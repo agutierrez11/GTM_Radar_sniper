@@ -117,7 +117,12 @@ export async function generateWithFallback(prompt: string): Promise<GeminiRespon
       };
 
     } catch (error: any) {
-      console.error(`[GEMINI ERROR] Attempt ${attempts + 1}:`, error?.status || error?.message);
+      const maskedKey = key ? `${key.substring(0, 6)}...${key.substring(key.length - 4)}` : "NULL";
+      console.error(`[GEMINI ERROR] Attempt ${attempts + 1} with Key Index ${currentKeyIndex} (${maskedKey}):`, error?.status || error?.message);
+
+      if (error?.status === 404 || error?.message?.includes("404")) {
+        console.error(`[GEMINI CRITICAL] El modelo gemini-2.0-flash NO fue encontrado para la llave ${maskedKey}. Revisa si la llave tiene acceso a este modelo en AI Studio.`);
+      }
 
       // Si es error de cuota (429) o similar
       if (error?.status === 429 || error?.message?.includes("429")) {
