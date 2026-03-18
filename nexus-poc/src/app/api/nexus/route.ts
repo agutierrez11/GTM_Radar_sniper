@@ -28,28 +28,28 @@ REGLAS DE INTELIGENCIA ACTUALIZADAS (Reportes VISA/The Paypers 2026):
 - Marca nivel de confianza: CONFIRMADO (Datos Supabase o LatamFintech Hub) / INFERIDO (IA Knowledge + Patrones de Mercado) / PENDIENTE (Sin datos)
 
 BRIEF GTM:
-- Empresa consultante: \${brief.empresa}
-- Producto/Servicio: \${brief.producto}
-- País objetivo: \${brief.pais}
-- Vertical objetivo: \${brief.vertical}
-- Buyer persona: \${brief.buyer || "no especificado"}
-- Tier de deal: \${brief.tier}
-- Competidor URL: \${brief.url_competidor || "no proporcionado"}
-- Cliente ideal URL: \${brief.url_cliente_ideal || "no proporcionado"}
+- Empresa consultante: ${brief.empresa}
+- Producto/Servicio: ${brief.producto}
+- País objetivo: ${brief.pais}
+- Vertical objetivo: ${brief.vertical}
+- Buyer persona: ${brief.buyer || "no especificado"}
+- Tier de deal: ${brief.tier}
+- Competidor URL: ${brief.url_competidor || "no proporcionado"}
+- Cliente ideal URL: ${brief.url_cliente_ideal || "no proporcionado"}
 
 DATOS DE SUPABASE (empresas_v2):
-\${empresa_supabase ? JSON.stringify(empresa_supabase, null, 2) : "No encontrada en base de datos"}
+${empresa_supabase ? JSON.stringify(empresa_supabase, null, 2) : "No encontrada en base de datos"}
 
 BENCHMARK (empresas similares):
-\${(benchmark?.length ?? 0) > 0 ? benchmark?.map((b: any) => b.empresa_similar).join(", ") : "Sin datos"}
+${(benchmark?.length ?? 0) > 0 ? benchmark?.map((b: any) => b.empresa_similar).join(", ") : "Sin datos"}
 
 COMPETIDORES EN MISMA VERTICAL:
-\${(competidores?.length ?? 0) > 0 ? competidores?.map((c: any) => c.name).join(", ") : "Sin datos"}
+${(competidores?.length ?? 0) > 0 ? competidores?.map((c: any) => c.name).join(", ") : "Sin datos"}
 
 Genera el análisis completo. Responde SOLO con JSON válido:
 {
-  "empresa": "\${brief.empresa}",
-  "tier": "\${brief.tier}",
+  "empresa": "${brief.empresa}",
+  "tier": "${brief.tier}",
   "icp_score": <número 0-100>,
   "latido_mercado": "<señal reciente del mercado o [PENDIENTE - sin datos en tiempo real]>",
   "diagnostico": {
@@ -69,7 +69,7 @@ Genera el análisis completo. Responde SOLO con JSON válido:
   },
   "similares": ["empresa1", "empresa2", "empresa3"],
   "competidores": ["comp1", "comp2", "comp3"],
-  "discovery_mode": \${!empresa_supabase && (!competidores || competidores.length === 0) ? "true" : "false"},
+  "discovery_mode": ${!empresa_supabase && (!competidores || competidores.length === 0) ? "true" : "false"},
   "markdown": "<ficha completa en formato Markdown para Obsidian>"
 }
 
@@ -77,7 +77,7 @@ El campo "markdown" debe ser una ficha completa con:
 # {empresa}
 ## 💓 Latido del Mercado
 ## 🔬 Diagnóstico Nexus
-## ⚔️ Plan de Ataque (con \${brief.tier === "Tier1" ? "MEDDICII" : brief.tier === "Tier2" ? "SPIN" : "BANT"})
+## ⚔️ Plan de Ataque (con ${brief.tier === "Tier1" ? "MEDDICII" : brief.tier === "Tier2" ? "SPIN" : "BANT"})
 ## 🌊 Océano Azul
 ## 🧠 Auditoría RaiSE
 `;
