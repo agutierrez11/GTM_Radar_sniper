@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { generateWithFallback } from "../../../lib/gemini";
 import { generateWithClaude } from "../../../lib/claude";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(req: NextRequest) {
   console.log(`NEXUS_API_DEPLOY_VERSION: 1.4.0 - CLAUDE_READY - RESILIENT_MODE`);
   try {
@@ -79,32 +81,40 @@ El campo "markdown" debe ser una ficha completa con:
 ## 🧠 Auditoría RaiSE
 `;
 
-    // USAR MOTOR RESILIENTE (Priorizar Claude si hay API Key)
-    let response;
-    if (process.env.ANTHROPIC_API_KEY) {
-      console.log("USING_CLAUDE_ENGINE");
-      const claudeData = await generateWithClaude(brief);
-      response = { data: claudeData, cached: false };
-    } else {
-      console.log("FALLING_BACK_TO_GEMINI");
-      response = await generateWithFallback(prompt);
+    // USAR MOTOR RESILIENTE (Priorizar Claude)
+    let response: any;
+    try {
+      if (process.env.ANTHROPIC_API_KEY) {
+        console.log("USING_CLAUDE_ENGINE");
+        const claudeData = await generateWithClaude(prompt);
+        response = { Object: claudeData, cached: false };
+      } else {
+        console.log("NO_ANTHROPIC_KEY_FOUND_FALLING_BACK_TO_GEMINI");
+        response = await generateWithFallback(prompt);
+      }
+      
+      const data = response.data || response.Object;
+      return NextResponse.json({ ...data, logId: null, cached: response.cached });
+    } catch (genError: any) {
+      console.error("GENERATION_FAILED, PROVIDING_MANUAL_PROMPT:", genError);
+      return NextResponse.json(
+        { 
+          error: "API_LIMIT_REACHED",
+          message: "API saturada o error en modelo.",
+          manual_prompt: prompt,
+          instructions: "Copia este prompt y pégalo en tu chat directo."
+        },
+        { status: 429 }
+      );
     }
-    const data = response.data;
-
-    // LOGGING: Registrar búsqueda para análisis de la PoC y Bucle de Calidad
-    // LOGGING DESACTIVADO TEMPORALMENTE
-    // hasta crear tabla logs_busquedas
-    let logId = null;
-
-    return NextResponse.json({ ...data, logId, cached: response.cached });
   } catch (error: any) {
     console.error("NEXUS_CRITICAL_ERROR:", error);
     return NextResponse.json(
       { 
-        error: "Nexus está tardando más de lo esperado debido a alta demanda. Reintenta en unos momentos.",
+        error: "CRITICAL_ERROR",
         details: error?.message || "Error desconocido en el servidor"
       },
-      { status: 503 }
+      { status: 500 }
     );
   }
 }

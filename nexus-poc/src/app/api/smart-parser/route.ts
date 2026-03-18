@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { generateWithFallback } from "@/lib/gemini";
+// import { generateWithFallback } from "@/lib/gemini";
+import { generateWithClaude } from "@/lib/claude";
+
+export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
@@ -43,8 +46,19 @@ TEXTO DEL USUARIO:
 "${prompt}"
 `;
 
-    const response = await generateWithFallback(systemPrompt);
-    return NextResponse.json({ ...response.data, cached: response.cached });
+    // USAR MOTOR CLAUDE PARA EVITAR CONGELAMIENTO
+    let responseData;
+    let isCached = false;
+    
+    if (process.env.ANTHROPIC_API_KEY) {
+        console.log("USING_CLAUDE_ENGINE_FOR_SMART_PARSER");
+        responseData = await generateWithClaude(systemPrompt);
+    } else {
+        console.log("NO_ANTHROPIC_KEY_FOUND_FOR_SMART_PARSER");
+        throw new Error("Missing Anthropic API Key");
+    }
+
+    return NextResponse.json({ ...responseData, cached: isCached });
   } catch (error: any) {
     console.error("Smart Parser Error:", error);
     return NextResponse.json(

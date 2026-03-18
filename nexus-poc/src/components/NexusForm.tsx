@@ -80,10 +80,9 @@ const TIERS = [
 ] as const;
 
 // ── Supabase Client ────────────────────────────────────────────────────
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://dummy.supabase.co";
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "dummy";
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 // ── Feedback Widget Component ──────────────────────────────────────────
 function FeedbackWidget({ logId, empresa }: { logId: number; empresa: string }) {
@@ -266,27 +265,40 @@ export default function NexusForm() {
 
     try {
       // 1. Buscar empresa en Supabase
-      const { data: empresaData } = await supabase
-        .from("empresas_v2")
-        .select("*")
-        .ilike("name", `%${brief.empresa}%`)
-        .limit(5);
+      let empresaData = null;
+      let benchmarkData = [];
+      let competidoresData = [];
+
+      try {
+        const { data } = await supabase
+          .from("empresas_v2")
+          .select("*")
+          .ilike("name", `%${brief.empresa}%`)
+          .limit(5);
+        empresaData = data;
+      } catch (e) { console.warn("Supabase fetch empresa_v2 failed", e); }
 
       // 2. Buscar similares en benchmark
-      const { data: benchmarkData } = await supabase
-        .from("benchmark_raw")
-        .select("empresa_similar, segmento")
-        .ilike("empresa_origen", `%${brief.empresa}%`)
-        .limit(10);
+      try {
+        const { data } = await supabase
+          .from("benchmark_raw")
+          .select("empresa_similar, segmento")
+          .ilike("empresa_origen", `%${brief.empresa}%`)
+          .limit(10);
+        benchmarkData = data || [];
+      } catch (e) { console.warn("Supabase fetch benchmark_raw failed", e); }
 
       // 3. Buscar competidores en misma vertical
-      const { data: competidoresData } = await supabase
-        .from("empresas_v2")
-        .select("name, website")
-        .eq("country", brief.pais.replace("México", "Mexico"))
-        .ilike("vertical_finnovista", `%${brief.vertical.split(" ")[0]}%`)
-        .order("icp_score", { ascending: false })
-        .limit(8);
+      try {
+        const { data } = await supabase
+          .from("empresas_v2")
+          .select("name, website")
+          .eq("country", brief.pais.replace("México", "Mexico"))
+          .ilike("vertical_finnovista", `%${brief.vertical.split(" ")[0]}%`)
+          .order("icp_score", { ascending: false })
+          .limit(8);
+        competidoresData = data || [];
+      } catch (e) { console.warn("Supabase fetch competidores failed", e); }
 
       // 4. Llamar al Nexus Architect API
       const response = await fetch("/api/nexus", {
