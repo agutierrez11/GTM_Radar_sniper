@@ -82,34 +82,44 @@ El campo "markdown" debe ser una ficha completa con:
 ## 🧠 Auditoría RaiSE
 `;
 
-    // USAR MOTOR RESILIENTE (Priorizar GROQ)
-    let response: any;
+    // MOTOR GROQ DIRECTO
     try {
-      if (process.env.GROQ_API_KEY) {
-        console.log("USING_GROQ_ENGINE");
-        const groqData = await generateWithGroq(prompt);
-        response = { Object: groqData, cached: false };
-      } else if (process.env.ANTHROPIC_API_KEY) {
-        console.log("USING_CLAUDE_ENGINE_FALLBACK");
-        const claudeData = await generateWithClaude(prompt);
-        response = { Object: claudeData, cached: false };
-      } else {
-        console.log("NO_ENGINE_KEYS_FOUND_FALLING_BACK_TO_GEMINI");
-        response = await generateWithFallback(prompt);
-      }
+      const groqResponse = await fetch(
+        "https://api.groq.com/openai/v1/chat/completions",
+        {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            model: "llama-3.1-70b-versatile",
+            messages: [{ role: "user", content: prompt }],
+            max_tokens: 2000,
+            response_format: { type: "json_object" }
+          })
+        }
+      );
+
+      const groqData = await groqResponse.json();
       
-      const data = response.data || response.Object;
-      return NextResponse.json({ ...data, logId: null, cached: response.cached });
+      if (!groqResponse.ok) {
+        throw new Error(groqData.error?.message || "Error en Groq API");
+      }
+
+      const text = groqData.choices[0].message.content;
+      const data = JSON.parse(text);
+
+      return NextResponse.json({ ...data, logId: null, cached: false });
     } catch (genError: any) {
-      console.error("GENERATION_FAILED, PROVIDING_MANUAL_PROMPT:", genError);
+      console.error("GENERATION_FAILED:", genError);
       return NextResponse.json(
         { 
-          error: "API_LIMIT_REACHED",
-          message: "API saturada o error en modelo.",
-          manual_prompt: prompt,
-          instructions: "Copia este prompt y pégalo en tu chat directo."
+          error: "GENERATION_ERROR",
+          message: genError?.message || "Error en la generación con Groq.",
+          manual_prompt: prompt
         },
-        { status: 429 }
+        { status: 500 }
       );
     }
   } catch (error: any) {
