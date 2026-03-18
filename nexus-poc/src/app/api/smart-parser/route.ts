@@ -47,22 +47,43 @@ TEXTO DEL USUARIO:
 "${prompt}"
 `;
 
-    // USAR MOTOR CLAUDE PARA EVITAR CONGELAMIENTO
+    // MOTOR GROQ DIRECTO
     let responseData;
-    let isCached = false;
-    
-    if (process.env.GROQ_API_KEY) {
-        console.log("USING_GROQ_ENGINE_FOR_SMART_PARSER");
-        responseData = await generateWithGroq(systemPrompt);
-    } else if (process.env.ANTHROPIC_API_KEY) {
-        console.log("USING_CLAUDE_ENGINE_FOR_SMART_PARSER");
-        responseData = await generateWithClaude(systemPrompt);
-    } else {
-        console.log("NO_GROQ_OR_CLAUDE_KEY_FOUND_FOR_SMART_PARSER");
-        throw new Error("Missing AI API Keys");
-    }
+    try {
+      const groqResponse = await fetch(
+        "https://api.groq.com/openai/v1/chat/completions",
+        {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            model: "llama-3.1-70b-versatile",
+            messages: [{ role: "user", content: systemPrompt }],
+            max_tokens: 1000,
+            response_format: { type: "json_object" }
+          })
+        }
+      );
 
-    return NextResponse.json({ ...responseData, cached: isCached });
+      const groqData = await groqResponse.json();
+      
+      if (!groqResponse.ok) {
+        throw new Error(groqData.error?.message || "Error en Groq API");
+      }
+
+      const text = groqData.choices[0].message.content;
+      responseData = JSON.parse(text);
+
+      return NextResponse.json({ ...responseData, cached: false });
+    } catch (genError: any) {
+      console.error("SMART_PARSER_GENERATION_FAILED:", genError);
+      return NextResponse.json(
+        { error: "Error en el procesamiento con Groq.", details: genError.message },
+        { status: 500 }
+      );
+    }
   } catch (error: any) {
     console.error("Smart Parser Error:", error);
     return NextResponse.json(
