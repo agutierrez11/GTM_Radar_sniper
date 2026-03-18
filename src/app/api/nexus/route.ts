@@ -1,11 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { generateWithFallback } from "@/lib/gemini";
-import { createClient } from "@supabase/supabase-js";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { generateWithFallback } from "../../../lib/gemini";
 
 export async function POST(req: NextRequest) {
   console.log(`NEXUS_API_DEPLOY_VERSION: 1.3.0 - RESILIENT_MODE - CACHE_ENABLED`);
