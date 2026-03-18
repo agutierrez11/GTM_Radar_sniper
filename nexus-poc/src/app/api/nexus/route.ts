@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateWithFallback } from "../../../lib/gemini";
+import { generateWithClaude } from "../../../lib/claude";
 
 export async function POST(req: NextRequest) {
-  console.log(`NEXUS_API_DEPLOY_VERSION: 1.3.0 - RESILIENT_MODE - CACHE_ENABLED`);
+  console.log(`NEXUS_API_DEPLOY_VERSION: 1.4.0 - CLAUDE_READY - RESILIENT_MODE`);
   try {
     const body = await req.json();
     console.log("NEXUS_REQUEST_BODY:", JSON.stringify(body, null, 2));
@@ -78,8 +79,16 @@ El campo "markdown" debe ser una ficha completa con:
 ## 🧠 Auditoría RaiSE
 `;
 
-    // USAR MOTOR RESILIENTE
-    const response = await generateWithFallback(prompt);
+    // USAR MOTOR RESILIENTE (Priorizar Claude si hay API Key)
+    let response;
+    if (process.env.ANTHROPIC_API_KEY) {
+      console.log("USING_CLAUDE_ENGINE");
+      const claudeData = await generateWithClaude(brief);
+      response = { data: claudeData, cached: false };
+    } else {
+      console.log("FALLING_BACK_TO_GEMINI");
+      response = await generateWithFallback(prompt);
+    }
     const data = response.data;
 
     // LOGGING: Registrar búsqueda para análisis de la PoC y Bucle de Calidad
