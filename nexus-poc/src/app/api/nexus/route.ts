@@ -112,18 +112,17 @@ Responde SOLO con JSON válido siguiendo esta estructura exacta:
 }
 `;
 
-    const prompt = isForensic === false ? genericPrompt : forensicPrompt;
+    const finalPrompt = isForensic === false ? genericPrompt : forensicPrompt;
 
-    // MOTOR GEMINI (Native Resilience Library - v2.0 Flash)
     try {
-      const gResp = await generateWithFallback(prompt);
+      const gResp = await generateWithFallback(finalPrompt);
       const data = gResp.data;
       return NextResponse.json({ ...data, logId: null, cached: gResp.cached });
     } catch (genError: any) {
       console.error("GEMINI_GENERATION_FAILED:", genError);
       console.warn("Iniciando Fallback a Groq (Llama 3.3)...");
       try {
-        const groqData = await generateWithGroq(prompt);
+        const groqData = await generateWithGroq(finalPrompt);
         return NextResponse.json({ ...groqData, logId: null, cached: false, provider: "groq" });
       } catch (groqError: any) {
         console.error("GROQ_GENERATION_FAILED:", groqError);
@@ -131,7 +130,7 @@ Responde SOLO con JSON válido siguiendo esta estructura exacta:
           { 
             error: "GENERATION_ERROR",
             message: genError?.message || "Error en la generación con Gemini y el fallback de Groq falló.",
-            manual_prompt: prompt
+            manual_prompt: finalPrompt
           },
           { status: 500 }
         );
