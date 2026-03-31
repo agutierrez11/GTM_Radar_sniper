@@ -12,12 +12,18 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-const geminiApiKey =
-  process.env.GEMINI_API_KEY_PROFESSIONAL ||
-  process.env.GEMINI_API_KEY_1 ||
-  ''
+const apiKeys = [
+  process.env.GEMINI_API_KEY_PROFESSIONAL, 
+  process.env.GEMINI_API_KEY_1,
+  process.env.GEMINI_API_KEY_2,
+  process.env.GEMINI_API_KEY_3,
+  process.env.GEMINI_API_KEY_4,
+  process.env.GEMINI_API_KEY_5,
+  process.env.NEXT_PUBLIC_GEMINI_API_KEY,
+  process.env.GEMINI_API_KEY,
+].filter(Boolean) as string[];
 
-const genAI = new GoogleGenerativeAI(geminiApiKey)
+let currentKeyIndex = 0;
 
 export async function GET(
   req: NextRequest,
@@ -100,10 +106,16 @@ sentiment debe ser exactamente: "bullish", "bearish", o "neutral".
 Solo información encontrada en la búsqueda. No inventes datos.
 `
 
-  try {
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-2.0-flash',
-    }, { apiVersion: 'v1beta' })
+  let lastError: any = null;
+  
+  for (let i = 0; i < apiKeys.length; i++) {
+    const key = apiKeys[(currentKeyIndex + i) % apiKeys.length];
+    const genAI = new GoogleGenerativeAI(key);
+    
+    try {
+      const model = genAI.getGenerativeModel({
+        model: 'gemini-2.0-flash',
+      }, { apiVersion: 'v1beta' })
 
     const tools = [
       { googleSearch: {} },
@@ -189,13 +201,26 @@ Solo información encontrada en la búsqueda. No inventes datos.
 
     if (updateError) console.error('Error guardando signal_context:', updateError)
 
-    return NextResponse.json({ success: true, signal_context: signalContext, cached: false })
+      currentKeyIndex = (currentKeyIndex + 1) % apiKeys.length;
+      return NextResponse.json({ success: true, signal_context: signalContext, cached: false })
 
-  } catch (err: any) {
-    console.error('Error Gemini market-pulse:', err)
-    return NextResponse.json(
-      { error: 'Error generando Latido del Mercado', detail: err.message },
-      { status: 500 }
-    )
+    } catch (err: any) {
+      console.error(`Error Gemini market-pulse with key ${i}:`, err);
+      lastError = err;
+      // Si el error es de cuota o 429, seguimos al siguiente loop
+      if (err?.status === 429 || err?.message?.includes("429")) {
+        continue;
+      }
+      // Otros errores (como modelo no encontrado) también rotamos
+      if (err?.status === 404 || err?.message?.includes("404")) {
+        continue;
+      }
+      break; // Errores fatales paramos
+    }
   }
+
+  return NextResponse.json(
+    { error: 'Error generando Latido del Mercado tras agotar pool de llaves', detail: lastError?.message },
+    { status: 500 }
+  );
 }

@@ -47,6 +47,11 @@ interface NervResult {
   discovery_mode?: boolean;
   logId?: number;
   empresaId?: number;
+  analisis_forense?: {
+    inferencia_raise: string;
+    friccion_tecnica: string;
+    dolor_financiero: string;
+  };
 }
 
 // ── Constants ──────────────────────────────────────────────────────────
@@ -260,10 +265,14 @@ export default function NervForm() {
   };
 
   const handleSubmit = async () => {
-    if (!brief.empresa || !brief.producto || !brief.pais || !brief.vertical) {
-      setError("Completa empresa, producto, país y vertical.");
+    // Para simplificar, si no hay país o vertical, asignamos "México" y "Fintech" por defecto
+    if (!brief.empresa || !brief.producto) {
+      setError("Completa empresa y producto.");
       return;
     }
+
+    if (!brief.pais) brief.pais = "México";
+    if (!brief.vertical) brief.vertical = "Payments & Remittances";
 
     setError(null);
     setLoading(true);
@@ -744,19 +753,18 @@ export default function NervForm() {
       {error && <div style={styles.errorBox}>{error}</div>}
 
       <div style={styles.section}>
-        <label style={styles.sectionLabel}>Tu empresa</label>
         <div style={styles.field}>
-          <label style={styles.label}>Nombre de tu empresa</label>
+          <label style={styles.label}>¿Con qué empresa quieres cerrar?</label>
           <input
             style={styles.input}
             name="empresa"
             value={brief.empresa}
             onChange={handleChange}
-            placeholder="Ej. Sumsub, EBANX, Stripe..."
+            placeholder="Ej. Nuvei, EBANX, Stripe..."
           />
         </div>
         <div style={styles.field}>
-          <label style={styles.label}>¿Qué vendes?</label>
+          <label style={styles.label}>¿Qué vendes tú?</label>
           <textarea
             style={styles.textarea}
             name="producto"
@@ -767,147 +775,28 @@ export default function NervForm() {
         </div>
       </div>
 
-      <div style={styles.divider} />
-
-      <div style={styles.section}>
-        <label style={styles.sectionLabel}>Mercado objetivo</label>
-        <div style={styles.row}>
-          <div style={styles.field}>
-            <label style={styles.label}>País</label>
-            <select
-              style={styles.select}
-              name="pais"
-              value={brief.pais}
-              onChange={handleChange}
-            >
-              <option value="">Selecciona...</option>
-              {((activeHub === "latam" ? PAISES_LATAM : PAISES_EUROPA) as string[]).map((p) => (
-                <option key={p} value={p}>{p}</option>
-              ))}
-            </select>
-          </div>
-          <div style={styles.field}>
-            <label style={styles.label}>Vertical</label>
-            <select
-              style={styles.select}
-              name="vertical"
-              value={brief.vertical}
-              onChange={handleChange}
-            >
-              <option value="">Selecciona...</option>
-              {VERTICALES.map((v) => (
-                <option key={v}>{v}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-        <div style={styles.field}>
-          <label style={styles.label}>
-            Buyer persona{" "}
-            <span style={styles.optional}>opcional</span>
-          </label>
-          <input
-            style={styles.input}
-            name="buyer"
-            value={brief.buyer}
-            onChange={handleChange}
-            placeholder="Ej. CTO de neobanco, VP Compliance fintech Serie B..."
-          />
-        </div>
-      </div>
-
-      <div style={styles.section}>
-        <label style={styles.sectionLabel}>Tipo de deal</label>
-        <div style={styles.tierGrid}>
-          {TIERS.map((t) => (
-            <div
-              key={t.id}
-              style={{
-                ...styles.tierCard,
-                ...(brief.tier === t.id ? styles.tierCardActive : {}),
-              }}
-              onClick={() => setBrief((p) => ({ ...p, tier: t.id as GTMBrief["tier"] }))}
-            >
-              <div style={styles.tierName}>{t.nombre}</div>
-              <div style={styles.tierDesc}>{t.desc}</div>
-            </div>
-          ))}
-        </div>
+      <div style={{ marginTop: '1rem', marginBottom: '2rem' }}>
+        <button
+          onClick={handleSubmit}
+          disabled={loading || !brief.empresa || !brief.producto}
+          style={{
+            ...styles.btnPrimary,
+            width: '100%',
+            opacity: (loading || !brief.empresa || !brief.producto) ? 0.5 : 1,
+            cursor: (loading || !brief.empresa || !brief.producto) ? 'not-allowed' : 'pointer'
+          }}
+        >
+          {loading ? "Generando Inteligencia..." : "Generar Dossier Forense"}
+        </button>
       </div>
 
       <div style={styles.divider} />
 
-      <div style={styles.section}>
-        <label style={styles.sectionLabel}>
-          Inteligencia competitiva{" "}
-          <span style={styles.optional}>opcional</span>
-        </label>
-        <div style={styles.row}>
-          <div style={styles.field}>
-            <label style={styles.label}>URL competidor principal</label>
-            <input
-              style={styles.input}
-              name="url_competidor"
-              value={brief.url_competidor}
-              onChange={handleChange}
-              placeholder="https://competidor.com"
-            />
-          </div>
-          <div style={styles.field}>
-            <label style={styles.label}>URL cliente ideal</label>
-            <input
-              style={styles.input}
-              name="url_cliente_ideal"
-              value={brief.url_cliente_ideal}
-              onChange={handleChange}
-              placeholder="https://clienteideal.com"
-            />
-          </div>
-        </div>
-        <div style={styles.infoBox}>
-          NERV consultará las 2,500+ empresas del ecosistema
-          Fintech Latam para generar tu ficha de ataque personalizada.
-        </div>
-      </div>
+      <div style={styles.divider} />
 
-      <div style={styles.smartPanel}>
-        <label style={styles.sectionLabel}>🛰️ NERV Smart Discovery</label>
-        
-        {/* Nexus Dialogue Bubble */}
-        {nexusResponse.msg && (
-          <div style={{
-            ...smartStyles.bubble, 
-            backgroundColor: nexusResponse.type === "error" ? "#fef2f2" : nexusResponse.type === "success" ? "#f0fdf4" : "#f0f9ff",
-            borderColor: nexusResponse.type === "error" ? "#fee2e2" : nexusResponse.type === "success" ? "#dcfce7" : "#e0f2fe",
-            color: nexusResponse.type === "error" ? "#991b1b" : nexusResponse.type === "success" ? "#166534" : "#075985",
-          }}>
-            {nexusResponse.msg}
-          </div>
-        )}
-
-        <div style={smartStyles.container}>
-          <input
-            style={smartStyles.input}
-            placeholder="Ej: Soy de Nuvei y busco casinos en Colombia..."
-            value={smartPrompt}
-            onChange={(e) => setSmartPrompt(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSmartDiscovery()}
-            disabled={parsing}
-          />
-          <button 
-            style={smartStyles.btn} 
-            onClick={handleSmartDiscovery}
-            disabled={parsing || !smartPrompt}
-          >
-            {parsing ? "🛰️ Analizando..." : "Auto-rellenar ⚡"}
-          </button>
-        </div>
-      </div>
-
-      <button style={styles.btnPrimary} onClick={handleSubmit}>
-        Generar estrategia de ataque →
-      </button>
-      <ContactCard />
+      <p style={{ fontSize: '12px', color: '#64748b', textAlign: 'center', margin: '20px 0' }}>
+        🚀 NERV consultará las 2,500+ empresas del ecosistema Fintech Latam para generar tu ficha de ataque personalizada.
+      </p>
     </div>
   );
 }
