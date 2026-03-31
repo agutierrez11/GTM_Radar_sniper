@@ -1,36 +1,43 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🛰️ NERV: Operation Nexo
 
-## Getting Started
+> **The Neural System of the Latam Fintech Ecosystem.**
+> Integrated GTM Intelligence powered by RaiSE v2.2 Engine.
 
-First, run the development server:
+NERV is a high-fidelity strategic intelligence platform designed to automate forensic analysis of the Fintech landscape in Latin America and Europe. It transforms raw market signals into actionable, McKinsey-grade sales dossiers.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## 🧠 Core Architecture: RaiSE v2.2
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The engine operates under the **RaiSE (Reliable AI-assisted Strategic Engineering)** protocol, a 4-stage forensic deduction framework:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1.  **Forensic Hypothesis**: Deducing the "Shadow Pain" of a target company based on market signals.
+2.  **Technical Friction**: Identifying the specific architectural hurdles preventing the target from solving that pain.
+3.  **Financial Risk**: Quantifying the cost of inaction (Churn, Fraud losses, OPEX).
+4.  **Tactical Resolution**: Generating an "Opening Argument" and a specific attack plan for sales pods.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 🛠 Tech Stack
 
-## Learn More
+- **Frontend**: Next.js 15.2 (React 19) + TailwindCSS 4 + Framer Motion.
+- **Backend**: Next.js API Routes (Serverless).
+- **AI Core**: Google Gemini 2.0 Flash (Stable) + Claude 3.5 (Audit Layer).
+- **Resilience**: Adaptive API Key Rotation & Multi-Model Fallback system (`lib/gemini.ts`).
+- **Database**: Supabase (PostgreSQL) + pgvector (Enabling RAG).
 
-To learn more about Next.js, take a look at the following resources:
+## 🚀 Roadmap: Towards Swarm Intelligence (v3.0)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Current work is focused on evolving from single-agent linear inference to **Universal Swarm Intelligence**, inspired by the MiroFish architecture:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- **[ ] Vector Memory (RAG)**: Full knowledge graph integration using Supabase pgvector.
+- **[ ] Agentic Debate (ReACT)**: Implementation of a multi-perspective reasoning loop (Investigate -> Critique -> Synthesize).
+- **[ ] Social Simulation**: Predictive modeling of market reactions using autonomous agent swarms.
 
-## Deploy on Vercel
+## 👨‍💻 Onboarding for Co-Founders
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Welcome to the bridge. To get started:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1.  **Review the Core**: Check `src/app/api/nexus/route.ts` for the main intelligence pipeline.
+2.  **Resilience Layer**: Study `src/lib/gemini.ts` to understand how we manage quota and failover across multiple API keys.
+3.  **Database Schema**: See `supabase_schema.sql` for the current data structure.
+4.  **Environment**: Copy `.env.example` (provided in the repo) and fill in your keys.
+
+---
+*NERV - Confidential GTM Infrastructure*
