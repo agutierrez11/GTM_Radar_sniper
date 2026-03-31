@@ -164,7 +164,7 @@ export function MarketPulse({ empresaId, empresaNombre, cachedSignal }: MarketPu
             )}
 
             <p className="text-white/20 text-xs font-mono">
-              {timeAgo(data.generated_at)} · gemini-3-flash-preview + Google Search
+              {timeAgo(data.generated_at)} · gemini-2.0-flash + Google Search
             </p>
           </div>
         )}
