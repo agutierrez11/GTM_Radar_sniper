@@ -12,38 +12,28 @@ const genAI = new GoogleGenerativeAI(geminiApiKey);
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 const queries = [
-  // Infraestructura / Open Finance / BaaS
-  "BaaS Banking as a Service LATAM startups 2026",
-  "Open Finance API hub LATAM México Colombia 2026",
-  "core banking fintech infraestructura LATAM 2026",
-  "orquestador de pagos LATAM API fintech 2026",
-  
-  // Wealthtech & Proptech
-  "wealthtech inversiones robo-advisor LATAM 2026",
-  "proptech real estate tokenización LATAM startups",
-  "fintech inversiones accesibles México Colombia Brasil 2026",
-  
-  // SME Lending / PyMEs
-  "SME lending factoring digital LATAM startups 2026",
-  "tarjetas corporativas gastos empresas LATAM fintech",
-  "capital de trabajo PyMEs fintech México Colombia 2026",
-  
-  // Fuentes estratégicas (InversorLatam)
-  "site:inversorlatam.com fintech startups LATAM 2026",
-  "site:inversorlatam.com infraestructura pagos adquirencia LATAM",
-  "site:inversorlatam.com levantamiento capital rondas fintech LATAM",
-  "site:inversorlatam.com open finance banking as a service LATAM",
-  
-  // Regiones inexploradas
-  "fintech Centroamérica Guatemala Costa Rica 2026",
-  "fintech Caribe República Dominicana Puerto Rico 2026",
-  "fintech Uruguay Paraguay startup ecosistema 2026",
-  "fintech Panamá Honduras El Salvador 2026",
-  
-  // IA aplicada a fintech
-  "IA inteligencia artificial fintech LATAM startups 2026",
-  "credit scoring IA alternativo LATAM fintech 2026",
-  "fraud detection fintech LATAM IA 2026"
+  // Adquirentes
+  "adquirentes bancarios LATAM México Colombia Brasil 2026",
+  "payment acquirers Latin America fintech 2026",
+  "adquirencia no bancaria LATAM startups pagos",
+  "acquiring fintech México Colombia Perú Chile 2026",
+  // iGaming
+  "iGaming operadores casino LATAM México Colombia 2026",
+  "gaming payments PSP LATAM fintech 2026",
+  "casino online pagos digitales México Argentina 2026",
+  "iGaming Latin America payment providers 2026",
+  "gambling fintech LATAM nuevos operadores 2026",
+  "betting payments LATAM fintech 2026",
+  // Fuentes especializadas
+  "site:latamfintech.co adquirentes pagos 2026",
+  "site:contxto.com iGaming fintech LATAM",
+  "Nuvei LATAM gaming payments competidores",
+  "Paysafe Worldpay LATAM iGaming alternativas",
+  // Venezuela y otros Acquirers
+  "Consorcio Credicard Venezuela adquirente pagos",
+  "Suiche 7B Venezuela pagos fintech",
+  "adquirentes Venezuela Bolivia Ecuador fintech 2026",
+  "Mercantil Banco Banesco BBVA Provincial Venezuela pagos"
 ];
 
 async function main() {

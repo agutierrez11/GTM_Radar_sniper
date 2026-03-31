@@ -15,7 +15,6 @@ const apiKeys = [
   process.env.GEMINI_API_KEY_3,
   process.env.GEMINI_API_KEY_4,
   process.env.GEMINI_API_KEY_5,
-  process.env.GEMINI_API_KEY,
 ].filter(Boolean) as string[];
 
 let currentKeyIndex = 0;
@@ -29,7 +28,8 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
  * Genera un hash SHA256 de un string
  */
 function hashPrompt(prompt: string): string {
-  return crypto.createHash("sha256").update(prompt).digest("hex");
+  // Hard Reset v5.1: Invalida el caché médico anterior añadiendo un salt forense
+  return crypto.createHash("sha256").update(prompt + "v5.1-forensic").digest("hex");
 }
 
 /**
@@ -80,7 +80,7 @@ export async function generateWithFallback(prompt: string): Promise<GeminiRespon
 
     try {
       const genAI = new GoogleGenerativeAI(key);
-      const modelsToTry = ["gemini-3-flash-preview", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"];
+      const modelsToTry = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"];
       let lastError: any = null;
 
       for (const modelName of modelsToTry) {

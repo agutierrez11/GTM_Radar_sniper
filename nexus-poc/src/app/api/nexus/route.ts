@@ -1,168 +1,150 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateWithFallback } from "../../../lib/gemini";
 import { generateWithClaude } from "../../../lib/claude";
-import { generateWithDeepSeek } from "../../../lib/deepseek";
 import { generateWithGroq } from "../../../lib/groq";
-import { createClient } from "@supabase/supabase-js";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
-  console.log(`NEXUS_API_DEPLOY_VERSION: 1.5.0 - RATE_LIMIT_ACTIVE`);
-  const forwarded = req.headers.get("x-forwarded-for");
-  const ip = forwarded ? forwarded.split(/, /)[0] : "127.0.0.1";
-
+  console.log(`NEXUS_API_DEPLOY_VERSION: 1.4.0 - CLAUDE_READY - RESILIENT_MODE`);
   try {
     const body = await req.json();
-    const { brief, empresa_supabase, is_minimal, is_surgical } = body;
+    console.log("NEXUS_REQUEST_BODY:", JSON.stringify(body, null, 2));
+    const { brief, empresa_supabase, benchmark, competidores, clientes_potenciales, isForensic } = body;
 
-    // 🛡️ EMERGENCY RATE LIMIT (3 per IP per 24h)
-    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-    try {
-      const { count, error: countError } = await supabase
-        .from("logs_busquedas")
-        .select("*", { count: "exact", head: true })
-        .eq("ip_address", ip)
-        .gte("created_at", yesterday);
+    const forensicPrompt = `
+Eres NERV — el sistema de inteligencia forense GTM (v5.1). 
+Tu ADN es **RaiSE v2.2** (Reliable AI-assisted Software Engineering). No eres un generador de contenido; eres un sistema de inferencia.
 
-      if (!countError && count !== null && count >= 3) {
-        return NextResponse.json(
-          { 
-            error: "RATE_LIMIT_EXCEEDED",
-            message: "Has alcanzado el límite de consultas gratuitas. Escríbenos a hi@woad.ai para acceso completo."
-          },
-          { status: 429 }
-        );
-      }
-    } catch (e) {
-      console.warn("Rate limit check failed (table might be missing), bypassing for now...");
-    }
+PROTOCOLO DE RAZONAMIENTO (PASO A PASO):
+1. **SNR Audit:** Filtra la data de Supabase. Descarta lo genérico.
+2. **Heurística de Señal (H1):** Busca discrepancias entre triggers regulatorios y oferta actual.
+3. **Inferencia Selectiva:** DEDUCE lo que no está escrito (ej: fricción por cambios en ${brief.pais}).
+4. **Jidoka Audit:** Borra frases genéricas. Si no hay evidencia, marca [SÓLO INFERIDO].
 
-    const prompt = is_surgical 
-      ? `
-Eres NERV — en modo SURGICAL STRIKE (ABM).
-Tu misión es diseñar un plan de ataque táctico de ${brief.empresa} contra ${brief.target_account}.
+IDENTIDAD DE LOS ACTORES:
+- **CAZADOR (Vendedor):** ${brief.empresa}
+- **ARMA (Producto):** ${brief.producto}
+- **PRESA (Mercado Objetivo):** Empresas del sector **${brief.vertical}** en **${brief.pais}** (Foco: ${brief.tier}).
 
-OBJETIVO:
-1. Usa Google Search para encontrar los "puntos de dolor" actuales, noticias financieras o movimientos estratégicos de ${brief.target_account} en las últimas 4 semanas.
-2. Cruza esos dolores con el producto de ${brief.empresa} (${brief.producto}).
-3. Define el "Diagnóstico" (Problema detectado en ${brief.target_account}) y el "Riesgo" (consecuencia real).
-4. Escribe una "Apertura" que sea imposible de ignorar para un C-Level de ${brief.target_account}.
+REGLA DE PERSPECTIVA (CRÍTICA):
+- **NO analices la situación de ${brief.empresa}.** Ellos ya están bien; ellos son los que venden.
+- **Analiza la FRICCIÓN de la PRESA.** ¿Qué problemas técnicos o financieros sufren las empresas de ${brief.vertical} en ${brief.pais} hoy mismo?
+- Tu objetivo es identificar por qué la PRESA necesita el ARMA de ${brief.empresa} para sobrevivir.
 
-REGLA DE ORO:
-- Cero generalidades. Habla de DATOS REALES encontrados en la búsqueda de ${brief.target_account}.
-- El mensaje debe ser: "Vi que [Señal Real] y por eso ${brief.empresa} puede [Solución]".
+GOBERNANZA DE DATOS: 
+- Prohibido mostrar metadatos técnicos (ej: "source", "radar_co_2025"). 
+- Traduce tags a "Presencia confirmada en radares 2025".
 
-Llama a 'generarDiagnosticoGTM' con los resultados.
-`
-      : `
-Eres NERV — el sistema nervioso de inteligencia GTM especializado en el ecosistema Fintech y Pagos de Latam.
-Tu única misión es ser el CO-PILOTO de GTM de ${brief.empresa}.
+FILTROS DE EVIDENCIA (Ground Truth):
+- País: ${brief.pais} (Prioriza SPEI/A2A si es MX, PIX si es BR, Ley de Open Finance si es CO).
+- Vertical: ${brief.vertical} (Homologa: si es iGaming, busca regulación de juegos y apuestas; si es Pagos, busca orquestación y fraude).
 
-INFERENCIA (Novedad):
-- NERV conoce a 2,500+ empresas del ecosistema Latam. Si el usuario no da país o vertical, tú los infieres desde el nombre: ${brief.empresa}.
-- Si es una empresa nueva fuera del radar, búscala primero en Google a través de Search.
+ESTRUCTURA DEL DOSSIER FORENSE:
+1. **Fricción Operativa (De la PRESA):** El problema técnico que sufren las empresas objetivo.
+2. **Dolor Crítico (De la PRESA):** El riesgo financiero o regulatorio si no compran el ARMA.
+3. **Resolución Táctica:** Cómo ${brief.empresa} (el CAZADOR) resuelve ese dolor específico.
 
-ROLES:
-- empresa_usuario: ${brief.empresa} — es SIEMPRE quien VENDE / usa NERV.
-- producto_usuario: ${brief.producto} — lo que vende ${brief.empresa}.
-- Etapa del deal: ${brief.tier}
+DATOS DE SUPABASE (Empresas similares o señales):
+${empresa_supabase ? JSON.stringify(empresa_supabase, null, 2) : "No encontrada en base de datos"}
 
-Llama a 'generarDiagnosticoGTM' con los resultados.
+COMPETIDORES REALES (A quién debe vencer ${brief.empresa}):
+${(competidores?.length ?? 0) > 0 ? JSON.stringify(competidores, null, 2) : "[]"}
+
+Genera el análisis completo. Responde SOLO con JSON válido:
+{
+  "empresa": "${brief.empresa}",
+  "tier": "${brief.tier}",
+  "icp_score": <int 0-100>,
+  "latido_mercado": "<Trigger real en ${brief.pais}>",
+  "analisis_forense": {
+    "inferencia_raise": "<Razonamiento heurístico: Por qué deduces este dolor específico>",
+    "friccion_tecnica": "<El cuello de botella operativo real>",
+    "dolor_financiero": "<El costo de NO usar ${brief.producto}>"
+  },
+  "diagnostico": {
+    "friccion_operativa": "<Situación real que sufre la PRESA en ${brief.pais}>",
+    "dolor_critico": "<Riesgo financiero/legal inminente para la PRESA>",
+    "resolucion_tactica": "<Inyección de ${brief.empresa} para eliminar el dolor>"
+  },
+  "plan_ataque": {
+    "schwerpunkt": "<El tomador de decisiones en la PRESA>",
+    "flanqueo": "<Cómo derrotar a competidores atacando su falta de especialización>",
+    "apertura": "<Gancho directo a la yugular del dolor de la PRESA>"
+  },
+  "auditoria": {
+    "snr_score": <int 0-100>,
+    "confianza": "<ALTO|MEDIO|BAJO>",
+    "sesgo": "<Qué estás asumiendo de la PRESA sin evidencia directa>"
+  },
+  "markdown": "<Ficha forense completa en Markdown>"
+}
+
+REGLA CRÍTICA: PROHIBIDO usar las palabras "Resfriado", "Gripe" o "Pañuelo". 
+Usa EXCLUSIVAMENTE terminología de negocios y ventas estratégicas.
 `;
 
-    // PHASE 1: EXPLORADOR (GEMINI TOOL COMBINATION)
+    const genericPrompt = `
+Genera un análisis de ventas genérico para ${brief.empresa} vendiendo ${brief.producto} en ${brief.pais} para el sector ${brief.vertical}.
+Sé vago, usa lenguaje corporativo estándar y no profundices en datos forenses ni regulatorios.
+Responde SOLO con JSON válido siguiendo esta estructura exacta:
+{
+  "empresa": "${brief.empresa}",
+  "tier": "${brief.tier}",
+  "icp_score": 75,
+  "latido_mercado": "El mercado está creciendo de forma estable.",
+  "diagnostico": {
+    "friccion_operativa": "El mercado es competitivo y las empresas buscan digitalizarse.",
+    "dolor_critico": "Necesidad de mejorar la eficiencia operativa y reducir costos.",
+    "resolucion_tactica": "Usar la tecnología de ${brief.empresa} para optimizar sus procesos."
+  },
+  "plan_ataque": {
+    "schwerpunkt": "Gerentes de IT y Finanzas",
+    "flanqueo": "Resaltar que somos líderes globales y tenemos buen soporte.",
+    "apertura": "Hola, ¿cómo estás? Me gustaría hablarte de nuestras soluciones de pago."
+  },
+  "auditoria": {
+    "confianza": "ALTO",
+    "abogado_diablo": "La competencia es fuerte.",
+    "sesgo": "Ninguno"
+  },
+  "markdown": "# Análisis Genérico\nEste es un análisis estándar sin profundidad forense."
+}
+`;
+
+    const prompt = isForensic === false ? genericPrompt : forensicPrompt;
+
+    // MOTOR GEMINI (Native Resilience Library - v2.0 Flash)
     try {
-      const { GoogleGenerativeAI } = require("@google/generative-ai");
-      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY_PROFESSIONAL || process.env.GEMINI_API_KEY_1 || process.env.GEMINI_API_KEY);
-      const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" }, { apiVersion: "v1beta" });
-
-      const tools = [
-        { googleSearch: {} },
-        {
-          functionDeclarations: [{
-            name: "generarDiagnosticoGTM",
-            description: "Genera el diagnóstico estratégico y plan de ataque basado en datos reales.",
-            parameters: {
-              type: "OBJECT",
-              properties: {
-                latido_mercado: { type: "STRING" },
-                diagnostico: {
-                  type: "OBJECT",
-                  properties: {
-                    resfriado: { type: "STRING" },
-                    gripe: { type: "STRING" },
-                    panuelo: { type: "STRING" }
-                  }
-                },
-                plan_ataque: {
-                  type: "OBJECT",
-                  properties: {
-                    schwerpunkt: { type: "STRING" },
-                    flanqueo: { type: "STRING" },
-                    apertura: { type: "STRING" }
-                  }
-                },
-                evidencia: { type: "ARRAY", items: { type: "STRING" } },
-                icp_score: { type: "NUMBER" },
-                similares: { type: "ARRAY", items: { type: "STRING" } }
-              },
-              required: ["latido_mercado", "diagnostico", "plan_ataque", "evidencia", "icp_score"]
-            }
-          }]
-        }
-      ];
-
-      const result = await model.generateContent({
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
-        tools,
-        toolConfig: { includeServerSideToolInvocations: true }
-      });
-
-      const parts = result.response.candidates[0].content.parts;
-      const functionCallPart = parts.find((p: any) => p.functionCall);
-      
-      let data: any = {};
-      if (functionCallPart) {
-        data = functionCallPart.functionCall.args;
-      } else {
-        const text = parts.map((p: any) => p.text).join("");
-        const cleaned = text.replace(/```json\n?|```/g, "").trim();
-        try { data = JSON.parse(cleaned); } catch (e) { data = { markdown: text }; }
-      }
-
-      // Final Response
-      const finalResponse = {
-        ...data,
-        empresa: brief.empresa,
-        tier: brief.tier,
-        markdown: data.markdown || `# ${brief.empresa} - Plan de Ataque\n\n${data.latido_mercado || ""}`
-      };
-
-      // 📝 LOG THE SEARCH
-      try {
-        await supabase.from("logs_busquedas").insert({
-          ip_address: ip,
-          empresa_atacar: brief.empresa,
-          producto_vendedor: brief.producto,
-          tier: brief.tier,
-          data_result: finalResponse
-        });
-      } catch (logErr) {
-        console.warn("Logging failed:", logErr);
-      }
-
-      return NextResponse.json(finalResponse);
+      const gResp = await generateWithFallback(prompt);
+      const data = gResp.data;
+      return NextResponse.json({ ...data, logId: null, cached: gResp.cached });
     } catch (genError: any) {
-      console.error("GENERATION_FAILED:", genError);
-      return NextResponse.json({ error: "GENERATION_ERROR", message: genError.message }, { status: 500 });
+      console.error("GEMINI_GENERATION_FAILED:", genError);
+      console.warn("Iniciando Fallback a Groq (Llama 3.3)...");
+      try {
+        const groqData = await generateWithGroq(prompt);
+        return NextResponse.json({ ...groqData, logId: null, cached: false, provider: "groq" });
+      } catch (groqError: any) {
+        console.error("GROQ_GENERATION_FAILED:", groqError);
+        return NextResponse.json(
+          { 
+            error: "GENERATION_ERROR",
+            message: genError?.message || "Error en la generación con Gemini y el fallback de Groq falló.",
+            manual_prompt: prompt
+          },
+          { status: 500 }
+        );
+      }
     }
   } catch (error: any) {
-    return NextResponse.json({ error: "CRITICAL_ERROR", details: error.message }, { status: 500 });
+    console.error("NEXUS_CRITICAL_ERROR:", error);
+    return NextResponse.json(
+      { 
+        error: "CRITICAL_ERROR",
+        details: error?.message || "Error desconocido en el servidor"
+      },
+      { status: 500 }
+    );
   }
 }

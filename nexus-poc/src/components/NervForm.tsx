@@ -3,13 +3,20 @@
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import ContactCard from "./ContactCard";
-import ReportView from "./ReportView";
+import CommentsSection from "./CommentsSection";
+import { MarketPulse } from "./MarketPulse";
+import { detectProductCategory } from "@/lib/product-categories";
 
 // ── Types ──────────────────────────────────────────────────────────────
 interface GTMBrief {
   empresa: string;
   producto: string;
+  pais: string;
+  vertical: string;
+  buyer: string;
   tier: "Tier1" | "Tier2" | "Tier3";
+  url_competidor: string;
+  url_cliente_ideal: string;
 }
 
 interface NervResult {
@@ -18,9 +25,9 @@ interface NervResult {
   icp_score: number;
   latido_mercado: string;
   diagnostico: {
-    resfriado: string;
-    gripe: string;
-    panuelo: string;
+    friccion_operativa: string;
+    dolor_critico: string;
+    resolucion_tactica: string;
   };
   plan_ataque: {
     schwerpunkt: string;
@@ -35,62 +42,226 @@ interface NervResult {
   similares: string[];
   competidores: { name: string; url: string | null }[];
   clientes_potenciales?: { name: string; url: string | null }[];
+  evidencia?: string[];
   markdown: string;
+  discovery_mode?: boolean;
   logId?: number;
   empresaId?: number;
 }
 
 // ── Constants ──────────────────────────────────────────────────────────
+const HUBS = [
+  { id: "latam", name: "Latam Hub", icon: "🌎" },
+  { id: "europe", name: "Europe Hub", icon: "🇪🇺" },
+];
+
+const PAISES_LATAM = [
+  "México", "Colombia", "Brasil", "Chile",
+  "Argentina", "Perú", "Toda Latam",
+];
+
+const PAISES_EUROPA = [
+  "UK", "Germany", "Sweden", "Netherlands",
+  "France", "Spain", "Toda Europa",
+];
+
+const VERTICALES = [
+  "Payments & Remittances", "Lending", "Digital Banking",
+  "Tech Infrastructure", "Open Finance", "Insurtech",
+  "Enterprise Financial Mgmt", "Crypto & Blockchain",
+  "Wealth Management", "Proptech", "Crowdfunding",
+  "Personal Financial Management",
+];
+
 const TIERS = [
   {
     id: "Tier1",
-    nombre: "Primera reunión — nunca hemos hablado",
-    desc: "Schwerpunkt · Sandler",
+    nombre: "Tier 1 — Estratégico",
+    desc: "MEDDICII · Schwerpunkt · Sandler",
+    color: "#1a1a2e",
   },
   {
     id: "Tier2",
-    nombre: "Ya hay interés — están evaluando",
+    nombre: "Tier 2 — Técnico",
     desc: "Flanqueo · SPIN selling",
+    color: "#16213e",
   },
   {
     id: "Tier3",
-    nombre: "Necesito cerrar — empujar decisión",
-    desc: "BANT · Closing Protocol",
+    nombre: "Tier 3 — Volumen",
+    desc: "Predictable Revenue · BANT",
+    color: "#0f3460",
   },
 ] as const;
 
+// ── Supabase Client (Imported from @/lib/supabase) ──────────────────────
+
+// ── Feedback Widget Component ──────────────────────────────────────────
+function FeedbackWidget({ logId, empresa }: { logId: number; empresa: string }) {
+  const [voted, setVoted] = useState<boolean | null>(null);
+  const [comment, setComment] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+
+  const handleVote = async (isRelevant: boolean) => {
+    setVoted(isRelevant);
+    try {
+      await supabase
+        .from("logs_busquedas")
+        .update({ es_relevante: isRelevant })
+        .eq("id", logId);
+    } catch (err) {
+      console.error("Error voting:", err);
+    }
+  };
+
+  const handleSubmitComment = async () => {
+    try {
+      await supabase
+        .from("logs_busquedas")
+        .update({ feedback_texto: comment })
+        .eq("id", logId);
+      setSubmitted(true);
+    } catch (err) {
+      console.error("Error submitting comment:", err);
+    }
+  };
+
+  return (
+    <div style={styles.feedbackWrap}>
+      <h4 style={styles.feedbackTitle}>¿Es este plan relevante para {empresa}?</h4>
+      <p style={styles.feedbackSubtitle}>Ayúdanos a calibrar la inteligencia de NERV.</p>
+      
+      {!submitted ? (
+        <>
+          <div style={styles.feedbackBtnWrap}>
+            <button 
+              style={{...styles.feedbackBtn, ...(voted === true ? styles.feedbackBtnActive : {})}}
+              onClick={() => handleVote(true)}
+            >
+              🚀 Sí, es preciso
+            </button>
+            <button 
+              style={{...styles.feedbackBtn, ...(voted === false ? styles.feedbackBtnActive : {})}}
+              onClick={() => handleVote(false)}
+            >
+              🤔 Podría mejorar
+            </button>
+          </div>
+          
+          {voted !== null && (
+            <div style={styles.feedbackInputWrap}>
+              <textarea 
+                style={styles.textarea}
+                placeholder="¿Algún detalle adicional?"
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+              />
+              <button 
+                style={{...styles.btnPrimary, marginTop: 12}} 
+                onClick={handleSubmitComment}
+              >
+                Enviar validación
+              </button>
+            </div>
+          )}
+        </>
+      ) : (
+        <div style={styles.feedbackThanks}>
+          ✨ ¡Gracias! Tu feedback ha sido registrado para mejorar el modelo.
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main Component ─────────────────────────────────────────────────────
 export default function NervForm() {
+  const [activeHub, setActiveHub] = useState<"latam" | "europe">("latam");
   const [brief, setBrief] = useState<GTMBrief>({
     empresa: "",
     producto: "",
+    pais: "",
+    vertical: "",
+    buyer: "",
     tier: "Tier1",
+    url_competidor: "",
+    url_cliente_ideal: "",
   });
 
   const [loading, setLoading] = useState(false);
+  const [smartPrompt, setSmartPrompt] = useState("");
+  const [parsing, setParsing] = useState(false);
   const [result, setResult] = useState<NervResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [step, setStep] = useState<"form" | "loading" | "result">("form");
   const [loadingMsg, setLoadingMsg] = useState("");
+  const [isForensic, setIsForensic] = useState(true);
+  const [nexusResponse, setNexusResponse] = useState<{
+    msg: string | null;
+    type: "guide" | "error" | "success" | null;
+  }>({ msg: "¡Hola! ¿Qué empresa quieres analizar hoy? (Ej: Nuvei en Brasil)", type: "guide" });
 
   const LOADING_MSGS = [
     "Consultando universo Fintech Latam...",
-    "Activando protocolo NERV...",
-    "Detectando latido del mercado...",
-    "Calculando Foco estratégico...",
-    "Auditando sesgos...",
-    "Generando ficha de ataque...",
+    "Activando protocolos de Inteligencia Forense...",
+    "Detectando señales reales (10-Ks, News)...",
+    "Calculando Schwerpunkt estratégico...",
+    "Ejecutando /rai-quality-review...",
+    "Auditando sesgos de datos...",
+    "Generando Dossier de Alta Fidelidad...",
   ];
 
+  const handleSmartDiscovery = async () => {
+    if (!smartPrompt.trim()) return;
+    setParsing(true);
+    try {
+      const resp = await fetch("/api/smart-parser", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: smartPrompt }),
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        
+        // 1. Validar Relevancia (Lead Guard)
+        if (data.es_relevante === false) {
+          setNexusResponse({ 
+            msg: `🛡️ Acceso Denegado: ${data.motivo_rechazo || "NERV se enfoca solo en Fintech, Payments y Retailers de alto impacto para garantizar calidad."}`, 
+            type: "error" 
+          });
+          return;
+        }
+
+        // 2. Actualizar Brief
+        setBrief((prev) => ({ ...prev, ...data }));
+
+        // 3. Manejar Guía o Éxito
+        if (data.pregunta_guia) {
+          setNexusResponse({ msg: data.pregunta_guia, type: "guide" });
+        } else {
+          setNexusResponse({ msg: "🎯 Puntería Perfecta. He rellenado el formulario. ¿Deseas ajustar algo o generar el análisis?", type: "success" });
+          setSmartPrompt(""); 
+        }
+      }
+    } catch (err) {
+      console.error("Parser error:", err);
+      setNexusResponse({ msg: "Hubo un error en la conexión con el motor NERV.", type: "error" });
+    } finally {
+      setParsing(false);
+    }
+  };
+
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
   ) => {
     setBrief((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
   const handleSubmit = async () => {
-    if (!brief.empresa || !brief.producto) {
-      setError("Completa qué empresa quieres atacar y qué vendes tú.");
+    if (!brief.empresa || !brief.producto || !brief.pais || !brief.vertical) {
+      setError("Completa empresa, producto, país y vertical.");
       return;
     }
 
@@ -98,6 +269,7 @@ export default function NervForm() {
     setLoading(true);
     setStep("loading");
 
+    // Rotar mensajes de carga
     let msgIdx = 0;
     setLoadingMsg(LOADING_MSGS[0]);
     const msgInterval = setInterval(() => {
@@ -106,28 +278,131 @@ export default function NervForm() {
     }, 2000);
 
     try {
-      // Inference from Supabase
+      // 1. Buscar empresa en Supabase
       let empresaData = null;
+      let benchmarkData: any[] = [];
+      let competidoresData: { name: string; url: string | null }[] = [];
+      let clientesPotencialesData: any[] = [];
+
       try {
         const { data: searchData } = await supabase
           .from("empresas_v2")
           .select("*")
           .ilike("name", `%${brief.empresa}%`)
           .limit(1);
+        
         if (searchData && searchData.length > 0) {
           empresaData = searchData[0];
+          console.log('empresaData encontrada:', empresaData?.id, empresaData?.name);
         }
+      } catch (e) { console.warn("Supabase fetch empresa_v2 failed", e); }
+
+      // 2. Buscar similares en benchmark
+      try {
+        const { data } = await supabase
+          .from("benchmark_raw")
+          .select("empresa_similar, segmento")
+          .ilike("empresa_origen", brief.empresa)
+          .limit(10);
+        benchmarkData = data || [];
+      } catch (e) { console.warn("Supabase fetch benchmark_raw failed", e); }
+
+      // 3. Buscar Competidores Reales y Clientes Potenciales
+      try {
+        // --- QUERY 1: COMPETIDORES REALES (Priorizando Verificados) ---
+        // Buscamos directamente la fila de la empresa para ver sus rivales verificados
+        const companyNameTrimmed = brief.empresa?.trim();
+        const { data: verifiedRow } = await supabase
+          .from("empresas_v2")
+          .select("competitors_verified")
+          .ilike("name", `%${companyNameTrimmed}%`)
+          .maybeSingle();
+
+        if (verifiedRow?.competitors_verified && verifiedRow.competitors_verified.length > 0) {
+          console.log("✅ Usando competidores VERIFICADOS del Enjambre");
+          competidoresData = verifiedRow.competitors_verified.map((name: string) => ({ name, url: null }));
+        } else {
+          // Fallback: Búsqueda por Categoría de Producto (DETECTADA, NO DEL DROPDOWN)
+          console.log("⚠️ Fallback: Buscando competidores por categoría detectada");
+          const categoriaProducto = detectProductCategory(brief.producto);
+          const { data: compData } = await supabase
+            .from("empresas_v2")
+            .select("name, website")
+            .eq("vertical_finnovista", categoriaProducto)
+            .neq("name", brief.empresa)
+            .order("icp_score", { ascending: false })
+            .limit(8);
+            
+          competidoresData = compData?.map(c => ({ name: c.name, url: c.website })) || [];
+        }
+
+        // --- QUERY 2: CUENTAS OBJETIVO / LEADS ---
+        const rawVertical = empresaData?.vertical_finnovista || brief.vertical;
+        
+        // Capa de Estratégia Semántica (Mapeo de Industrias)
+        const VERTICAL_MAP: Record<string, string[]> = {
+          "gaming": ["Payments & Remittances", "Tech Infrastructure"],
+          "igaming": ["Payments & Remittances", "Tech Infrastructure"],
+          "casinos": ["Payments & Remittances"],
+          "betting": ["Payments & Remittances"],
+          "retail": ["Payments & Remittances", "Enterprise Financial Mgmt"],
+          "ecommerce": ["Payments & Remittances"],
+          "marketplace": ["Payments & Remittances"],
+          "real estate": ["Proptech", "Lending"],
+          "insurance": ["Insurtech"],
+          "trading": ["Wealth Management"],
+          "crypto": ["Crypto & Blockchain"],
+        };
+
+        const vLower = rawVertical.toLowerCase();
+        let targetVerticals = [rawVertical];
+        
+        // Buscar coincidencia semántica
+        for (const key in VERTICAL_MAP) {
+          if (vLower.includes(key)) {
+            targetVerticals = VERTICAL_MAP[key];
+            break;
+          }
+        }
+
+        let queryLeads = supabase
+          .from("empresas_v2")
+          .select("name, website")
+          .in("vertical_finnovista", targetVerticals);
+
+        // Normalización de País (Supabase usa nombres sin acento)
+        const countryMap: Record<string, string> = {
+          "México": "Mexico",
+          "Perú": "Peru",
+          "Panamá": "Panama",
+        };
+        const normalizedCountry = countryMap[brief.pais] || brief.pais;
+
+        if (normalizedCountry && normalizedCountry !== "Toda Latam") {
+          queryLeads = queryLeads.eq("country", normalizedCountry);
+        }
+
+        const { data: leadsData } = await queryLeads
+          .order("icp_score", { ascending: false })
+          .limit(10);
+          
+        clientesPotencialesData = leadsData?.map(l => ({ name: l.name, url: l.website })) || [];
       } catch (e) {
-        console.warn("Inference failed", e);
+        console.warn("Supabase fetch competidores/leads failed", e);
       }
 
-      const response = await fetch("/api/nexus", {
+      // 4. Llamar al NERV API
+      console.log("COMPETIDORES QUE SE MANDAN A LA API:", JSON.stringify(competidoresData));
+      const response = await fetch("/api/nexus", { // Mantenemos la ruta API por ahora para no romper el backend
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           brief,
           empresa_supabase: empresaData || null,
-          is_minimal: true,
+          benchmark: benchmarkData || [],
+          competidores: competidoresData || [], // Ya son los rivales reales
+          clientes_potenciales: clientesPotencialesData || [], // Nueva variable para la IA
+          isForensic: isForensic,
         }),
       });
 
@@ -140,7 +415,8 @@ export default function NervForm() {
       setResult({ ...data, empresaId: empresaData?.id });
       setStep("result");
     } catch (err: any) {
-      setError(err.message || "Error generando la estrategia.");
+      console.error("DETAILED_FRONTEND_ERROR:", err);
+      setError(err.message || "Error generando la estrategia. Intenta de nuevo.");
       setStep("form");
     } finally {
       clearInterval(msgInterval);
@@ -148,200 +424,489 @@ export default function NervForm() {
     }
   };
 
-  const [sharing, setSharing] = useState(false);
-  const [shareUrl, setShareUrl] = useState<string | null>(null);
-
-  const handleShare = async () => {
-    if (!result) return;
-    setSharing(true);
-    try {
-      const resp = await fetch("/api/share", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ data: result }),
-      });
-      if (!resp.ok) throw new Error("No se pudo generar el enlace");
-      const { id } = await resp.json();
-      const url = `${window.location.origin}/r/${id}`;
-      setShareUrl(url);
-    } catch (err: any) {
-      alert(err.message);
-    } finally {
-      setSharing(false);
-    }
-  };
-
   const handleReset = () => {
     setStep("form");
     setResult(null);
     setError(null);
-    setShareUrl(null);
   };
 
   const handleDownload = () => {
     if (!result) return;
-    const blob = new Blob(["\ufeff", result.markdown], {
-      type: "text/markdown;charset=utf-8",
-    });
+    const blob = new Blob([result.markdown], { type: "text/markdown" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
     a.download = `${result.empresa.replace(/\s+/g, "_")}_nerv.md`;
-    document.body.appendChild(a);
     a.click();
-    document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
 
-  // ── Render Helpers ───────────────────────────────────────────────────
+  // ── Render: Loading ──────────────────────────────────────────────────
   if (step === "loading") {
     return (
       <div style={styles.loadingWrap}>
         <div style={styles.loadingInner}>
           <div style={styles.radar}>
             <div style={styles.radarRing1} />
-            <div style={{ ...styles.radarRing1, animationDelay: "0.3s" }} />
-            <div style={{ ...styles.radarRing1, animationDelay: "0.6s" }} />
+            <div style={styles.radarRing2} />
+            <div style={styles.radarRing3} />
+            <div style={styles.radarDot} />
           </div>
           <p style={styles.loadingMsg}>{loadingMsg}</p>
+          <p style={styles.loadingEmoji}>🛰️</p>
         </div>
       </div>
     );
   }
 
+  // ── Render: Result ───────────────────────────────────────────────────
   if (step === "result" && result) {
     return (
       <div style={styles.resultWrap}>
         <div style={styles.resultHeader}>
-          <h1 style={styles.resultTitle}>{result.empresa}</h1>
+          <div>
+            <h1 style={styles.resultTitle}>{result.empresa}</h1>
+            <div style={styles.resultMeta}>
+              <span style={styles.tierBadge}>{result.tier}</span>
+              <span style={styles.scoreBadge}>
+                ICP {result.icp_score}/100
+              </span>
+            </div>
+          </div>
           <div style={styles.resultActions}>
-            <button
-              style={styles.btnShare}
-              onClick={handleShare}
-              disabled={sharing}
-            >
-              {sharing ? "..." : "Compartir 🔗"}
-            </button>
             <button style={styles.btnDownload} onClick={handleDownload}>
-              .md
+              Descargar .md
             </button>
             <button style={styles.btnReset} onClick={handleReset}>
-              Nueva
+              Nueva consulta
             </button>
           </div>
         </div>
-        {shareUrl && (
-          <div style={styles.shareBox}>
-            <input
-              readOnly
-              value={shareUrl}
-              style={styles.shareInput}
-              onClick={(e) => (e.target as HTMLInputElement).select()}
-            />
+
+        <div style={styles.resultGrid}>
+          {/* Análisis Forense RaiSE */}
+          <div style={{ ...styles.card, border: "1px solid #0f172a", background: "#f8fafc" }}>
+            <h3 style={{ ...styles.cardTitle, color: "#0f172a" }}>🧠 Inferencia RaiSE v2.2</h3>
+            <div style={{ marginBottom: 16 }}>
+              <span style={{ fontSize: 10, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                Hipótesis Forense (Deducida)
+              </span>
+              <p style={{ fontSize: 13, color: "#1e293b", margin: "4px 0", lineHeight: 1.5, fontWeight: 500 }}>
+                {result.analisis_forense?.inferencia_raise || "[INFERENCIA_EN_PROCESO]"}
+              </p>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div style={{ background: "white", padding: 12, borderRadius: 8, border: "1px solid #e2e8f0" }}>
+                <span style={{ fontSize: 9, fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>Fricción Técnica</span>
+                <p style={{ fontSize: 12, color: "#334155", margin: "4px 0" }}>{result.analisis_forense?.friccion_tecnica || "[SÓLO_INFERIDO]"}</p>
+              </div>
+              <div style={{ background: "#fffbeb", padding: 12, borderRadius: 8, border: "1px solid #fde68a" }}>
+                <span style={{ fontSize: 9, fontWeight: 700, color: "#92400e", textTransform: "uppercase" }}>Dolor Financiero / Riesgo</span>
+                <p style={{ fontSize: 12, color: "#b45309", margin: "4px 0" }}>{result.analisis_forense?.dolor_financiero || "[CALCULANDO...]"}</p>
+              </div>
+            </div>
           </div>
+
+          {/* Diagnóstico Ejecutivo */}
+          <div style={styles.card}>
+            <h3 style={styles.cardTitle}>🔬 Dossier de Estrategia</h3>
+            <table style={styles.diagTable}>
+              <tbody>
+                <tr>
+                  <td style={styles.diagLabel}>⚙️ Fricción Operativa</td>
+                  <td style={styles.diagValue}>{result.diagnostico?.friccion_operativa || "[PENDIENTE]"}</td>
+                </tr>
+                <tr>
+                  <td style={styles.diagLabel}>🚨 Dolor Crítico</td>
+                  <td style={styles.diagValue}>{result.diagnostico?.dolor_critico || "[PENDIENTE]"}</td>
+                </tr>
+                <tr>
+                  <td style={styles.diagLabel}>🎯 Resolución Táctica</td>
+                  <td style={styles.diagValue}>{result.diagnostico?.resolucion_tactica || "[PENDIENTE]"}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          {/* Plan de Ataque */}
+          <div style={styles.card}>
+            <h3 style={styles.cardTitle}>⚔️ Plan de Ataque</h3>
+            <div style={styles.atacqueItem}>
+              <span style={styles.ataqueLabel}>Schwerpunkt</span>
+              <p style={styles.ataqueText}>{result.plan_ataque?.schwerpunkt || "[PENDIENTE]"}</p>
+            </div>
+            <div style={styles.atacqueItem}>
+              <span style={styles.ataqueLabel}>Flanqueo</span>
+              <p style={styles.ataqueText}>{result.plan_ataque?.flanqueo || "[PENDIENTE]"}</p>
+            </div>
+            <div style={{ ...styles.atacqueItem, background: "#f0fdf4", borderRadius: 8, padding: "10px 12px" }}>
+              <span style={styles.ataqueLabel}>Apertura recomendada</span>
+              <p style={{ ...styles.ataqueText, fontStyle: "italic" }}>
+                "{result.plan_ataque?.apertura || "[MENSAJE_NO_DISPONIBLE]"}"
+              </p>
+            </div>
+          </div>
+
+          {/* Auditoría */}
+          <div style={styles.card}>
+            <h3 style={styles.cardTitle}>🧠 Auditoría RaiSE</h3>
+            <div style={styles.auditItem}>
+              <span style={styles.auditLabel}>⚠️ Abogado del Diablo</span>
+              <p style={styles.auditText}>{result.auditoria?.abogado_diablo || "[SIN_CRITICAS]"}</p>
+            </div>
+            <div style={styles.auditItem}>
+              <span style={styles.auditLabel}>🔍 Sesgo detectado</span>
+              <p style={styles.auditText}>{result.auditoria?.sesgo || "[SIN_SESGOS]"}</p>
+            </div>
+            <div style={styles.confidenceBadge}>
+              Confianza general: {result.auditoria?.confianza || "BAJA"}
+            </div>
+            {result.evidencia && result.evidencia.length > 0 && (
+              <div style={{ marginTop: 12, borderTop: "1px solid #eee", paddingTop: 8 }}>
+                <span style={{ fontSize: "0.75rem", color: "#666", fontWeight: "bold" }}>🌍 EVIDENCIA VERIFICADA:</span>
+                <ul style={{ margin: "4px 0 0 0", paddingLeft: 18, fontSize: "0.75rem", color: "#444" }}>
+                  {Array.isArray(result.evidencia) && result.evidencia.map((ev, i) => {
+                    const urlRegex = /(https?:\/\/[^\s]+)/g;
+                    const parts = ev.split(urlRegex);
+                    return (
+                      <li key={i}>
+                        {parts.map((part, j) => 
+                          urlRegex.test(part) ? (
+                            <a key={j} href={part} target="_blank" rel="noopener noreferrer" style={{ color: "#3b82f6", textDecoration: "underline" }}>
+                              {part}
+                            </a>
+                          ) : part
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
+          </div>
+
+          {/* Similares */}
+          {(result.similares?.length ?? 0) > 0 && (
+            <div style={styles.card}>
+              <h3 style={styles.cardTitle}>🔗 Similares en el ecosistema</h3>
+              <div style={styles.tagsWrap}>
+                {Array.isArray(result.similares) && result.similares.map((s, idx) => {
+                  const sName = typeof s === 'string' ? s : (s && (s as any).name) || 'Empresa Similar';
+                  return (
+                    <span key={`sim-${idx}-${sName}`} style={styles.tag}>
+                      {sName}
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Competidores Reales */}
+          {(result.competidores?.length ?? 0) > 0 && (
+            <div style={styles.card}>
+              <h3 style={styles.cardTitle}>⚔️ Competidores Reales</h3>
+              <div style={styles.tagsWrap}>
+                {Array.isArray(result.competidores) && result.competidores.map((c: any, idx) => (
+                  <span key={`real-comp-${idx}`} style={{...styles.tag, background: "#fff1f2", color: "#9f1239", border: "1px solid #fecdd3"}}>
+                    {c && (typeof c === 'string' ? c : c.name || 'Competidor')}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Market Pulse (Latido del Mercado) */}
+          {result.empresaId && (
+            <MarketPulse empresaId={result.empresaId} empresaNombre={result.empresa} />
+          )}
+
+          {/* Cuentas Objetivo (Leads) */}
+          {(result.clientes_potenciales?.length ?? 0) > 0 && (
+            <div style={styles.card}>
+              <h3 style={styles.cardTitle}>🎯 Cuentas Objetivo (Leads)</h3>
+              <div style={styles.tagsWrap}>
+                {Array.isArray(result.clientes_potenciales) && result.clientes_potenciales.map((l: any, idx) => {
+                  if (!l) return null;
+                  return (
+                    <a 
+                      key={`lead-${idx}`} 
+                    href={l.url || '#'}
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    style={{ 
+                      ...styles.tag, 
+                      background: "#f0f9ff", 
+                      color: "#0369a1",
+                      border: "1px solid #bae6fd",
+                      textDecoration: l.url ? "underline" : "none",
+                      cursor: l.url ? "pointer" : "default"
+                    }}
+                  >
+                    {l.name}
+                  </a>
+                );})}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Bucle de Calidad: Widget de Feedback */}
+        {result.logId && (
+          <FeedbackWidget logId={result.logId} empresa={result.empresa} />
         )}
-        <ReportView result={result} styles={styles} />
+
+        <CommentsSection />
       </div>
     );
   }
 
+  // ── Render: Form ─────────────────────────────────────────────────────
   return (
-    <div style={styles.wrap} className="nerv-container">
-      <style jsx global>{`
-        @keyframes ping {
-          0% { transform: scale(1); opacity: 0.5; }
-          100% { transform: scale(3); opacity: 0; }
-        }
-        @media (max-width: 480px) {
-          .nerv-container { max-width: 100% !important; padding: 1.5rem 1rem !important; }
-          .nerv-tier-grid { grid-template-columns: 1fr !important; }
-          .nerv-tier-card { width: 100% !important; margin-bottom: 8px !important; }
-          button, input, textarea { min-height: 52px !important; font-size: 16px !important; }
-          .nerv-tier-name { font-size: 13px !important; }
-          .nerv-tier-desc { font-size: 10px !important; }
-        }
-      `}</style>
+    <div style={styles.wrap}>
+      {/* HUB SELECTOR */}
+      <div style={{ display: "flex", gap: 12, marginBottom: 20 }}>
+        {HUBS.map(hub => (
+          <button
+            key={hub.id}
+            onClick={() => {
+              setActiveHub(hub.id as any);
+              setBrief(prev => ({ ...prev, pais: "" })); // Reset pais when switching hubs
+            }}
+            style={{
+              flex: 1,
+              padding: "16px",
+              borderRadius: "16px",
+              border: "2px solid",
+              borderColor: activeHub === hub.id ? "#1a1a2e" : "#eee",
+              background: activeHub === hub.id ? "#1a1a2e" : "white",
+              color: activeHub === hub.id ? "white" : "#666",
+              cursor: "pointer",
+              fontWeight: "bold",
+              fontSize: "1rem",
+              transition: "all 0.2s",
+              boxShadow: activeHub === hub.id ? "0 4px 15px rgba(26,26,46,0.2)" : "none"
+            }}
+          >
+            {hub.icon} {hub.name}
+          </button>
+        ))}
+      </div>
 
       <div style={styles.header}>
         <span style={styles.headerIcon}>🛰️</span>
         <div>
           <h1 style={styles.title}>NERV</h1>
-          <p style={styles.subtitle}>Ecosistema de Inteligencia GTM</p>
+          <p style={styles.subtitle}>
+            El sistema nervioso del ecosistema Fintech Latam
+          </p>
+        </div>
+        
+        {/* A/B TEST TOGGLE */}
+        <div style={{ marginLeft: "auto", display: "flex", gap: 4, background: "#f1f5f9", padding: 4, borderRadius: 12 }}>
+          <button 
+            onClick={() => setIsForensic(false)}
+            style={{
+              padding: "8px 12px",
+              borderRadius: 8,
+              fontSize: 12,
+              fontWeight: 600,
+              background: !isForensic ? "white" : "transparent",
+              color: !isForensic ? "#0f172a" : "#64748b",
+              border: "none",
+              cursor: "pointer",
+              boxShadow: !isForensic ? "0 2px 8px rgba(0,0,0,0.05)" : "none",
+              transition: "all 0.2s"
+            }}
+          >
+            🤖 Genérica
+          </button>
+          <button 
+            onClick={() => setIsForensic(true)}
+            style={{
+              padding: "8px 12px",
+              borderRadius: 8,
+              fontSize: 12,
+              fontWeight: 600,
+              background: isForensic ? "#0f172a" : "transparent",
+              color: isForensic ? "white" : "#64748b",
+              border: "none",
+              cursor: "pointer",
+              boxShadow: isForensic ? "0 4px 12px rgba(15,23,42,0.2)" : "none",
+              transition: "all 0.2s"
+            }}
+          >
+            🔬 Forense
+          </button>
         </div>
       </div>
 
       {error && <div style={styles.errorBox}>{error}</div>}
 
       <div style={styles.section}>
+        <label style={styles.sectionLabel}>Tu empresa</label>
         <div style={styles.field}>
-          <label style={styles.label}>¿Con qué empresa quieres cerrar?</label>
+          <label style={styles.label}>Nombre de tu empresa</label>
           <input
             style={styles.input}
             name="empresa"
-            placeholder="Ej. Klar, Veriph.One, Nowports..."
             value={brief.empresa}
             onChange={handleChange}
+            placeholder="Ej. Sumsub, EBANX, Stripe..."
           />
         </div>
         <div style={styles.field}>
-          <label style={styles.label}>¿Qué vendes tú?</label>
+          <label style={styles.label}>¿Qué vendes?</label>
           <textarea
             style={styles.textarea}
             name="producto"
-            placeholder="Ej. Agentes de voz con IA para cobranza..."
             value={brief.producto}
             onChange={handleChange}
+            placeholder="Describe tu producto o servicio principal..."
+          />
+        </div>
+      </div>
+
+      <div style={styles.divider} />
+
+      <div style={styles.section}>
+        <label style={styles.sectionLabel}>Mercado objetivo</label>
+        <div style={styles.row}>
+          <div style={styles.field}>
+            <label style={styles.label}>País</label>
+            <select
+              style={styles.select}
+              name="pais"
+              value={brief.pais}
+              onChange={handleChange}
+            >
+              <option value="">Selecciona...</option>
+              {((activeHub === "latam" ? PAISES_LATAM : PAISES_EUROPA) as string[]).map((p) => (
+                <option key={p} value={p}>{p}</option>
+              ))}
+            </select>
+          </div>
+          <div style={styles.field}>
+            <label style={styles.label}>Vertical</label>
+            <select
+              style={styles.select}
+              name="vertical"
+              value={brief.vertical}
+              onChange={handleChange}
+            >
+              <option value="">Selecciona...</option>
+              {VERTICALES.map((v) => (
+                <option key={v}>{v}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <div style={styles.field}>
+          <label style={styles.label}>
+            Buyer persona{" "}
+            <span style={styles.optional}>opcional</span>
+          </label>
+          <input
+            style={styles.input}
+            name="buyer"
+            value={brief.buyer}
+            onChange={handleChange}
+            placeholder="Ej. CTO de neobanco, VP Compliance fintech Serie B..."
           />
         </div>
       </div>
 
       <div style={styles.section}>
-        <label style={styles.sectionLabel}>Etapa del deal (opcional)</label>
-        <div style={styles.tierGrid} className="nerv-tier-grid">
+        <label style={styles.sectionLabel}>Tipo de deal</label>
+        <div style={styles.tierGrid}>
           {TIERS.map((t) => (
             <div
               key={t.id}
-              className="nerv-tier-card"
               style={{
                 ...styles.tierCard,
                 ...(brief.tier === t.id ? styles.tierCardActive : {}),
               }}
-              onClick={() =>
-                setBrief((p) => ({ ...p, tier: t.id as GTMBrief["tier"] }))
-              }
+              onClick={() => setBrief((p) => ({ ...p, tier: t.id as GTMBrief["tier"] }))}
             >
-              <div
-                className="nerv-tier-name"
-                style={{
-                  ...styles.tierName,
-                  ...(brief.tier === t.id ? { color: "#fff" } : {}),
-                }}
-              >
-                {t.nombre}
-              </div>
-              <div
-                className="nerv-tier-desc"
-                style={{
-                  ...styles.tierDesc,
-                  ...(brief.tier === t.id ? { color: "#94a3b8" } : {}),
-                  fontSize: 10,
-                }}
-              >
-                {t.desc}
-              </div>
+              <div style={styles.tierName}>{t.nombre}</div>
+              <div style={styles.tierDesc}>{t.desc}</div>
             </div>
           ))}
+        </div>
+      </div>
+
+      <div style={styles.divider} />
+
+      <div style={styles.section}>
+        <label style={styles.sectionLabel}>
+          Inteligencia competitiva{" "}
+          <span style={styles.optional}>opcional</span>
+        </label>
+        <div style={styles.row}>
+          <div style={styles.field}>
+            <label style={styles.label}>URL competidor principal</label>
+            <input
+              style={styles.input}
+              name="url_competidor"
+              value={brief.url_competidor}
+              onChange={handleChange}
+              placeholder="https://competidor.com"
+            />
+          </div>
+          <div style={styles.field}>
+            <label style={styles.label}>URL cliente ideal</label>
+            <input
+              style={styles.input}
+              name="url_cliente_ideal"
+              value={brief.url_cliente_ideal}
+              onChange={handleChange}
+              placeholder="https://clienteideal.com"
+            />
+          </div>
+        </div>
+        <div style={styles.infoBox}>
+          NERV consultará las 2,500+ empresas del ecosistema
+          Fintech Latam para generar tu ficha de ataque personalizada.
+        </div>
+      </div>
+
+      <div style={styles.smartPanel}>
+        <label style={styles.sectionLabel}>🛰️ NERV Smart Discovery</label>
+        
+        {/* Nexus Dialogue Bubble */}
+        {nexusResponse.msg && (
+          <div style={{
+            ...smartStyles.bubble, 
+            backgroundColor: nexusResponse.type === "error" ? "#fef2f2" : nexusResponse.type === "success" ? "#f0fdf4" : "#f0f9ff",
+            borderColor: nexusResponse.type === "error" ? "#fee2e2" : nexusResponse.type === "success" ? "#dcfce7" : "#e0f2fe",
+            color: nexusResponse.type === "error" ? "#991b1b" : nexusResponse.type === "success" ? "#166534" : "#075985",
+          }}>
+            {nexusResponse.msg}
+          </div>
+        )}
+
+        <div style={smartStyles.container}>
+          <input
+            style={smartStyles.input}
+            placeholder="Ej: Soy de Nuvei y busco casinos en Colombia..."
+            value={smartPrompt}
+            onChange={(e) => setSmartPrompt(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSmartDiscovery()}
+            disabled={parsing}
+          />
+          <button 
+            style={smartStyles.btn} 
+            onClick={handleSmartDiscovery}
+            disabled={parsing || !smartPrompt}
+          >
+            {parsing ? "🛰️ Analizando..." : "Auto-rellenar ⚡"}
+          </button>
         </div>
       </div>
 
       <button style={styles.btnPrimary} onClick={handleSubmit}>
         Generar estrategia de ataque →
       </button>
-
-      <div style={{ ...styles.infoBox, textAlign: "center", marginTop: 32 }}>
-        NERV infiere país, vertical y competidores automáticamente.
-      </div>
-
       <ContactCard />
     </div>
   );
@@ -350,27 +915,27 @@ export default function NervForm() {
 // ── Styles ─────────────────────────────────────────────────────────────
 const styles: Record<string, React.CSSProperties> = {
   wrap: {
-    maxWidth: 600,
+    maxWidth: 680,
     margin: "0 auto",
-    padding: "3rem 1.5rem",
-    fontFamily: "'DM Sans', sans-serif",
-    color: "#0f172a",
+    padding: "2rem 1.5rem",
+    fontFamily: "'DM Sans', system-ui, sans-serif",
   },
   header: {
     display: "flex",
     alignItems: "center",
     gap: 16,
-    marginBottom: "2.5rem",
+    marginBottom: "2rem",
   },
   headerIcon: { fontSize: 32 },
   title: {
-    fontSize: 28,
-    fontWeight: 700,
+    fontSize: 24,
+    fontWeight: 600,
     margin: 0,
-    letterSpacing: "-0.04em",
+    color: "#0f172a",
+    letterSpacing: "-0.02em",
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: 13,
     color: "#64748b",
     margin: "2px 0 0",
   },
@@ -378,122 +943,461 @@ const styles: Record<string, React.CSSProperties> = {
   sectionLabel: {
     display: "block",
     fontSize: 11,
-    fontWeight: 700,
+    fontWeight: 600,
     color: "#94a3b8",
-    textTransform: "uppercase",
-    letterSpacing: "0.1em",
+    textTransform: "uppercase" as const,
+    letterSpacing: "0.08em",
     marginBottom: 12,
   },
-  field: { marginBottom: 16 },
+  field: { marginBottom: 12 },
   label: {
     display: "block",
-    fontSize: 14,
-    fontWeight: 500,
+    fontSize: 13,
     color: "#475569",
-    marginBottom: 6,
+    marginBottom: 4,
+  },
+  optional: {
+    fontSize: 10,
+    background: "#f1f5f9",
+    color: "#94a3b8",
+    padding: "2px 6px",
+    borderRadius: 4,
+    marginLeft: 6,
   },
   input: {
     width: "100%",
-    padding: "12px 16px",
-    fontSize: 15,
+    padding: "8px 12px",
+    fontSize: 14,
     border: "1px solid #e2e8f0",
-    borderRadius: 12,
+    borderRadius: 8,
     outline: "none",
+    color: "#0f172a",
     background: "#fff",
-    boxSizing: "border-box",
+    boxSizing: "border-box" as const,
     fontFamily: "inherit",
-    transition: "border-color 0.2s",
   },
   textarea: {
     width: "100%",
-    padding: "12px 16px",
+    padding: "8px 12px",
+    fontSize: 14,
+    border: "1px solid #e2e8f0",
+    borderRadius: 8,
+    outline: "none",
+    color: "#0f172a",
+    background: "#fff",
+    boxSizing: "border-box" as const,
+    fontFamily: "inherit",
+    minHeight: 80,
+    resize: "vertical" as const,
+    lineHeight: 1.5,
+  },
+  select: {
+    width: "100%",
+    padding: "8px 12px",
+    fontSize: 14,
+    border: "1px solid #e2e8f0",
+    borderRadius: 8,
+    outline: "none",
+    color: "#0f172a",
+    background: "#fff",
+    boxSizing: "border-box" as const,
+    fontFamily: "inherit",
+  },
+  row: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 12,
+  },
+  divider: {
+    borderTop: "1px solid #f1f5f9",
+    margin: "1.5rem 0",
+  },
+  tierGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(3, 1fr)",
+    gap: 8,
+  },
+  tierCard: {
+    padding: "12px 14px",
+    borderRadius: 8,
+    border: "1px solid #e2e8f0",
+    background: "#f8fafc",
+    cursor: "pointer",
+    transition: "all 0.12s",
+  },
+  tierCardActive: {
+    background: "#0f172a",
+    border: "1px solid #0f172a",
+  },
+  tierName: {
+    fontSize: 12,
+    fontWeight: 600,
+    color: "#0f172a",
+    marginBottom: 2,
+  },
+  tierDesc: {
+    fontSize: 11,
+    color: "#64748b",
+    lineHeight: 1.4,
+  },
+  infoBox: {
+    marginTop: 8,
+    padding: "10px 14px",
+    background: "#f0f9ff",
+    borderRadius: 8,
+    fontSize: 12,
+    color: "#0369a1",
+    lineHeight: 1.5,
+  },
+  errorBox: {
+    marginBottom: 16,
+    padding: "10px 14px",
+    background: "#fff0f0",
+    borderRadius: 8,
+    fontSize: 13,
+    color: "#c0392b",
+  },
+  btnPrimary: {
+    width: "100%",
+    padding: "12px 24px",
     fontSize: 15,
+    fontWeight: 600,
+    background: "#0f172a",
+    color: "#fff",
+    border: "none",
+    borderRadius: 10,
+    cursor: "pointer",
+    fontFamily: "inherit",
+    letterSpacing: "-0.01em",
+    marginTop: 8,
+  },
+  // Loading
+  loadingWrap: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 400,
+  },
+  loadingInner: {
+    textAlign: "center" as const,
+  },
+  radar: {
+    position: "relative" as const,
+    width: 80,
+    height: 80,
+    margin: "0 auto 24px",
+  },
+  radarRing1: {
+    position: "absolute" as const,
+    inset: 0,
+    borderRadius: "50%",
+    border: "2px solid #0f172a",
+    opacity: 0.15,
+    animation: "ping 1.5s ease-out infinite",
+  },
+  radarRing2: {
+    position: "absolute" as const,
+    inset: 10,
+    borderRadius: "50%",
+    border: "2px solid #0f172a",
+    opacity: 0.25,
+    animation: "ping 1.5s ease-out infinite 0.3s",
+  },
+  radarRing3: {
+    position: "absolute" as const,
+    inset: 20,
+    borderRadius: "50%",
+    border: "2px solid #0f172a",
+    opacity: 0.4,
+    animation: "ping 1.5s ease-out infinite 0.6s",
+  },
+  radarDot: {
+    position: "absolute" as const,
+    inset: 34,
+    borderRadius: "50%",
+    background: "#0f172a",
+  },
+  loadingMsg: {
+    fontSize: 14,
+    color: "#475569",
+    margin: "0 0 8px",
+  },
+  loadingEmoji: {
+    fontSize: 24,
+    margin: 0,
+    animation: "bounce 1s ease-in-out infinite",
+  },
+  // Result
+  resultWrap: {
+    maxWidth: 800,
+    margin: "0 auto",
+    padding: "2rem 1.5rem",
+    fontFamily: "'DM Sans', system-ui, sans-serif",
+  },
+  resultHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: "1.5rem",
+    flexWrap: "wrap" as const,
+    gap: 12,
+  },
+  resultTitle: {
+    fontSize: 26,
+    fontWeight: 700,
+    margin: "0 0 8px",
+    color: "#0f172a",
+    letterSpacing: "-0.03em",
+  },
+  resultMeta: {
+    display: "flex",
+    gap: 8,
+  },
+  tierBadge: {
+    fontSize: 12,
+    padding: "4px 10px",
+    borderRadius: 99,
+    background: "#0f172a",
+    color: "#fff",
+    fontWeight: 500,
+  },
+  scoreBadge: {
+    fontSize: 12,
+    padding: "4px 10px",
+    borderRadius: 99,
+    background: "#f0fdf4",
+    color: "#166534",
+    border: "1px solid #bbf7d0",
+    fontWeight: 500,
+  },
+  discoveryBadge: {
+    fontSize: 11,
+    padding: "4px 10px",
+    borderRadius: 99,
+    background: "#eff6ff",
+    color: "#1e40af",
+    border: "1px solid #bfdbfe",
+    fontWeight: 600,
+    animation: "pulse 2s infinite",
+  },
+  resultActions: {
+    display: "flex",
+    gap: 8,
+  },
+  btnDownload: {
+    padding: "8px 16px",
+    fontSize: 13,
+    fontWeight: 500,
+    background: "#0f172a",
+    color: "#fff",
+    border: "none",
+    borderRadius: 8,
+    cursor: "pointer",
+    fontFamily: "inherit",
+  },
+  btnReset: {
+    padding: "8px 16px",
+    fontSize: 13,
+    background: "transparent",
+    color: "#64748b",
+    border: "1px solid #e2e8f0",
+    borderRadius: 8,
+    cursor: "pointer",
+    fontFamily: "inherit",
+  },
+  resultGrid: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 12,
+  },
+  card: {
+    background: "#fff",
+    border: "1px solid #f1f5f9",
+    borderRadius: 12,
+    padding: "16px 18px",
+  },
+  cardTitle: {
+    fontSize: 13,
+    fontWeight: 600,
+    color: "#0f172a",
+    margin: "0 0 12px",
+  },
+  cardText: {
+    fontSize: 13,
+    color: "#475569",
+    lineHeight: 1.6,
+    margin: 0,
+  },
+  diagTable: {
+    width: "100%",
+    borderCollapse: "collapse" as const,
+    fontSize: 13,
+  },
+  diagLabel: {
+    padding: "6px 0",
+    color: "#94a3b8",
+    whiteSpace: "nowrap" as const,
+    paddingRight: 12,
+    verticalAlign: "top" as const,
+  },
+  diagValue: {
+    padding: "6px 0",
+    color: "#334155",
+    lineHeight: 1.5,
+    verticalAlign: "top" as const,
+  },
+  atacqueItem: { marginBottom: 12 },
+  ataqueLabel: {
+    fontSize: 11,
+    fontWeight: 600,
+    color: "#94a3b8",
+    textTransform: "uppercase" as const,
+    letterSpacing: "0.06em",
+    display: "block",
+    marginBottom: 4,
+  },
+  ataqueText: {
+    fontSize: 13,
+    color: "#334155",
+    margin: 0,
+    lineHeight: 1.5,
+  },
+  auditItem: { marginBottom: 10 },
+  auditLabel: {
+    fontSize: 11,
+    fontWeight: 600,
+    color: "#94a3b8",
+    textTransform: "uppercase" as const,
+    letterSpacing: "0.06em",
+    display: "block",
+    marginBottom: 4,
+  },
+  auditText: {
+    fontSize: 12,
+    color: "#64748b",
+    margin: 0,
+    lineHeight: 1.5,
+  },
+  confidenceBadge: {
+    marginTop: 12,
+    fontSize: 11,
+    padding: "4px 8px",
+    background: "#fefce8",
+    color: "#854d0e",
+    borderRadius: 6,
+    display: "inline-block",
+  },
+  tagsWrap: {
+    display: "flex",
+    flexWrap: "wrap" as const,
+    gap: 6,
+  },
+  tag: {
+    fontSize: 12,
+    padding: "4px 10px",
+    borderRadius: 99,
+    background: "#f1f5f9",
+    color: "#475569",
+    border: "1px solid #e2e8f0",
+  },
+  feedbackWrap: {
+    marginTop: "2rem",
+    padding: "20px",
+    background: "#f8fafc",
+    borderRadius: 16,
+    border: "1px solid #e2e8f0",
+    textAlign: "center" as const,
+  },
+  feedbackTitle: {
+    fontSize: 16,
+    fontWeight: 600,
+    color: "#0f172a",
+    marginBottom: 8,
+  },
+  feedbackSubtitle: {
+    fontSize: 14,
+    color: "#64748b",
+    marginBottom: "1.5rem",
+  },
+  feedbackBtnWrap: {
+    display: "flex",
+    justifyContent: "center",
+    gap: 12,
+    marginBottom: 16,
+  },
+  feedbackBtn: {
+    padding: "10px 20px",
+    fontSize: 14,
+    fontWeight: 500,
+    borderRadius: 8,
+    border: "1px solid #e2e8f0",
+    background: "#fff",
+    cursor: "pointer",
+    transition: "all 0.2s",
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+  },
+  feedbackBtnActive: {
+    background: "#0f172a",
+    color: "#fff",
+    borderColor: "#0f172a",
+  },
+  feedbackInputWrap: {
+    marginTop: 12,
+    animation: "fadeIn 0.3s ease-out",
+  },
+  feedbackThanks: {
+    fontSize: 14,
+    color: "#166534",
+    fontWeight: 500,
+    padding: "8px",
+    background: "#f0fdf4",
+    borderRadius: 8,
+  },
+  smartPanel: {
+    padding: "20px",
+    background: "#f8fafc",
+    borderRadius: 16,
+    border: "1px solid #e2e8f0",
+    marginBottom: "2rem",
+  },
+};
+
+const smartStyles: Record<string, React.CSSProperties> = {
+  container: {
+    display: "flex",
+    gap: 8,
+    marginBottom: 8,
+  },
+  input: {
+    flex: 1,
+    padding: "12px 16px",
+    fontSize: 14,
     border: "1px solid #e2e8f0",
     borderRadius: 12,
     outline: "none",
     background: "#fff",
-    boxSizing: "border-box",
     fontFamily: "inherit",
-    minHeight: 100,
-    lineHeight: 1.6,
-    resize: "vertical",
+    boxShadow: "0 2px 4px rgba(0,0,0,0.02)",
   },
-  tierGrid: {
-    display: "grid",
-    gridTemplateColumns: "1fr",
-    gap: 8,
-  },
-  tierCard: {
-    padding: "16px",
-    borderRadius: 12,
-    border: "1px solid #e2e8f0",
-    background: "#f8fafc",
-    cursor: "pointer",
-    transition: "all 0.2s",
-  },
-  tierCardActive: {
-    background: "#0f172a",
-    borderColor: "#0f172a",
-    boxShadow: "0 4px 12px rgba(15, 23, 42, 0.15)",
-  },
-  tierName: {
-    fontSize: 14,
+  btn: {
+    padding: "0 20px",
+    fontSize: 13,
     fontWeight: 600,
-    marginBottom: 4,
-  },
-  tierDesc: {
-    fontSize: 12,
-    color: "#64748b",
-  },
-  btnPrimary: {
-    width: "100%",
-    padding: "16px",
-    fontSize: 16,
-    fontWeight: 700,
     background: "#0f172a",
     color: "#fff",
     border: "none",
     borderRadius: 12,
     cursor: "pointer",
-    marginTop: 12,
-    transition: "transform 0.1s",
+    whiteSpace: "nowrap" as const,
   },
-  infoBox: {
-    padding: "12px",
-    background: "#f1f5f9",
-    borderRadius: 10,
-    fontSize: 12,
-    color: "#64748b",
-  },
-  errorBox: {
-    padding: "12px",
-    background: "#fef2f2",
-    border: "1px solid #fee2e2",
-    borderRadius: 10,
-    color: "#991b1b",
-    fontSize: 14,
+  bubble: {
+    padding: "12px 16px",
+    borderRadius: "12px 12px 12px 4px",
+    fontSize: 13,
     marginBottom: 16,
-  },
-  // Loading
-  loadingWrap: { height: 400, display: "flex", alignItems: "center", justifyContent: "center" },
-  loadingInner: { textAlign: "center" },
-  loadingMsg: { fontSize: 14, color: "#64748b", fontWeight: 500 },
-  radar: { width: 60, height: 60, margin: "0 auto 20px", position: "relative" },
-  radarRing1: {
-    position: "absolute",
-    inset: 0,
-    borderRadius: "50%",
-    border: "2px solid #0f172a",
-    animation: "ping 1s cubic-bezier(0, 0, 0.2, 1) infinite",
-  },
-  // Result
-  resultWrap: { maxWidth: 800, margin: "0 auto", padding: "2rem 1rem" },
-  resultHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2rem", flexWrap: "wrap", gap: 16 },
-  resultTitle: { fontSize: 32, fontWeight: 800, margin: 0 },
-  resultActions: { display: "flex", gap: 8 },
-  btnShare: { padding: "8px 16px", borderRadius: 8, background: "#f1f5f9", border: "none", cursor: "pointer", fontWeight: 600 },
-  btnDownload: { padding: "8px 16px", borderRadius: 8, background: "#0f172a", color: "#fff", border: "none", cursor: "pointer", fontWeight: 600 },
-  btnReset: { padding: "8px 16px", borderRadius: 8, background: "#fff", border: "1px solid #e2e8f0", cursor: "pointer", fontWeight: 600 },
-  shareBox: { marginBottom: 16, padding: 12, background: "#f8fafc", borderRadius: 8 },
-  shareInput: { width: "100%", padding: 8, border: "1px solid #e2e8f0", borderRadius: 6, fontSize: 13 },
+    border: "1px solid",
+    lineHeight: 1.5,
+  }
 };

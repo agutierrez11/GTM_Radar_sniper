@@ -1,30 +1,23 @@
 import OpenAI from 'openai';
 import crypto from 'crypto';
-import { getSupabase } from './supabase';
+import { supabase } from './supabase';
 
-let groqClient: OpenAI | null = null;
-
-function getGroqClient() {
-  if (!groqClient) {
-    groqClient = new OpenAI({
-      apiKey: process.env.GROQ_API_KEY || '',
-      baseURL: "https://api.groq.com/openai/v1",
-    });
-  }
-  return groqClient;
-}
+const groq = new OpenAI({
+  apiKey: process.env.GROQ_API_KEY || '',
+  baseURL: "https://api.groq.com/openai/v1",
+});
 
 function hashPrompt(prompt: string): string {
-  return crypto.createHash("sha256").update(prompt).digest("hex");
+  // Hard Reset v5.1: Invalida el caché médico anterior añadiendo un salt forense
+  return crypto.createHash("sha256").update(prompt + "v5.1-forensic").digest("hex");
 }
 
 export async function generateWithGroq(prompt: string) {
   const prompt_hash = hashPrompt(prompt);
 
   // 1. Intentar leer de caché (TTL 24h)
-  const supabaseClient = getSupabase();
   try {
-    const { data: cacheEntry } = await supabaseClient
+    const { data: cacheEntry } = await supabase
       .from("gemini_cache")
       .select("response, created_at")
       .eq("prompt_hash", prompt_hash)
@@ -44,8 +37,6 @@ export async function generateWithGroq(prompt: string) {
 
   // 2. Si no hay caché, llamar a la API de Groq
   try {
-    console.log(`📡 [GROQ API CALL] Hitting Llama 3.3 via Groq... (Prompt Hash: ${prompt_hash})`);
-    const groq = getGroqClient();
     const completion = await groq.chat.completions.create({
       model: "llama-3.3-70b-versatile",
       messages: [{ role: "user", content: prompt }],
@@ -66,7 +57,7 @@ export async function generateWithGroq(prompt: string) {
 
     // 3. Guardar en caché antes de retornar
     try {
-      await supabaseClient.from("gemini_cache").upsert({
+      await supabase.from("gemini_cache").upsert({
         prompt_hash,
         response: data,
         created_at: new Date().toISOString(),

@@ -14,27 +14,13 @@ const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 async function main() {
   console.log("Iniciando Enjambre Tool Combination...");
 
-  // Support for --id argument
-  const args = process.argv.slice(2);
-  const idArgIndex = args.indexOf('--id');
-  const targetId = idArgIndex !== -1 ? args[idArgIndex + 1] : null;
-
-  let query = supabase
+  // Fetch 407 companies
+  const { data: empresas, error } = await supabase
     .from('empresas_v2')
-    .select('id, name, country, city, segment_latamfintech, product_category, description, markets_latam, funding_stage, total_raised, strategic_notes, icp_score, competitors_verified');
-
-  if (targetId) {
-    console.log(`Buscando solo empresa con ID: ${targetId}`);
-    query = query.eq('id', targetId);
-  } else {
-    // Original filter for batch processing
-    query = query
-      .not('description', 'is', null)
-      .is('signal_context', null)
-      .order('icp_score', { ascending: false });
-  }
-
-  const { data: empresas, error } = await query;
+    .select('id, name, country, city, segment_latamfintech, product_category, description, markets_latam, funding_stage, total_raised, strategic_notes, icp_score, competitors_verified')
+    .not('description', 'is', null)
+    .is('signal_context', null)
+    .order('icp_score', { ascending: false });
 
   if (error) {
     console.error("Error fetching companies:", error);
@@ -169,8 +155,7 @@ Llama a la función 'guardarEnriquecimiento' con los datos estructurados.
         };
 
         const updateData = {
-          signal_context: signalContext,
-          has_full_data: true
+          signal_context: signalContext
         };
 
         if (functionArgs.description_update && functionArgs.description_update.length > 10) {

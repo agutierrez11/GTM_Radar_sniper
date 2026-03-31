@@ -2,23 +2,15 @@ import Anthropic from '@anthropic-ai/sdk';
 import crypto from 'crypto';
 import { supabase } from './supabase';
 
-let anthropicClient: Anthropic | null = null;
-
-function getAnthropicClient() {
-  if (!anthropicClient) {
-    anthropicClient = new Anthropic({
-      apiKey: process.env.ANTHROPIC_API_KEY || '',
-    });
-  }
-  return anthropicClient;
-}
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY || '',
+});
 
 function hashPrompt(prompt: string): string {
   return crypto.createHash("sha256").update(prompt).digest("hex");
 }
 
-export async function generateWithClaude(promptInput: any) {
-  const prompt = typeof promptInput === 'string' ? promptInput : JSON.stringify(promptInput);
+export async function generateWithClaude(prompt: string) {
   const prompt_hash = hashPrompt(prompt);
 
   // 1. Intentar leer de caché (TTL 24h)
@@ -43,21 +35,15 @@ export async function generateWithClaude(promptInput: any) {
 
   // 2. Si no hay caché, llamar a la API
   try {
-    console.log(`📡 [CLAUDE API CALL] Hitting Anthropic (claude-3-5-haiku-20241022) for strategy refinement... (Prompt Hash: ${prompt_hash})`);
-    const anthropic = getAnthropicClient();
     const message = await anthropic.messages.create({
-      model: "claude-haiku-4-5-20251001",
+      model: "claude-3-5-sonnet-latest",
       max_tokens: 2500,
-      messages: [{ role: "user", content: [{ type: "text", text: prompt }] }],
+      messages: [{ role: "user", content: prompt }],
     });
-    console.log(`✅ [CLAUDE API SUCCESS] Response received from Anthropic. (Usage documented)`);
 
-    const responseText = message.content
-      .filter((c: any) => c.type === 'text')
-      .map((c: any) => c.text)
-      .join('\n');
-
-    if (responseText) {
+    const content = message.content[0];
+    if (content.type === 'text') {
+      const responseText = content.text;
       const cleanedText = responseText
         .replace(/```json\n?|```/g, "")
         .trim();

@@ -48,24 +48,12 @@ export async function GET(
     return NextResponse.json({ error: 'Empresa no encontrada' }, { status: 404 })
   }
 
-  // Safe parse — signal_context comes as string or object depending on column type
-  let cachedContext: any = null
-  try {
-    if (empresa.signal_context) {
-      cachedContext = typeof empresa.signal_context === 'string'
-        ? JSON.parse(empresa.signal_context)
-        : empresa.signal_context
-    }
-  } catch (e) {
-    console.warn('signal_context parse failed, regenerating:', e)
-  }
-
-  if (cachedContext?.generated_at) {
-    const age = Date.now() - new Date(cachedContext.generated_at).getTime()
+  if (empresa.signal_context?.generated_at) {
+    const age = Date.now() - new Date(empresa.signal_context.generated_at).getTime()
     if (age < 24 * 60 * 60 * 1000) {
       return NextResponse.json({
         success: true,
-        signal_context: cachedContext,
+        signal_context: empresa.signal_context,
         cached: true
       })
     }
