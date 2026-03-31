@@ -1,11 +1,16 @@
 # 🛰️ NERV: Operation Nexo
 
 > **The Neural System of the Latam Fintech Ecosystem.**
-> Integrated GTM Intelligence powered by RaiSE v2.2 Engine.
+> Integrated GTM Intelligence powered by RaiSE v3.1 Swarm Engine.
 
-NERV is a high-fidelity strategic intelligence platform designed to automate forensic analysis of the Fintech landscape in Latin America and Europe. It transforms raw market signals into actionable, McKinsey-grade sales dossiers.
+## 📖 Concepts & Glossary
 
-## 🧠 Core Architecture: RaiSE v2.2
+To ensure alignment across the new co-founding team, we follow two foundational pillars:
+
+- **RaiSE (Reliable AI-assisted Strategic Engineering)**: Our proprietary forensic protocol (v3.1). Unlike standard LLM generation, RaiSE forces the AI to follow a multi-stage deduction path: *Signals -> Hypothesis -> Friction -> Resolution*. It eliminates "ghost data" and ensures McKinsey-grade strategic output.
+- **MiroFish (Swarm Benchmark)**: We leverage MiroFish-inspired **Swarm Intelligence**. Instead of a single model pass, we orchestrate an internal "Arena" where multiple agents (Harvester, Challenger, Synthesizer) debate the strategy. This ensures higher accuracy and stress-tests every sales argument before it reaches the human user.
+
+## 🧠 Core Architecture: Operation Nexo
 
 The engine operates under the **RaiSE (Reliable AI-assisted Strategic Engineering)** protocol, a 4-stage forensic deduction framework:
 
