@@ -265,7 +265,6 @@ export default function NervForm() {
   };
 
   const handleSubmit = async () => {
-    // Para simplificar, si no hay país o vertical, asignamos "México" y "Fintech" por defecto
     if (!brief.empresa || !brief.producto) {
       setError("Completa empresa y producto.");
       return;
@@ -278,7 +277,6 @@ export default function NervForm() {
     setLoading(true);
     setStep("loading");
 
-    // Rotar mensajes de carga
     let msgIdx = 0;
     setLoadingMsg(LOADING_MSGS[0]);
     const msgInterval = setInterval(() => {
@@ -287,139 +285,89 @@ export default function NervForm() {
     }, 2000);
 
     try {
-      // 1. Buscar empresa en Supabase
-      let empresaData = null;
+      let empresaData: any = null;
       let benchmarkData: any[] = [];
       let competidoresData: { name: string; url: string | null }[] = [];
       let clientesPotencialesData: any[] = [];
 
+      // 1. Buscar empresa en Supabase (Priorizar v3)
       try {
         const { data: searchData } = await supabase
-          .from("empresas_v2")
+          .from("empresas_v3")
           .select("*")
           .ilike("name", `%${brief.empresa}%`)
           .limit(1);
         
         if (searchData && searchData.length > 0) {
           empresaData = searchData[0];
-          console.log('empresaData encontrada:', empresaData?.id, empresaData?.name);
-        }
-      } catch (e) { console.warn("Supabase fetch empresa_v2 failed", e); }
-
-      // 2. Buscar similares en benchmark
-      try {
-        const { data } = await supabase
-          .from("benchmark_raw")
-          .select("empresa_similar, segmento")
-          .ilike("empresa_origen", brief.empresa)
-          .limit(10);
-        benchmarkData = data || [];
-      } catch (e) { console.warn("Supabase fetch benchmark_raw failed", e); }
-
-      // 3. Buscar Competidores Reales y Clientes Potenciales
-      try {
-        // --- QUERY 1: COMPETIDORES REALES (Priorizando Verificados) ---
-        // Buscamos directamente la fila de la empresa para ver sus rivales verificados
-        const companyNameTrimmed = brief.empresa?.trim();
-        const { data: verifiedRow } = await supabase
-          .from("empresas_v2")
-          .select("competitors_verified")
-          .ilike("name", `%${companyNameTrimmed}%`)
-          .maybeSingle();
-
-        if (verifiedRow?.competitors_verified && verifiedRow.competitors_verified.length > 0) {
-          console.log("✅ Usando competidores VERIFICADOS del Enjambre");
-          competidoresData = verifiedRow.competitors_verified.map((name: string) => ({ name, url: null }));
         } else {
-          // Fallback: Búsqueda por Categoría de Producto (DETECTADA, NO DEL DROPDOWN)
-          console.log("⚠️ Fallback: Buscando competidores por categoría detectada");
-          const categoriaProducto = detectProductCategory(brief.producto);
-          const { data: compData } = await supabase
-            .from("empresas_v2")
-            .select("name, website")
-            .eq("vertical_finnovista", categoriaProducto)
-            .neq("name", brief.empresa)
-            .order("icp_score", { ascending: false })
-            .limit(8);
-            
-          competidoresData = compData?.map(c => ({ name: c.name, url: c.website })) || [];
+          const { data: v2Data } = await supabase.from("empresas_v2").select("*").ilike("name", `%${brief.empresa}%`).limit(1);
+          if (v2Data && v2Data.length > 0) empresaData = v2Data[0];
         }
+      } catch (e) { console.warn("Fetch empresa failed", e); }
 
-        // --- QUERY 2: CUENTAS OBJETIVO / LEADS ---
-        const rawVertical = empresaData?.vertical_finnovista || brief.vertical;
-        
-        // Capa de Estratégia Semántica (Mapeo de Industrias)
-        const VERTICAL_MAP: Record<string, string[]> = {
-          "gaming": ["Payments & Remittances", "Tech Infrastructure"],
-          "igaming": ["Payments & Remittances", "Tech Infrastructure"],
-          "casinos": ["Payments & Remittances"],
-          "betting": ["Payments & Remittances"],
-          "retail": ["Payments & Remittances", "Enterprise Financial Mgmt"],
-          "ecommerce": ["Payments & Remittances"],
-          "marketplace": ["Payments & Remittances"],
-          "real estate": ["Proptech", "Lending"],
-          "insurance": ["Insurtech"],
-          "trading": ["Wealth Management"],
-          "crypto": ["Crypto & Blockchain"],
-        };
+      // 2. Similares
+      try {
+        const { data } = await supabase.from("benchmark_raw").select("empresa_similar, segmento").ilike("empresa_origen", brief.empresa).limit(10);
+        benchmarkData = data || [];
+      } catch (e) { console.warn("Fetch benchmark failed", e); }
 
-        const vLower = rawVertical.toLowerCase();
-        let targetVerticals = [rawVertical];
-        
-        // Buscar coincidencia semántica
-        for (const key in VERTICAL_MAP) {
-          if (vLower.includes(key)) {
-            targetVerticals = VERTICAL_MAP[key];
-            break;
+      // 3. Competidores y Leads
+      try {
+        const name = brief.empresa.trim();
+        // Competidores
+        const { data: v3C } = await supabase.from("empresas_v3").select("competitors_verified").ilike("name", `%${name}%`).maybeSingle();
+        if (v3C?.competitors_verified?.length > 0) {
+          competidoresData = v3C.competitors_verified.map((n: string) => ({ name: n, url: null }));
+        } else {
+          const { data: v2C } = await supabase.from("empresas_v2").select("competitors_verified").ilike("name", `%${name}%`).maybeSingle();
+          if (v2C?.competitors_verified?.length > 0) {
+            competidoresData = v2C.competitors_verified.map((n: string) => ({ name: n, url: null }));
+          } else {
+            const cat = detectProductCategory(brief.producto);
+            const { data: fallbackC } = await supabase.from("empresas_v2").select("name, website").eq("vertical_finnovista", cat).neq("name", brief.empresa).limit(8);
+            competidoresData = fallbackC?.map(c => ({ name: c.name, url: c.website })) || [];
           }
         }
 
-        let queryLeads = supabase
-          .from("empresas_v2")
-          .select("name, website")
-          .in("vertical_finnovista", targetVerticals);
-
-        // Normalización de País (Supabase usa nombres sin acento)
-        const countryMap: Record<string, string> = {
-          "México": "Mexico",
-          "Perú": "Peru",
-          "Panamá": "Panama",
+        // Leads
+        const rawV = empresaData?.vertical_finnovista || brief.vertical;
+        const MAP: Record<string, string[]> = {
+          "gaming": ["Payments & Remittances", "Tech Infrastructure"],
+          "igaming": ["Payments & Remittances", "Tech Infrastructure"],
+          "retail": ["Payments & Remittances", "Enterprise Financial Mgmt"],
+          "ecommerce": ["Payments & Remittances"],
+          "real estate": ["Proptech", "Lending"],
+          "insurance": ["Insurtech"],
+          "crypto": ["Crypto & Blockchain"],
         };
-        const normalizedCountry = countryMap[brief.pais] || brief.pais;
+        const vL = rawV.toLowerCase();
+        let ts = [rawV];
+        for (const k in MAP) { if (vL.includes(k)) { ts = MAP[k]; break; } }
+        
+        const cMap: Record<string, string> = { "México": "Mexico", "Perú": "Peru", "Panamá": "Panama" };
+        const normC = cMap[brief.pais] || brief.pais;
+        let q = supabase.from("empresas_v2").select("name, website").in("vertical_finnovista", ts).order("icp_score", { ascending: false }).limit(10);
+        if (normC && normC !== "Toda Latam") q = q.eq("country", normC);
+        const { data: ls } = await q;
+        clientesPotencialesData = ls?.map(l => ({ name: l.name, url: l.website })) || [];
+      } catch (e) { console.warn("Fetch leads failed", e); }
 
-        if (normalizedCountry && normalizedCountry !== "Toda Latam") {
-          queryLeads = queryLeads.eq("country", normalizedCountry);
-        }
-
-        const { data: leadsData } = await queryLeads
-          .order("icp_score", { ascending: false })
-          .limit(10);
-          
-        clientesPotencialesData = leadsData?.map(l => ({ name: l.name, url: l.website })) || [];
-      } catch (e) {
-        console.warn("Supabase fetch competidores/leads failed", e);
-      }
-
-      // 4. Llamar al NERV API
-      console.log("COMPETIDORES QUE SE MANDAN A LA API:", JSON.stringify(competidoresData));
-      const response = await fetch("/api/nexus", { // Mantenemos la ruta API por ahora para no romper el backend
+      // 4. API Nexus
+      const response = await fetch("/api/nexus", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           brief,
           empresa_supabase: empresaData || null,
           benchmark: benchmarkData || [],
-          competidores: competidoresData || [], // Ya son los rivales reales
-          clientes_potenciales: clientesPotencialesData || [], // Nueva variable para la IA
-          isForensic: isForensic,
+          competidores: competidoresData || [],
+          clientes_potenciales: clientesPotencialesData || [],
+          isForensic,
         }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Error en el análisis");
-      }
-
+      if (!response.ok) throw new Error("Error en el análisis");
       const data: NervResult = await response.json();
       setResult({ ...data, empresaId: empresaData?.id });
       setStep("result");
