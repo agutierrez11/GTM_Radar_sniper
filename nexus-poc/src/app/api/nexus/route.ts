@@ -9,13 +9,14 @@ export async function POST(req: NextRequest) {
   console.log(`NEXUS_API_DEPLOY_VERSION: 1.6.0 - SWARM_RAG_V3.1`);
   try {
     const body = await req.json();
-    const { brief, empresa_supabase, competidores } = body;
+    const { brief, empresa_supabase, competidores, clientes_potenciales } = body;
 
     // --- FASE 0: RAG (Retrieval Augmented Generation) ---
     let ragContext = "No document evidence found in Knowledge Base.";
     try {
       const { GoogleGenerativeAI } = await import("@google/generative-ai");
-      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY_1!);
+      const api_key = process.env.GEMINI_API_KEY_1 || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+      const genAI = new GoogleGenerativeAI(api_key!);
       const embedModel = genAI.getGenerativeModel({ model: "text-embedding-004" });
       
       const queryText = `${brief.empresa} ${brief.producto} ${brief.vertical} ${brief.pais}`;
@@ -43,6 +44,7 @@ export async function POST(req: NextRequest) {
       Tu misión: Extraer señales forenses puras de estos datos:
       
       DATOS ESTRUCTURADOS: ${JSON.stringify({ brief, empresa_supabase, competidores })}
+      PROSPECTOS SUGERIDOS: ${JSON.stringify(clientes_potenciales || [])}
       EVIDENCIA DOCUMENTAL (RAG): ${ragContext}
       
       Reglas:
@@ -73,9 +75,10 @@ export async function POST(req: NextRequest) {
       1. Datos Crudos: ${JSON.stringify(brief)}
       2. Hechos Forenses: ${JSON.stringify(facts)}
       3. Crítica del Red Team: ${JSON.stringify(objections)}
+      4. Prospectos: ${JSON.stringify(clientes_potenciales || [])}
 
       Tu misión: Generar el Dossier Forense Final que resuelva el debate anterior.
-      Sigue el protocolo RaiSE v3.1: Inferencia -> Fricción -> Resolución.
+      Sigue el protocolo RaiSE v3.1.
 
       ESTRUCTURA JSON:
       {
@@ -84,9 +87,9 @@ export async function POST(req: NextRequest) {
         "icp_score": <int>,
         "latido_mercado": "<Trigger real>",
         "analisis_forense": {
-          "inferencia_raise": "<Cómo el enjambre resolvió el debate entre hechos y objeciones>",
-          "friccion_tecnica": "<El cuello de botella real tras el análisis crítico>",
-          "dolor_financiero": "<Costo de inacción>"
+          "inferencia_raise": "...",
+          "friccion_tecnica": "...",
+          "dolor_financiero": "..."
         },
         "diagnostico": {
           "friccion_operativa": "...",
@@ -95,13 +98,16 @@ export async function POST(req: NextRequest) {
         },
         "plan_ataque": {
           "schwerpunkt": "...",
-          "flanqueo": "<Basado en superar las objeciones del Red Team>",
+          "flanqueo": "...",
           "apertura": "..."
         },
         "auditoria": {
           "confianza": "ALTO",
-          "resumen_enjambre": "<Breve resumen de la discusión entre agentes>"
+          "resumen_enjambre": "..."
         },
+        "similares": [],
+        "competidores": ${JSON.stringify(competidores || [])},
+        "clientes_potenciales": ${JSON.stringify(clientes_potenciales || [])},
         "markdown": "..."
       }
     `;
