@@ -3,6 +3,7 @@ import { generateWithFallback } from "@/lib/gemini";
 import { generateWithGroq } from "@/lib/groq";
 import { supabase } from "@/lib/supabase";
 import { searchTavily } from "@/lib/tavily";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export const dynamic = "force-dynamic";
 
@@ -10,15 +11,47 @@ export async function POST(req: NextRequest) {
   try {
     const { vendedorUrl, pais, vertical, productosSeleccionados, empresaName } = await req.json();
 
-    // 1. Consultar base de datos por el vertical y país
-    const { data: leads, error } = await supabase
-      .from('empresas_v2')
-      .select('name, description, vertical_finnovista, product_category, country, website')
-      .eq('country', pais)
-      .ilike('vertical_finnovista', `%${vertical.split(' ')[0]}%`)
-      .limit(12);
+    // 1. Intentar Búsqueda Vectorial (pgvector)
+    const queryText = `Empresa B2B buscando clientes en el sector ${vertical} de ${pais} para vender: ${productosSeleccionados.join(', ')}. Necesitamos prospectos afines.`;
+    let leads = null;
+    let usingVectorSearch = false;
 
-    if (error) throw error;
+    try {
+       const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY_PROFESSIONAL || process.env.GEMINI_API_KEY || "");
+       const model = genAI.getGenerativeModel({ model: "text-embedding-004" });
+       const result = await model.embedContent(queryText);
+       const embedding = result.embedding.values;
+
+       const { data: v3Leads, error: v3Error } = await supabase.rpc('match_empresas', {
+         query_embedding: embedding,
+         match_threshold: 0.1, // Tolerancia amplia para asegurar el llenado de 12 leads
+         match_count: 12,
+         filter_pais: pais
+       });
+
+       if (!v3Error && v3Leads && v3Leads.length > 0) {
+         leads = v3Leads;
+         usingVectorSearch = true;
+         console.log(`[PGVECTOR HIT] ${v3Leads.length} leads encontrados semánticamente.`);
+       } else {
+         console.log("[PGVECTOR MISS] Sin matches o tabla vacía. Activando fallback estático.");
+       }
+    } catch(err) {
+       console.warn("Error en pgvector, fallback a query estática:", err);
+    }
+
+    // Fallback a búsqueda estática en v2 si pgvector falla/esta vacío
+    if (!leads) {
+      const { data: v2Leads, error } = await supabase
+        .from('empresas_v2')
+        .select('name, description, vertical_finnovista, product_category, country, website')
+        .eq('country', pais)
+        .ilike('vertical_finnovista', `%${vertical.split(' ')[0]}%`)
+        .limit(12);
+      
+      if (error) throw error;
+      leads = v2Leads;
+    }
 
     // 2. Investigación de mercado rápida para el contexto del sector
     const marketIntel = await searchTavily(`top fintech trends and business pain points in ${pais} ${vertical} 2024`);
