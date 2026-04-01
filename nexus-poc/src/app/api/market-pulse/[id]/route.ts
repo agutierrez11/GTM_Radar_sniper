@@ -114,7 +114,7 @@ Solo información encontrada en la búsqueda. No inventes datos.
     
     try {
       const model = genAI.getGenerativeModel({
-        model: 'gemini-2.0-flash',
+        model: 'gemini-2.5-flash',
       }, { apiVersion: 'v1beta' })
 
     const tools = [
