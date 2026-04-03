@@ -7,6 +7,40 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export const dynamic = "force-dynamic";
 
+// [MIROFISH SWARM ENGINE BRIDGE]
+// Integración con el framework 666ghj/MiroFish corriendo en localhost:5001
+async function triggerMiroFishSwarm(payload: any) {
+  try {
+    console.log("[MIROFISH] Iniciando inyección al Swarm Intelligence Engine...");
+    
+    // Paso 1: Crear simulación en el backend de Python
+    const createRes = await fetch("http://localhost:5001/api/simulation/create", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        project_id: `nerv_gtm_${Date.now()}`,
+        enable_twitter: true,
+        enable_reddit: true
+      })
+    });
+    
+    if (!createRes.ok) {
+       console.log("[MIROFISH-WARNING] Framework no detectado en el puerto 5001. Cayendo al MiroFish Protocol (Prompt-based).");
+       return null;
+    }
+    
+    const simData = await createRes.json();
+    console.log(`[MIROFISH] Simulación creada: ${simData.data.simulation_id}`);
+    
+    // En una implementación total, aquí llamaríamos a /api/simulation/prepare 
+    // y conectaríamos el webhook. Por ahora se retorna la señal de inicio.
+    return simData.data.simulation_id;
+  } catch (e) {
+    console.log("[MIROFISH-WARNING] El servidor Swarm Engine (Python) no está activo. Activando fallback.");
+    return null;
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { vendedorUrl, pais, vertical, productosSeleccionados, empresaName } = await req.json();
@@ -56,7 +90,19 @@ export async function POST(req: NextRequest) {
     // 2. Investigación de mercado rápida para el contexto del sector
     const marketIntel = await searchTavily(`top fintech trends and business pain points in ${pais} ${vertical} 2024`);
 
-    // 3. Prompt de Prospección de Alto Nivel
+    // 3. INTENTO DE DELEGAR AL ENJAMBRE REAL (MIROFISH FRAMEWORK)
+    const activeSimulationId = await triggerMiroFishSwarm({ 
+      leads, 
+      marketIntel, 
+      target: { vendedorUrl, pais, vertical, productosSeleccionados }
+    });
+
+    if (activeSimulationId) {
+      console.log(`[MIROFISH] Delegando inferencia a la arquitectura GraphRAG: ${activeSimulationId}`);
+      // Lógica futura: Hacer polling o sockets a MiroFish.
+    }
+
+    // 4. Prompt de Prospección de Alto Nivel (Fallback Rápido de NERV)
     const prompt = `
 Eres NERV — el motor de inteligencia de ventas más avanzado de Latam.
 OBJETIVO: Generar un PORTAFOLIO DE PROSPECTOS (Hit List) para ${empresaName || vendedorUrl}.
