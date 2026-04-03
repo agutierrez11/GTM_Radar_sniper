@@ -1,5 +1,5 @@
 @echo off
-cd "C:\Users\antonio\.gemini\antigravity\scratch\sniper-factory-master"
+cd "C:\Users\nerv_gtm\.gemini\antigravity\scratch\nexus-poc"
 echo Checking for running engines...
 tasklist /fi "imagename eq python.exe" | find ":" > nul
 if errorlevel 1 (

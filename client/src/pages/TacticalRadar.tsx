@@ -169,7 +169,7 @@ export default function TacticalRadar() {
         <header className="mb-14 flex justify-between items-start">
           <div className="space-y-1">
             <h1 className="text-4xl font-black tracking-tight text-white flex items-center gap-3">
-              NERV <span className="text-indigo-500">Sniper</span> Intelligence
+              NERV <span className="text-indigo-500">Estratega</span> Intelligence
             </h1>
             <p className="text-sm font-medium text-slate-500 tracking-wide">
               Global GTM Tactical Command Center
@@ -206,7 +206,7 @@ export default function TacticalRadar() {
                )}
                {!dossiersLoading && (!dossiers || dossiers.length === 0) && (
                   <div className="col-span-full h-64 flex flex-col items-center justify-center border-2 border-dashed border-slate-800 rounded-3xl group hover:border-blue-500/30 transition-colors">
-                     <span className="text-sm text-slate-500 group-hover:text-slate-300 transition-colors">Sin ataques activos en el cuadrante.</span>
+                     <span className="text-sm text-slate-500 group-hover:text-slate-300 transition-colors">Sin estrategia de acercamientos activos en el cuadrante.</span>
                      <span className="text-[10px] text-slate-600 mt-2 uppercase tracking-widest">MAPA DE DESTINO GLOBAL • LISTO PARA DETONACIÓN</span>
                   </div>
                )}

@@ -14,12 +14,12 @@ La inestabilidad actual sugiere un cuello de botella en el procesamiento de logs
 
 ### [Componente] Orquestador VM
 
-#### [MODIFY] [orquestador_massive_v5.py](file:///C:/Users/antonio/gemini/antigravity/scratch/orquestador_massive_v5.py)
+#### [MODIFY] [orquestador_massive_v5.py](file:///C:/Users/nerv_gtm/gemini/antigravity/scratch/orquestador_massive_v5.py)
 - **MAX_WORKERS:** 20 -> 60.
 - **Batch Speed:** Optimización de `DELAY_BETWEEN_REQS`.
 - **Silent Mode:** Reducir verbosidad de logs para evitar el colapso del "cerebro" por exceso de texto.
 
-#### [MODIFY] [.env](file:///C:/Users/antonio/gemini/antigravity/scratch/.env)
+#### [MODIFY] [.env](file:///C:/Users/nerv_gtm/gemini/antigravity/scratch/.env)
 - Actualizar `TELEGRAM_TOKEN` una vez validado.
 
 ## Plan de Verificación

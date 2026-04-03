@@ -121,6 +121,68 @@ export const db = {
         console.error(`DB_ERROR (patch): ${e}`);
         throw new Error('FALLO_ACTUALIZACION_DB');
       }
+    },
+    getStrategicAccounts: async (limit = 50) => {
+      try {
+        // SQL Triple Join con Fallback de Website y DISTINCT para evitar colisiones
+        const { data, error } = await supabase.rpc('get_enriched_strategic_accounts', { 
+           p_limit: limit 
+        });
+
+        if (error) {
+          // Fallback manual si el RPC no existe (ejecutando via query directa)
+          console.warn("RPC no encontrado, ejecutando fallback select...");
+          return await db.empresas.getStrategicAccountsFallback(limit);
+        }
+
+        return data.map(db.empresas.injectTierScoring);
+      } catch (e) {
+        console.error(`STRATEGIC_DB_ERROR: ${e}`);
+        return [];
+      }
+    },
+    getStrategicAccountsFallback: async (limit = 50) => {
+      const { data, error } = await supabase
+        .from('empresas_v3')
+        .select(`
+          nombre, website, pais_hq, vertical,
+          growth_signals(signal_type, score_momento, personalidad_inferida),
+          tech_stack(tech_pagos, tech_crm, tech_kyc, tech_analytics, tech_infra)
+        `)
+        .limit(limit);
+      
+      if (error) throw error;
+      return (data || []).map(db.empresas.injectTierScoring);
+    },
+    injectTierScoring: (row: any) => {
+      const signal = row.growth_signals?.[0] || row.growth_signals || {};
+      const tech = row.tech_stack?.[0] || row.tech_stack || {};
+      
+      let tier = "Tier3"; // Default
+      const hasCRM = (tech.tech_crm?.toLowerCase().includes('hubspot') || tech.tech_crm?.toLowerCase().includes('salesforce'));
+      const score = signal.score_momento || 0;
+      const signalType = signal.signal_type || "";
+
+      // Lógica Tier 1: FUNDING + CRM + Score >= 7
+      if (signalType.includes('FUNDING') && hasCRM && score >= 7) {
+        tier = "Tier1";
+      } 
+      // Lógica Tier 2: EXPANSION/PRODUCT + CRM
+      else if ((signalType.includes('EXPANSION') || signalType.includes('PRODUCT')) && hasCRM) {
+        tier = "Tier2";
+      }
+
+      return {
+        ...row,
+        tier,
+        signal_type: signalType,
+        score_momento: score,
+        tech_summary: {
+           crm: tech.tech_crm || "No detectado",
+           pagos: tech.tech_pagos || "No detectado",
+           kyc: tech.tech_kyc || "No detectado"
+        }
+      };
     }
   }
 };

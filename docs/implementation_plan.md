@@ -7,7 +7,7 @@ Para que no te duelan los "3 o 4 repositorios", consolidaremos todo bajo un solo
 
 ### Estructura Sugerida del Repositorio
 ```text
-/sniper-factory-master
+/nexus-poc
   ├── /apps
   │   └── /radar-gtm      # El Dashboard Vercel (Frontend)
   ├── /engine

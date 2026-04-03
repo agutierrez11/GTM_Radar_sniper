@@ -7,15 +7,25 @@ const plugins = [react(), tailwindcss()];
 
 export default defineConfig({
   plugins,
+  optimizeDeps: {
+    include: ["@xyflow/react", "@xyflow/system"],
+  },
+  ssr: {
+    noExternal: ["@xyflow/react", "@xyflow/system"],
+  },
   resolve: {
     alias: {
       "@": path.resolve(import.meta.dirname, "client", "src"),
       "@shared": path.resolve(import.meta.dirname, "shared"),
+      "@xyflow/react": path.resolve(import.meta.dirname, "node_modules/@xyflow/react/dist/esm/index.js"),
     },
   },
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+    rollupOptions: {
+      external: ["@xyflow/react/dist/style.css"],
+    },
   },
   server: {
     port: 3000,

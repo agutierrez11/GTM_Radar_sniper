@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 # Mission: Process 5,000 leads from Supabase -> Firecrawl Extract -> Obsidian v5 Standard
 
 # Hardcoded Path for robustness in Night Shift
-ENV_PATH = r"C:\Users\nerv_gtm\.gemini\antigravity\scratch\sniper-factory-master\engine\.env"
+ENV_PATH = r"C:\Users\nerv_gtm\.gemini\antigravity\scratch\nexus-poc\engine\.env"
 load_dotenv(ENV_PATH)
 
 # ─────────────────────────────────────────────

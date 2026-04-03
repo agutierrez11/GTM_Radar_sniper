@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from dotenv import load_dotenv
 
 # ── CONFIGURATION ──────────────────────────────────────────────────────────
-load_dotenv(r"c:\Users\antonio\.gemini\antigravity\scratch\sniper-factory-master\engine\.env")
+load_dotenv(r"c:\Users\antonio\.gemini\antigravity\scratch\nexus-poc\engine\.env")
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")

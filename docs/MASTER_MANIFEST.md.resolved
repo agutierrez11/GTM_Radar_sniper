@@ -16,7 +16,7 @@ A diferencia de una base de datos estática, el Radar GTM Vivo es un **Bucle de 
 El sistema opera bajo una jerarquía de confianza absoluta:
 - **Usuario Master (ANTONIO):** Root access. Supervisión de todas las sesiones de los Titanes y control total de la cosecha.
 - **Identidades de Operación (Titanes):** Logins directos (solo nombre) que activan "Vistas Estratégicas" pre-configuradas (Founder Mode, Executive Mode, Growth Mode).
-- **Silent Security:** Autenticación vía Whitelist pura en [data.js](file:///C:/Users/antonio/.gemini/antigravity/scratch/radar-gtm/data.js).
+- **Silent Security:** Autenticación vía Whitelist pura en [data.js](file:///C:/Users/nerv_gtm/.gemini/antigravity/scratch/radar-gtm/data.js).
 
 ## 3. El Búnker 4-Cores (Potencia de Cómputo)
 Optimización crítica para la estabilidad en Google Cloud (VM e2-standard-4):
@@ -43,4 +43,4 @@ Cada acción en el Dashboard alimenta el "Cerebro" del Sniper:
 ---
 
 **PARA UNA IA EXTERNA:**
-"Este no es un proyecto de software tradicional. Es una infraestructura de guerra comercial. Prioriza la integridad del 'Live Data Loop'. Cada lead enriquecido es una victoria. Mantén el motor en 20 workers, usa el [orquestador_v6_stable.py](file:///C:/Users/antonio/.gemini/antigravity/scratch/orquestador_v6_stable.py) y respeta la jerarquía de Antonio como Root. El objetivo es el dominio total del ecosistema fintech a través de datos estructurados y Reverse ICP."
+"Este no es un proyecto de software tradicional. Es una infraestructura de guerra comercial. Prioriza la integridad del 'Live Data Loop'. Cada lead enriquecido es una victoria. Mantén el motor en 20 workers, usa el [orquestador_v6_stable.py](file:///C:/Users/nerv_gtm/.gemini/antigravity/scratch/orquestador_v6_stable.py) y respeta la jerarquía de Antonio como Root. El objetivo es el dominio total del ecosistema fintech a través de datos estructurados y Reverse ICP."

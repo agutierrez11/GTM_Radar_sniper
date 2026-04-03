@@ -6,7 +6,7 @@ Este documento es el mapa para que un equipo técnico asuma el proyecto sin fric
 ---
 
 ### 1. Ubicación del Código y Estructura
-- **Directorio Raíz:** `C:\Users\antonio\.gemini\antigravity\scratch/`
+- **Directorio Raíz:** `C:\Users\nerv_gtm\.gemini\antigravity\scratch/`
 - **Frontend (Radar-GTM):** `/radar-gtm/` (Vanilla JS, CSS3, HTML5).
   - `app.js`: Motor de lógica, auth de titanes y llamadas a API.
   - `data.js`: Mock de titanes y configuración de webhooks.

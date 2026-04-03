@@ -194,7 +194,7 @@ export default function Home() {
             <div className="mb-8 p-6 bg-white border border-gray-200 rounded-xl shadow-sm space-y-4">
               <div className="flex items-center gap-2 mb-2">
                 <Shield className="w-4 h-4 text-blue-600" />
-                <h3 className="text-sm font-bold text-gray-800 uppercase tracking-widest">Ataque Quirúrgico Nexus</h3>
+                <h3 className="text-sm font-bold text-gray-800 uppercase tracking-widest">Estrategia de Acercamiento Quirúrgico Nexus</h3>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="space-y-1">
@@ -240,7 +240,7 @@ export default function Home() {
                   </select>
                 </div>
                 <div className="space-y-1">
-                   <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Ángulo de Ataque</label>
+                   <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Ángulo de Estrategia de Acercamiento</label>
                    <div className="flex gap-2">
                      <input 
                        type="text"

@@ -35,7 +35,7 @@ export function RadarProvider({ children }: { children: React.ReactNode }) {
           rol,
           vertical,
           region,
-          angulo_ataque: angulo
+          angulo_estrategia de acercamiento: angulo
         })
       };
 
@@ -43,7 +43,7 @@ export function RadarProvider({ children }: { children: React.ReactNode }) {
       if (error) console.error("Error saving mission:", error);
 
       toast.success("Misión Sincronizada", {
-        description: "El motor Nexus ha sido configurado con tu ángulo de ataque.",
+        description: "El motor Nexus ha sido configurado con tu ángulo de estrategia de acercamiento.",
       });
     } catch (err) {
       toast.error("Error de Sincronización");
@@ -57,7 +57,7 @@ export function RadarProvider({ children }: { children: React.ReactNode }) {
     
     setIsRadarRunning(true);
     toast.message("Radar Detonado", {
-      description: `Iniciando ataque quirúrgico para: ${url1}`,
+      description: `Iniciando estrategia de acercamiento quirúrgico para: ${url1}`,
     });
 
     try {

@@ -3,8 +3,8 @@
 Toño, entiendo perfectamente el miedo. No quieres que cuando apagues esta VM, tu "hijo digital" muera o se quede ciego. Aquí te explico por qué **eso no va a pasar**.
 
 ## 1. El Mito de la "Ruta Absoluta"
-- **Lo que yo digo:** "Ruta absoluta" (`C:\Users\antonio\...`). Esto solo lo uso YO (tu asistente) para poder encontrar tus archivos en este disco duro específico **hoy**.
-- **Lo que el Sniper usa:** "Rutas Relativas" (`./apps/index.html`). El código del Sniper no sabe nada de `C:\Users\antonio`. Solo sabe que el archivo `index.html` está en la carpeta de al lado. 
+- **Lo que yo digo:** "Ruta absoluta" (`C:\Users\nerv_gtm\...`). Esto solo lo uso YO (tu asistente) para poder encontrar tus archivos en este disco duro específico **hoy**.
+- **Lo que el Sniper usa:** "Rutas Relativas" (`./apps/index.html`). El código del Sniper no sabe nada de `C:\Users\nerv_gtm`. Solo sabe que el archivo `index.html` está en la carpeta de al lado. 
 - **Conclusión:** Si mueves la carpeta de proyecto a un Mac, a un Linux o a otra PC, **las rutas relativas seguirán funcionando perfectamente.**
 
 ## 2. El Sniper vive en la "Nube de 3 Cabezas"

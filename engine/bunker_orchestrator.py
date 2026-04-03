@@ -31,7 +31,7 @@ BACKGROUND_SERVICES = [
     {"name": "TELEGRAM_BOT", "path": "engine/telegram_listener.py"}
 ]
 
-REPORT_PATH = r"C:\Users\antonio\.gemini\antigravity\brain\2d3db774-f69e-4471-94f7-e0bd6b0c83fc\morning_report.md"
+REPORT_PATH = r"C:\Users\nerv_gtm\.gemini\antigravity\brain\2d3db774-f69e-4471-94f7-e0bd6b0c83fc\morning_report.md"
 
 def start_background_services():
     """Launches persistent listeners like Slack/Telegram bots."""
