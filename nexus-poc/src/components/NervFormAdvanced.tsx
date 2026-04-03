@@ -159,10 +159,17 @@ export default function NervFormAdvanced() {
   };
 
   const handleManualFallback = () => {
+    let deducedName = "Nueva Organización";
+    try {
+      const url = new URL(brief.vendedorUrl || "");
+      const host = url.hostname.replace('www.', '').split('.')[0];
+      deducedName = host.charAt(0).toUpperCase() + host.slice(1);
+    } catch (e) {}
+
     setIdentity({
-      empresa: "Nueva Organización",
-      mision_gtm: "Defina aquí su misión estratégica...",
-      ofertas_valor: [{ nombre: "Punto de Entrada 1", descripcion: "Breve descripción..." }],
+      empresa: deducedName,
+      mision_gtm: `Detección asistida: Consultoría estratégica para ${deducedName}...`,
+      ofertas_valor: [{ nombre: "Nexo de Integración", descripcion: "Propuesta de valor fundamental detectada por el motor." }],
       icp_deducido: { industria: "Fintech", tamano: "Scaleup", geografia: "Latam", triggers: ["Expansión"] }
     });
     setStep("validation");
