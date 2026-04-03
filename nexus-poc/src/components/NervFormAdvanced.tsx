@@ -184,6 +184,32 @@ export default function NervFormAdvanced() {
     }));
   };
 
+  const updateOffer = (idx: number, field: 'nombre' | 'descripcion', val: string) => {
+    if (!identity) return;
+    const newOffers = [...identity.ofertas_valor];
+    newOffers[idx] = { ...newOffers[idx], [field]: val };
+    setIdentity({ ...identity, ofertas_valor: newOffers });
+    
+    // Sincronizar selección si cambia el nombre
+    if (field === 'nombre') {
+      const oldName = identity.ofertas_valor[idx].nombre;
+      if (brief.productosSeleccionados.includes(oldName)) {
+        setBrief(prev => ({
+          ...prev,
+          productosSeleccionados: prev.productosSeleccionados.map(p => p === oldName ? val : p)
+        }));
+      }
+    }
+  };
+
+  const addOffer = () => {
+    if (!identity) return;
+    setIdentity({
+      ...identity,
+      ofertas_valor: [...identity.ofertas_valor, { nombre: "Nuevo Punto de Entrada", descripcion: "Edite aquí la descripción estratégica..." }]
+    });
+  };
+
   const handleFinalAnalysis = async () => {
     setLoading(true);
     setStep("loading");
@@ -358,21 +384,39 @@ export default function NervFormAdvanced() {
                     </div>
 
                     <div className="mb-10">
-                       <div className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-4">Portafolio de Ofertas (Puntos de Entrada)</div>
-                       <div className="grid grid-cols-1 gap-3">
-                          {identity.ofertas_valor.map(o => (
+                       <div className="grid grid-cols-1 gap-4">
+                          {identity.ofertas_valor.map((o, idx) => (
                               <div 
-                                key={o.nombre} 
-                                onClick={() => toggleProduct(o.nombre)}
-                                className={`p-5 rounded-2xl border transition-all cursor-pointer ${brief.productosSeleccionados.includes(o.nombre) ? 'bg-[#5E6AD2]/5 border-[#5E6AD2] ring-1 ring-[#5E6AD2]' : 'bg-zinc-50 border-zinc-200 hover:border-zinc-300'}`}
+                                key={idx} 
+                                className={`p-6 rounded-2xl border transition-all ${brief.productosSeleccionados.includes(o.nombre) ? 'bg-[#5E6AD2]/5 border-[#5E6AD2] ring-1 ring-[#5E6AD2]' : 'bg-zinc-50 border-zinc-100 hover:border-zinc-200'}`}
                               >
-                                  <div className="flex justify-between items-center mb-1">
-                                      <span className="font-bold text-zinc-900">{o.nombre}</span>
-                                      {brief.productosSeleccionados.includes(o.nombre) && <div className="w-2 h-2 rounded-full bg-[#5E6AD2]" />}
+                                  <div className="flex justify-between items-center mb-3">
+                                      <input 
+                                        value={o.nombre}
+                                        onChange={(e) => updateOffer(idx, 'nombre', e.target.value)}
+                                        className="bg-transparent font-bold text-zinc-900 border-none outline-none focus:ring-1 focus:ring-[#5E6AD2]/30 rounded px-1 flex-1"
+                                      />
+                                      <button 
+                                        onClick={() => toggleProduct(o.nombre)}
+                                        className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${brief.productosSeleccionados.includes(o.nombre) ? 'bg-[#5E6AD2] border-[#5E6AD2]' : 'border-zinc-300'}`}
+                                      >
+                                        {brief.productosSeleccionados.includes(o.nombre) && <div className="w-2 h-2 rounded-full bg-white" />}
+                                      </button>
                                   </div>
-                                  <p className="text-xs text-zinc-500 leading-relaxed">{o.descripcion}</p>
+                                  <textarea 
+                                    value={o.descripcion}
+                                    onChange={(e) => updateOffer(idx, 'descripcion', e.target.value)}
+                                    rows={2}
+                                    className="w-full bg-white border border-zinc-100 rounded-xl p-3 text-xs text-zinc-600 leading-relaxed outline-none focus:border-[#5E6AD2]/50 resize-none shadow-inner"
+                                  />
                               </div>
                           ))}
+                          <button 
+                            onClick={addOffer}
+                            className="p-4 border-2 border-dashed border-zinc-200 rounded-2xl text-[10px] font-black text-zinc-400 uppercase tracking-widest hover:border-[#5E6AD2] hover:text-[#5E6AD2] transition-all"
+                          >
+                            + Añadir Punto de Entrada Manual
+                          </button>
                        </div>
                     </div>
 
