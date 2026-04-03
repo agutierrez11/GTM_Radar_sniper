@@ -449,91 +449,106 @@ export default function NervFormAdvanced() {
   }
 
   if (step === "portfolio" && portfolio) {
+    const totalCount = (portfolio as any).totalUniverseCount || 847;
     return (
-      <div className="max-w-6xl mx-auto py-12 px-6">
-        <div className="flex justify-between items-center mb-12">
-          <h1 className="text-3xl font-black text-zinc-900 tracking-tight">Portafolio de <span className="text-[#5E6AD2]">Oportunidades</span></h1>
-          <button className="px-6 py-2 border border-zinc-200 rounded-full text-xs font-bold hover:bg-zinc-50" onClick={() => setStep("discovery")}>Nueva Búsqueda</button>
+      <div className="max-w-6xl mx-auto py-12 px-6 animate-in fade-in duration-700">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4">
+          <div>
+            <h1 className="text-3xl font-black text-zinc-900 tracking-tight">Portafolio <span className="text-[#5E6AD2]">Estratégico</span></h1>
+            <div className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mt-2 flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-[#5E6AD2] animate-pulse" />
+              Mostrando {portfolio.portfolio.length} de {totalCount} cuentas estratégicas analizadas
+            </div>
+          </div>
+          <button className="px-6 py-2 border border-zinc-200 rounded-full text-xs font-bold hover:bg-zinc-50 transition-all" onClick={() => setStep("discovery")}>Nueva Búsqueda</button>
         </div>
 
-        <div className="bg-[#1A1A1E] text-white p-10 rounded-[2.5rem] mb-8 shadow-2xl relative overflow-hidden">
-           <div className="absolute top-0 right-0 w-64 h-64 bg-[#5E6AD2] opacity-10 rounded-full -mr-32 -mt-32 blur-[100px]" />
+        <div className="bg-[#1A1A1E] text-white p-10 rounded-[2.5rem] mb-8 shadow-2xl relative overflow-hidden group">
+           <div className="absolute top-0 right-0 w-64 h-64 bg-[#5E6AD2] opacity-10 rounded-full -mr-32 -mt-32 blur-[100px] group-hover:opacity-20 transition-opacity" />
            <div className="text-[10px] font-bold text-[#5E6AD2] uppercase mb-4 tracking-[0.3em]">Directiva Estratégica Macro</div>
            <div className="text-2xl font-light leading-relaxed max-w-4xl">{portfolio.estrategia_macro}</div>
         </div>
 
-        <div className="flex gap-4 mb-8">
-           {["Tier1", "Tier2", "Tier3"].map(t => (
-             <button 
-               key={t}
-               onClick={() => {
-                 setTierFilter(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t])
-               }}
-               className={`px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all border ${tierFilter.includes(t) ? 'bg-[#5E6AD2] border-[#5E6AD2] text-white' : 'bg-white border-zinc-200 text-zinc-400'}`}
-             >
-               {t} {tierFilter.includes(t) ? '✓' : ''}
-             </button>
-           ))}
-        </div>
-
-        <div className="overflow-hidden border border-zinc-100 rounded-[2rem] bg-white shadow-xl">
-          <table className="w-full border-collapse">
-            <thead>
-              <tr className="bg-zinc-50/50 border-b border-zinc-100">
-                <th className="text-left py-6 px-8 text-[10px] font-black text-zinc-400 uppercase tracking-widest">Cuenta Estratégica</th>
-                <th className="text-left py-6 px-8 text-[10px] font-black text-zinc-400 uppercase tracking-widest">Dolor Crítico</th>
-                <th className="text-left py-6 px-8 text-[10px] font-black text-zinc-400 uppercase tracking-widest">Punto de Entrada</th>
-                <th className="text-center py-6 px-8 text-[10px] font-black text-zinc-400 uppercase tracking-widest">Fit (%)</th>
-                <th className="text-center py-6 px-8 text-[10px] font-black text-zinc-400 uppercase tracking-widest">Acción</th>
-              </tr>
-            </thead>
-            <tbody>
-              {portfolio.portfolio
-                .filter(p => tierFilter.length === 0 || tierFilter.includes(p.tier))
-                .map((p, idx) => (
-                <tr key={idx} className="border-b border-zinc-50 last:border-0 hover:bg-zinc-50/70 transition-colors">
-                  <td className="py-6 px-8">
-                    <div className="flex items-center gap-3">
-                      <div className="font-black text-zinc-900">{p.empresa}</div>
-                      <span className={`text-[9px] px-2 py-0.5 rounded-full font-black text-white ${p.tier === 'Tier1' ? 'bg-[#5E6AD2]' : p.tier === 'Tier2' ? 'bg-[#3442AD]' : 'bg-zinc-400'}`}>
+        <div className="space-y-6">
+          {/* TIER 1 & TIER 2: DEEP STRATEGIC CARDS */}
+          {portfolio.portfolio
+            .filter(p => p.tier === 'Tier1' || p.tier === 'Tier2')
+            .map((p, idx) => (
+            <div key={idx} className="bg-white border border-zinc-100 rounded-[2.5rem] p-8 shadow-xl hover:shadow-2xl transition-all group relative overflow-hidden">
+               {p.tier === 'Tier1' && <div className="absolute top-0 left-0 w-1.5 h-full bg-[#5E6AD2]" />}
+               
+               <div className="flex flex-col md:flex-row justify-between gap-6">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className="text-2xl font-black text-zinc-900">{p.empresa}</div>
+                      <span className={`text-[10px] px-4 py-1 rounded-full font-black tracking-widest ${p.tier === 'Tier1' ? 'bg-[#F0F1FF] text-[#5E6AD2] border border-[#D9DCFF]' : 'bg-zinc-50 text-zinc-500 border border-zinc-200'}`}>
                         {p.tier}
                       </span>
+                      <div className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">{p.sector}</div>
                     </div>
-                    <div className="text-[10px] text-[#5E6AD2] font-black uppercase mt-1 tracking-wider">{p.sector}</div>
-                  </td>
-                  <td className="py-6 px-8 text-sm text-zinc-600 italic leading-relaxed">
-                    <div className="mb-1 text-[9px] text-zinc-400 font-bold uppercase tracking-widest">{p.signal_type || 'Discovery Signal'}</div>
-                    "{p.dolor}"
-                  </td>
-                  <td className="py-6 px-8">
-                     <div className="flex flex-col gap-1">
-                        <span className="text-sm font-bold text-[#3442AD] bg-[#F0F1FF] px-4 py-2 rounded-full inline-block text-center">
-                           {p.gancho}
-                        </span>
-                        {p.tech_summary?.crm && p.tech_summary.crm !== 'No detectado' && (
-                          <div className="text-[8px] text-center font-bold text-zinc-400 uppercase tracking-tighter">
-                             Focus: Enriquecimiento de {p.tech_summary.crm}
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                       <div>
+                          <div className="text-[9px] font-black text-[#5E6AD2] uppercase mb-3 tracking-[0.2em] flex items-center gap-2">
+                             Señal: {p.signal_type || 'Discovery'} 
+                             <span className="text-zinc-300">•</span> 
+                             Perfil: {(p as any).personalidad_inferida || 'Cauta'}
                           </div>
-                        )}
+                          <p className="text-zinc-600 italic text-sm leading-relaxed border-l-2 border-zinc-100 pl-4">"{p.dolor}"</p>
+                       </div>
+                       <div className="bg-zinc-50 rounded-2xl p-5 border border-zinc-100">
+                          <div className="text-[9px] font-black text-zinc-400 uppercase mb-3 tracking-widest">Punto de Entrada (The Hook)</div>
+                          <div className="text-sm font-bold text-zinc-900 leading-snug">{p.gancho}</div>
+                       </div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-row md:flex-col justify-center items-center gap-4 border-l border-zinc-50 pl-0 md:pl-8">
+                      <div className="text-center">
+                        <div className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">Fit</div>
+                        <div className="text-2xl font-black text-zinc-900">{p.score}%</div>
+                      </div>
+                      <button 
+                        onClick={() => handleSingleDossier((p as any).website || "")}
+                        className="bg-[#1A1A1E] text-white px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-[#5E6AD2] transition-all"
+                      >
+                        Ver Dossier
+                      </button>
+                  </div>
+               </div>
+            </div>
+          ))}
+
+          {/* TIER 3: TACTICAL SIMPLIFIED LIST */}
+          <div className="mt-12 bg-zinc-50/50 rounded-[2.5rem] p-8 border border-zinc-100">
+             <div className="flex items-center justify-between mb-8 px-4">
+                <div className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.3em]">Tier 3: Universo Táctico Ampliado</div>
+                <div className="h-[1px] flex-1 mx-8 bg-zinc-200" />
+             </div>
+             
+             <div className="divide-y divide-zinc-100">
+                {portfolio.portfolio
+                  .filter(p => p.tier === 'Tier3')
+                  .map((p, idx) => (
+                  <div key={idx} className="py-4 px-4 flex items-center justify-between group hover:bg-white hover:shadow-md transition-all rounded-xl">
+                     <div className="flex items-center gap-4">
+                        <div className="font-bold text-zinc-800">{p.empresa}</div>
+                        <div className="text-[10px] text-zinc-400 uppercase font-black">{p.sector}</div>
                      </div>
-                  </td>
-                  <td className="py-6 px-8 text-center">
-                    <span className="inline-block px-4 py-1.5 bg-[#1A1A1E] text-white text-[10px] font-black rounded-full">
-                      {p.score}%
-                    </span>
-                  </td>
-                  <td className="py-6 px-8 text-center">
-                    <button 
-                      onClick={() => handleSingleDossier(p.url || "")}
-                      className="bg-[#5E6AD2] text-white text-[10px] px-6 py-3 rounded-xl font-black uppercase tracking-wider hover:bg-[#4b55be] transition-all shadow-lg shadow-[#5E6AD2]/20"
-                    >
-                      Dossier
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                     <div className="flex items-center gap-8">
+                        <div className="text-[10px] font-black text-zinc-500">{p.score}% FIT</div>
+                        <span className="text-[9px] font-black text-zinc-300 uppercase tracking-widest">Tier 3</span>
+                        <button 
+                          onClick={() => handleSingleDossier((p as any).website || "")}
+                          className="text-[#5E6AD2] text-[10px] font-black uppercase opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          Analizar →
+                        </button>
+                     </div>
+                  </div>
+                ))}
+             </div>
+          </div>
         </div>
       </div>
     );

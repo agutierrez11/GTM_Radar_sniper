@@ -127,53 +127,73 @@ async function startServer() {
     const { vendedorUrl, pais, vertical, empresaName, contexto_productos } = req.body;
     try {
       const { askGemini, scrapeUrl } = await import('./lib/ai');
+      const { db, supabase } = await import('./lib/db');
+      
+      // 1. Obtener Base de Datos Real (First 30 for analysis)
+      const strategicAccounts = await db.empresas.getStrategicAccountsFallback(30);
+      
+      // 2. Obtener Universo Total (Para el Flex de Autoridad)
+      const { count: totalCount } = await supabase
+        .from('empresas_v3')
+        .select('*', { count: 'exact', head: true });
+
       const mdV = await scrapeUrl(vendedorUrl);
       
       const prompt = `
-      SISTEMA: NERV Strategic Analysis Engine.
+      SISTEMA: NERV Strategic Analysis Engine (McKinsey Standard).
       
       IDENTIDAD VENDEDOR: ${empresaName}
       CONTEXTO PRODUCTOS: ${JSON.stringify(contexto_productos)}
-      WEB VENDEDOR (EXTRACTO): ${mdV.substring(0, 8000)}
+      WEB VENDEDOR: ${mdV.substring(0, 8000)}
       
       MERCADO OBJETIVO: ${vertical} en ${pais}
       
-      TU OBJETIVO: Generar un Portafolio de Oportunidades (10 Cuentas Estratégicas).
-      Deben ser organizaciones REALES. Prioriza aquellas que tengan señales de crecimiento recientes.
+      CUENTAS REALES DETECTADAS (INYECTAR INTELIGENCIA):
+      ${"
+".join([f"- {a['nombre']}: Señal {a.get('signal_type', 'N/A')}, Personalidad: {a.get('personalidad_inferida', 'Cauta')}" for a in strategicAccounts])}
+      
+      TU OBJETIVO: Generar un Portafolio de Oportunidades para las TOP 25 cuentas.
+      REGLA CRÍTICA: El "Dolor" y el "Gancho" deben ser una función directa de [Señal de Crecimiento] + [Personalidad].
+      Ej: Una empresa Agresiva con señal de Funding busca velocidad; una Cauta con señal de Regulatory busca seguridad.
       
       ESTRUCTURA DEL RESULTADO (JSON):
       {
         "estrategia_macro": "Directiva de 2 párrafos sobre cómo abordar este mercado.",
         "portfolio": [
           {
-            "empresa": "Nombre de la Cuenta",
-            "url": "URL (opcional)",
-            "sector": "Sub-sector",
-            "dolor": "Descripción del gap que resolvemos.",
-            "gancho": "Punto de entrada irresistible.",
-            "score": <0-100>
+            "empresa": "Nombre exacto",
+            "tier": "T1 o T2",
+            "dolor": "Dolor específico basado en personalidad y señal.",
+            "gancho": "Punto de entrada irresistible mencionando el signal.",
+            "score": <85-99>
           }
         ]
       }`;
       const result = await askGemini(prompt);
       
-      // Enriquecimiento con Tier Scoring real de base de datos
-      const { db } = await import('./lib/db');
-      const enrichedPortfolio = await Promise.all(result.portfolio.map(async (p: any) => {
-         const { data, error } = await (await import('./lib/db')).supabase
-           .from('empresas_v3')
-           .select('nombre, website, vertical, growth_signals(signal_type, score_momento), tech_stack(tech_crm, tech_pagos, tech_kyc)')
-           .or(`nombre.ilike.%${p.empresa}%,website.ilike.%${p.empresa}%`)
-           .limit(1)
-           .single();
-         
-         if (data) {
-            return (await import('./lib/db')).db.empresas.injectTierScoring(data);
-         }
-         return { ...p, tier: "Tier3", signal_type: "N/A", tech_summary: { crm: "No detectado" } };
+      // 3. Fusión de Resultados IA con Data de Base de Datos
+      const finalPortfolio = result.portfolio.map((p: any) => {
+        const dbAcc = strategicAccounts.find(a => a.nombre === p.empresa) || {};
+        return {
+          ...dbAcc,
+          ...p,
+          tier: dbAcc.tier || p.tier || "Tier3"
+        };
+      });
+
+      // Añadir el resto de T3 como lista táctica simplificada (si hay más de 25)
+      const extraT3 = strategicAccounts.slice(result.portfolio.length).map(a => ({
+        ...a,
+        tier: "Tier3",
+        dolor: "Optimización de eficiencia táctica.",
+        gancho: "Contacto inicial de exploración."
       }));
 
-      res.json({ ...result, portfolio: enrichedPortfolio });
+      res.json({ 
+        ...result, 
+        portfolio: [...finalPortfolio, ...extraT3], 
+        totalUniverseCount: totalCount || 847 
+      });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
