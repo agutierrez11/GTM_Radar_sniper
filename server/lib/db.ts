@@ -142,17 +142,54 @@ export const db = {
       }
     },
     getStrategicAccountsFallback: async (limit = 50) => {
-      const { data, error } = await supabase
-        .from('empresas_v3')
-        .select(`
-          nombre, website, pais_hq, vertical,
-          growth_signals(signal_type, score_momento, personalidad_inferida),
-          tech_stack(tech_pagos, tech_crm, tech_kyc, tech_analytics, tech_infra)
-        `)
-        .limit(limit);
-      
-      if (error) throw error;
-      return (data || []).map(db.empresas.injectTierScoring);
+      try {
+        // 1. Obtener Base de Empresas
+        const { data: companies, error: errC } = await supabase
+          .from('empresas_v3')
+          .select('*')
+          .limit(limit);
+        
+        if (errC || !companies) throw errC || new Error("No se encontraron empresas");
+
+        const websites = companies.map(c => c.website).filter(Boolean);
+        const nombres = companies.map(c => c.nombre).filter(Boolean);
+
+        // 2. Obtener Growth Signals (Software-side Join)
+        const { data: signals } = await supabase
+          .from('growth_signals')
+          .select('*')
+          .or(`website.in.(${websites.map(w => `"${w}"`).join(',')}),nombre.in.(${nombres.map(n => `"${n}"`).join(',')})`);
+
+        // 3. Obtener Tech Stack (Software-side Join)
+        const { data: techStacks } = await supabase
+          .from('tech_stack')
+          .select('*')
+          .or(`website.in.(${websites.map(w => `"${w}"`).join(',')}),nombre.in.(${nombres.map(n => `"${n}"`).join(',')})`);
+
+        // 4. Fusión en Memoria (The Strategic Nexus)
+        const enriched = companies.map(company => {
+          const companySignals = signals?.filter(s => 
+            (s.website && s.website === company.website) || 
+            (s.nombre && s.nombre === company.nombre)
+          ) || [];
+          
+          const companyTech = techStacks?.find(t => 
+            (t.website && t.website === company.website) || 
+            (t.nombre && t.nombre === company.nombre)
+          ) || {};
+
+          return {
+            ...company,
+            growth_signals: companySignals,
+            tech_stack: companyTech
+          };
+        });
+
+        return enriched.map(db.empresas.injectTierScoring);
+      } catch (e) {
+        console.error(`FALLBACK_DB_ERROR: ${e}`);
+        return [];
+      }
     },
     injectTierScoring: (row: any) => {
       const signal = row.growth_signals?.[0] || row.growth_signals || {};

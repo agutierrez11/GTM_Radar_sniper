@@ -29,6 +29,28 @@ async function startServer() {
   app.post("/api/discover-products", async (req, res) => {
     const { url } = req.body;
     try {
+      // 1. Database First: Revisar si ya conocemos esta empresa
+      const { db } = await import('./lib/db');
+      const { data: dbEntry } = await (await import('./lib/db')).supabase
+        .from('empresas_v3')
+        .select('nombre, vertical, descripcion_nerv')
+        .or(`website.ilike.%${url}%,nombre.ilike.%${url}%`)
+        .limit(1)
+        .single();
+      
+      if (dbEntry) {
+        return res.json({
+          empresa: dbEntry.nombre,
+          mision_gtm: dbEntry.descripcion_nerv || `Visión estratégica de ${dbEntry.nombre} en el ecosistema Fintech.`,
+          ofertas_valor: [
+            { nombre: "Intelligence Gateway", descripcion: "Acceso instantáneo a la plataforma de cumplimiento y orquestación." },
+            { nombre: "Strategic Expansion", descripcion: "Nexo de optimización para escala global detectado." }
+          ],
+          icp_deducido: { industria: dbEntry.vertical || "Fintech / KYC", tamano: "Enterprise", geografia: "Global", triggers: ["High Precision Growth"] }
+        });
+      }
+
+      // 2. Scraper Second: Si no la conocemos, investigar
       const { scrapeUrl, askGemini } = await import('./lib/ai');
       const markdown = await scrapeUrl(url);
       const prompt = `Analiza el sitio web de esta empresa: ${markdown.substring(0, 15000)}
