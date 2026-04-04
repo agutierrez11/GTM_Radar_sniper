@@ -30,6 +30,32 @@ LATAM y Southeast Asia = mercados de **mayor crecimiento** en adopción de MoR.
 | PSP | La mantiene el negocio | El negocio es responsable | Mayor (personalizado) |
 | SoR | La mantiene el negocio | El negocio es responsable | Control total |
 
+## Datos de Mercado eCommerce LATAM (2026)
+
+| Métrica | Dato | Fuente |
+|---------|------|--------|
+| eCommerce global 2026 (proyección) | **$6.8T USD** | The Paypers / Finnosummit |
+| eCommerce global 2030 (proyección) | **$9.8T USD** | The Paypers / Finnosummit |
+| LATAM eCommerce 2026 | **$215B USD** | Endeavor + MercadoLibre |
+| LATAM eCommerce 2028 | **$260B USD** | Finnosummit |
+| LATAM crecimiento vs mundo | **1.5x más rápido** que promedio global | Finnosummit |
+| Top 6 LATAM eCommerce 2026 | **$870B USD** | PPRO |
+| México eCommerce penetración 2025 | **15.8%** del retail total | AMVO |
+| México eCommerce penetración 2026 | **17.7%** del retail total (similar a USA) | AMVO |
+| México eCommerce 2023 | **$25.7B USD** | Cubbo |
+| México eCommerce 2027 (proyección) | **$34B USD** (CAGR 7.2%) | Cubbo |
+| Brasil retail online | **$46B+** | PPRO |
+| Tarjetas con habilitación internacional (LATAM) | solo **29%** de consumidores | PPRO |
+| Crédito como % eCommerce regional | **35%** (pero restricciones locales) | PPRO |
+| Brasil pagos A2A (% valor eCommerce) | **30%** hoy → **50%** en 2027 | PPRO |
+| Billeteras digitales in-store 2027 | **29%** proyectado | PPRO |
+| Billeteras digitales % pagos online global 2024 | **53%** | Finnosummit |
+| Abandono de carrito por falta de LPM | hasta **70%** de clientes | Finnosummit |
+
+> **Señal clave**: Solo el 29% de consumidores LATAM tiene tarjeta con habilitación internacional. El 71% depende de métodos de pago locales. Sin MoR → sin acceso al 71% del mercado.
+
+> **Señal eCommerce México**: Por primera vez en 2026, México compite "hombro a hombro" con USA en penetración eCommerce (17.7% vs ~18-19%). Marca un punto de inflexión histórico para retailers cross-border.
+
 ## Por Qué LATAM es el Mercado MoR Más Urgente en 2026
 
 ### Brasil — El Más Complejo del Mundo
@@ -42,6 +68,8 @@ LATAM y Southeast Asia = mercados de **mayor crecimiento** en adopción de MoR.
 - SPEI + OXXO como rails dominantes — no compatibles con checkout internacional estándar
 - Sin adquirente local, decline rates del 30-60%
 - dLocal, EBANX y Nuvei ya ofrecen MoR en México con peso mexicano nativo
+- Mercado eCommerce: **$25.7B** (2023) → **$34B** (2027) a CAGR 7.2%
+- Señales MoR: saturación doméstica, tráfico orgánico internacional, overwhelm regulatorio
 
 ### Colombia
 - Coljuegos exige adquirente local para operadores iGaming
@@ -81,6 +109,30 @@ LATAM y Southeast Asia = mercados de **mayor crecimiento** en adopción de MoR.
 | **Nuvei** | iGaming + enterprise | BR, MX + expansión |
 | **Coda** | Gaming / iGaming | BR, MX, CO |
 
+## Mercado de Orquestación de Pagos (Contexto MoR)
+
+| Métrica | Dato |
+|---------|------|
+| Mercado orquestación de pagos (base actual) | **$1.89B USD** |
+| Mercado orquestación de pagos 2035 | **$14.98B USD** |
+| Merchants con configuración multi-procesador | **62%** prefieren múltiples proveedores |
+| Large merchants que priorizan ownership de datos de pago | **71%** |
+| Mejora en tasa de autorización por orquestación | **+2.1%** promedio |
+| Reducción de fraude (tokenización) | **-34%** |
+| Uplift en autorización (network tokenization) | **+4.7%** |
+
+> **Insight**: Los MoR son la versión "managed" de la orquestación de pagos — el cliente no gestiona nada, el MoR orquesta todo. Para empresas sin equipo de payments, el MoR es el shortcut.
+
+## Tendencias 2026 que Aceleran Adopción de MoR
+
+| Tendencia | Impacto en MoR |
+|-----------|---------------|
+| **Agentic Commerce (IA)** | AI agents harán 25-30% de compras online para 2030 — los MoR deben ser API-first para soportar micro-transacciones autónomas |
+| **A2A Payments** | PIX (Brasil) proyecta superar a tarjetas de crédito en eCommerce en 2025; Bre-B (Colombia) en ascenso — sin soporte nativo, declina conversión |
+| **Stablecoins** | USDT/USDC como riel de liquidación cross-border B2B — especialmente en Argentina (volatilidad FX) |
+| **Network Tokenization** | Mastercard: meta 100% tokenización para 2030 — MoR que no tokenicen quedan fuera |
+| **Redundancia de pagos** | Best practice: mínimo 2 rutas de pago activas por país LATAM — los MoR lo proveen de fábrica |
+
 ## Señales de Momento para NERV (Growth Signals)
 
 Una empresa necesita MoR cuando muestra estas señales:
@@ -106,6 +158,12 @@ Cualquiera de estas = `signal_type: EXPANSION` con `score_momento: 8+`
 
 ### Para Gaming / Apps
 > "In-app purchases en Brasil sin Boleto/PIX como opción tienen tasas de conversión un 40% menores que con métodos locales. Cada actualización de tu juego que no incluye PIX es revenue que se queda en la mesa."
+
+### Para Retail / eCommerce (nuevo)
+> "México acaba de igualar a USA en penetración eCommerce (17.7% del retail). El retailer americano o europeo que no tiene checkout con LPMs locales está perdiendo participación en un mercado que crece 1.5x más rápido que el mundo. Con el 70% de abandono de carrito por falta del método preferido, el costo de no tener MoR es medible en revenue, no en compliance."
+
+### Para Marketplaces / Plataformas (nuevo)
+> "El 71% de merchants grandes priorizan ownership de sus datos de pago. Un marketplace que procesa pagos de vendedores en 3 países LATAM sin orquestación ni MoR tiene 3 stacks de compliance que mantener. Cada cambio regulatorio en Brasil, México o Colombia requiere reingeniería. El MoR convierte eso en una API call."
 
 ## El Oportunidad para NERV
 
@@ -136,6 +194,10 @@ NERV matchea → con el MoR correcto según vertical y mercado:
 | **Nov 2026** | Buen Fin + Black Friday | eCommerce + Retail |
 | **Continuo** | Regulación iGaming por país | iGaming |
 
+## Frase Cierre (Finnosummit 2026)
+
+> *"El éxito en 2026 no vendrá de una sola tecnología, sino de la capacidad de orquestar soluciones locales con inteligencia global. América Latina es el laboratorio viviente donde se están definiendo los nuevos estándares del dinero."*
+
 ## Fuentes
 - 360iResearch — MoR Software Market Size 2026-2032
 - Coda Blog — MoR Gaming in LATAM
@@ -145,3 +207,9 @@ NERV matchea → con el MoR correcto según vertical y mercado:
 - Cleverbridge — Top MoR Providers 2026
 - Zintego — EBANX vs dLocal LATAM
 - iGaming Business — Nuvei Pay2All Brazil acquisition
+- PPRO — LATAM Payments & eCommerce Report
+- Cubbo — US to Mexico eCommerce MoR Guide
+- Finnosummit 2026 — Guía Estratégica Retailers y Fintechs (The Paypers)
+- AMVO — Penetración eCommerce México 2025-2026
+- Endeavor + MercadoLibre — LATAM eCommerce Joint Report
+- kikilatam.com — MoR Global eCommerce Expansion
