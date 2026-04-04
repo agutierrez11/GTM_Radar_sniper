@@ -295,7 +295,7 @@ export default function NervForm() {
         const { data: searchData } = await supabase
           .from("empresas_v3")
           .select("*")
-          .ilike("name", `%${brief.empresa}%`)
+          .ilike("nombre", `%${brief.empresa}%`)
           .limit(1);
         
         if (searchData && searchData.length > 0) {
@@ -316,7 +316,7 @@ export default function NervForm() {
       try {
         const name = brief.empresa.trim();
         // Competidores
-        const { data: v3C } = await supabase.from("empresas_v3").select("competitors_verified").ilike("name", `%${name}%`).maybeSingle();
+        const { data: v3C } = await supabase.from("empresas_v3").select("competitors_verified").ilike("nombre", `%${name}%`).maybeSingle();
         if (v3C?.competitors_verified?.length > 0) {
           competidoresData = v3C.competitors_verified.map((n: string) => ({ name: n, url: null }));
         } else {

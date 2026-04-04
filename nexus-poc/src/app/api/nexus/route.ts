@@ -9,7 +9,8 @@ export async function POST(req: NextRequest) {
   console.log(`NEXUS_API_DEPLOY_VERSION: 1.6.0 - SWARM_RAG_V3.1`);
   try {
     const body = await req.json();
-    const { brief, empresa_supabase, competidores, clientes_potenciales } = body;
+    const { brief, empresa_supabase, competidores, clientes_potenciales, vendor_data } = body;
+    const isVendorMode = !!vendor_data;
 
     // --- FASE 0: RAG (Retrieval Augmented Generation) ---
     let ragContext = "No document evidence found in Knowledge Base.";
@@ -39,19 +40,27 @@ export async function POST(req: NextRequest) {
     }
 
     // --- AGENTE 1: EL COSECHADOR (Facts & Signals) ---
-    const harvesterPrompt = `
-      Eres el AGENTE COSECHADOR de NERV.
+    const harvesterPrompt = isVendorMode
+      ? `Eres el Harvester Agent de NERV en modo VENDOR ATTACK.
+      Tu misión: Encuentra los 3 puntos de dolor más críticos del TARGET "${brief.empresa}" que la UVP del VENDEDOR "${vendor_data.nombre}" puede resolver directamente.
+
+      UVP del Vendedor: ${vendor_data.uvp}
+      Killer Argument del Vendedor: ${vendor_data.killer_argument}
+      Datos del Target en Supabase: ${JSON.stringify(empresa_supabase)}
+      Evidencia Documental (RAG): ${ragContext}
+
+      Responde con 3 dolores específicos y cuantificables. No hables, solo los hechos.`
+      : `Eres el AGENTE COSECHADOR de NERV.
       Tu misión: Extraer señales forenses puras de estos datos:
-      
+
       DATOS ESTRUCTURADOS: ${JSON.stringify({ brief, empresa_supabase, competidores })}
       PROSPECTOS SUGERIDOS: ${JSON.stringify(clientes_potenciales || [])}
       EVIDENCIA DOCUMENTAL (RAG): ${ragContext}
-      
+
       Reglas:
       1. Identifica el dolor técnico de la PRESA (${brief.vertical} en ${brief.pais}).
       2. PRIORIZA la EVIDENCIA DOCUMENTAL (RAG) si está disponible.
-      Responde con una lista de 5 hechos brutales. No hables, solo los hechos.
-    `;
+      Responde con una lista de 5 hechos brutales. No hables, solo los hechos.`;
     const harvestResult = await generateWithFallback(harvesterPrompt);
     const facts = harvestResult.data;
 
@@ -102,18 +111,31 @@ export async function POST(req: NextRequest) {
           "apertura": "..."
         },
         "auditoria": {
-          "confianza": "ALTO",
-          "resumen_enjambre": "..."
+          "abogado_diablo": "La crítica más dura del Red Team resumida en una línea",
+          "sesgo": "Sesgo detectado en el análisis (ej: datos limitados, mercado sesgado)",
+          "confianza": "ALTO | MEDIO | BAJO"
         },
         "similares": [],
         "competidores": ${JSON.stringify(competidores || [])},
         "clientes_potenciales": ${JSON.stringify(clientes_potenciales || [])},
-        "markdown": "..."
+        "markdown": "..."${isVendorMode ? `,
+        "vendor_attack": {
+          "arma": "UVP del vendedor en máximo 20 palabras",
+          "dolor": "El dolor específico del target que mejor encaja con la UVP",
+          "sutura": "Cómo el vendedor resuelve ese dolor paso a paso",
+          "apertura_recomendada": "Línea exacta de apertura para el primer contacto con el target"
+        }` : ""}
       }
     `;
 
     const gResp = await generateWithFallback(finalPrompt);
-    return NextResponse.json({ ...gResp.data, logId: null, cached: false, swarm_mode: true });
+    return NextResponse.json({
+      ...gResp.data,
+      logId: null,
+      cached: false,
+      swarm_mode: true,
+      mode: isVendorMode ? 'vendor_attack' : 'standard',
+    });
 
   } catch (error: any) {
     console.error("NEXUS_CRITICAL_ERROR:", error);
