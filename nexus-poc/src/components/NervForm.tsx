@@ -6,6 +6,7 @@ import ContactCard from "./ContactCard";
 import CommentsSection from "./CommentsSection";
 import { MarketPulse } from "./MarketPulse";
 import { detectProductCategory } from "@/lib/product-categories";
+import VendorValidationScreen, { VendorData } from './VendorValidationScreen';
 
 // ── Types ──────────────────────────────────────────────────────────────
 interface GTMBrief {
@@ -51,6 +52,12 @@ interface NervResult {
     inferencia_raise: string;
     friccion_tecnica: string;
     dolor_financiero: string;
+  };
+  vendor_attack?: {
+    arma: string;
+    dolor: string;
+    sutura: string;
+    apertura_recomendada: string;
   };
 }
 
@@ -201,6 +208,8 @@ export default function NervForm() {
   const [step, setStep] = useState<"form" | "loading" | "result">("form");
   const [loadingMsg, setLoadingMsg] = useState("");
   const [isForensic, setIsForensic] = useState(true);
+  const [vendorData, setVendorData] = useState<VendorData | null>(null);
+  const [showVendorValidation, setShowVendorValidation] = useState(false);
   const [nexusResponse, setNexusResponse] = useState<{
     msg: string | null;
     type: "guide" | "error" | "success" | null;
@@ -215,6 +224,24 @@ export default function NervForm() {
     "Auditando sesgos de datos...",
     "Generando Dossier de Alta Fidelidad...",
   ];
+
+  const checkVendorInSupabase = async (input: string) => {
+    const trimmed = input.trim();
+    if (!trimmed || trimmed.length < 2) return;
+
+    const { data, error } = await supabase
+      .from('empresas_v3')
+      .select('nombre, uvp, core, vertical, mercados_latam, killer_argument, strategic_hook, tier')
+      .ilike('nombre', `%${trimmed}%`)
+      .not('uvp', 'is', null)
+      .limit(1)
+      .single();
+
+    if (!error && data) {
+      setVendorData(data as VendorData);
+      setShowVendorValidation(true);
+    }
+  };
 
   const handleSmartDiscovery = async () => {
     if (!smartPrompt.trim()) return;
@@ -295,13 +322,13 @@ export default function NervForm() {
         const { data: searchData } = await supabase
           .from("empresas_v3")
           .select("*")
-          .ilike("name", `%${brief.empresa}%`)
+          .ilike("nombre", `%${brief.empresa}%`)
           .limit(1);
         
         if (searchData && searchData.length > 0) {
           empresaData = searchData[0];
         } else {
-          const { data: v2Data } = await supabase.from("empresas_v2").select("*").ilike("name", `%${brief.empresa}%`).limit(1);
+          const { data: v2Data } = await supabase.from("empresas_v2").select("*").ilike("nombre", `%${brief.empresa}%`).limit(1);
           if (v2Data && v2Data.length > 0) empresaData = v2Data[0];
         }
       } catch (e) { console.warn("Fetch empresa failed", e); }
@@ -316,7 +343,7 @@ export default function NervForm() {
       try {
         const name = brief.empresa.trim();
         // Competidores
-        const { data: v3C } = await supabase.from("empresas_v3").select("competitors_verified").ilike("name", `%${name}%`).maybeSingle();
+        const { data: v3C } = await supabase.from("empresas_v3").select("competitors_verified").ilike("nombre", `%${name}%`).maybeSingle();
         if (v3C?.competitors_verified?.length > 0) {
           competidoresData = v3C.competitors_verified.map((n: string) => ({ name: n, url: null }));
         } else {
@@ -364,6 +391,7 @@ export default function NervForm() {
           competidores: competidoresData || [],
           clientes_potenciales: clientesPotencialesData || [],
           isForensic,
+          ...(vendorData ? { vendor_data: vendorData } : {}),
         }),
       });
 
@@ -621,6 +649,20 @@ export default function NervForm() {
   // ── Render: Form ─────────────────────────────────────────────────────
   return (
     <div style={styles.wrap}>
+      {showVendorValidation && vendorData && (
+        <VendorValidationScreen
+          vendorData={vendorData}
+          onConfirm={(confirmed) => {
+            setVendorData(confirmed);
+            setShowVendorValidation(false);
+          }}
+          onReject={() => {
+            setVendorData(null);
+            setShowVendorValidation(false);
+          }}
+        />
+      )}
+
       {/* HUB SELECTOR */}
       <div style={{ display: "flex", gap: 12, marginBottom: 20 }}>
         {HUBS.map(hub => (
@@ -708,6 +750,7 @@ export default function NervForm() {
             name="empresa"
             value={brief.empresa}
             onChange={handleChange}
+            onBlur={(e) => checkVendorInSupabase(e.target.value)}
             placeholder="Ej. Nuvei, EBANX, Stripe..."
           />
         </div>

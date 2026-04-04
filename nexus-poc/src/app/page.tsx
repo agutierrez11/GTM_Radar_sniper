@@ -1,4 +1,4 @@
-import NervFormAdvanced from "@/components/NervFormAdvanced";
+import NervForm from "@/components/NervForm";
 
 export default function Home() {
   return (
@@ -10,7 +10,7 @@ export default function Home() {
       </div>
 
       <div className="relative z-10 mx-auto px-0">
-        <NervFormAdvanced />
+        <NervForm />
       </div>
 
       {/* Footer */}
