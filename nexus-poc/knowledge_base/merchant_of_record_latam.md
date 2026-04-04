@@ -63,6 +63,9 @@ LATAM y Southeast Asia = mercados de **mayor crecimiento** en adopción de MoR.
 - **Reforma fiscal 2026**: SaaS y digitales deben registrarse para IVA sin importar si tienen entidad local
 - +100 millones de jugadores activos en iGaming
 - Sin MoR → exposición fiscal directa desde primer peso cobrado
+- **PIX = 54% de todas las transacciones** en Q3 2025 (superó a tarjetas + efectivo combinados)
+- **9.3M turistas internacionales** en 2025 (+37% vs 2024) — mercado cross-border nativo en Brasil
+- **32% de turistas argentinos** ya usa PIX — interoperabilidad regional avanzando (Pix en Roaming via PagBrasil/COELSA)
 
 ### México
 - SPEI + OXXO como rails dominantes — no compatibles con checkout internacional estándar

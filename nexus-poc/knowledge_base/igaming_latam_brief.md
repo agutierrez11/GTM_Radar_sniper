@@ -73,7 +73,21 @@
 > no solo tienen decline rates altos — están en riesgo regulatorio.
 > Una auditoría durante el Mundial podría costarles la licencia."
 
-## 6. Contexto Fintech LATAM 2026 (Macro)
+## 6. PIX — Dominancia 2026 (Datos Clave para iGaming)
+
+| Métrica | Dato | Fuente |
+|---------|------|--------|
+| PIX % de todas las transacciones Q3 2025 | **54%** — superó a todos los métodos tradicionales combinados | Ralf Germer / LinkedIn |
+| Años para alcanzar dominancia | **5 años** (2020–2025) | LinkedIn Pulse |
+| Turistas internacionales Brasil 2025 | **9.3 millones** (+37.1% vs 2024) | LinkedIn Pulse |
+| Argentina → Brasil visitantes 2025 | **3.4 millones** (mercado #1) | LinkedIn Pulse |
+| Gasto turistas argentinos en Brasil 2024 | **$3.3B USD** ($139/día promedio) | LinkedIn Pulse |
+| Turistas argentinos que usaron PIX 2025 | **32%** durante su estadía | LinkedIn Pulse |
+| Pix en Roaming | Turistas pagan con app bancaria de origen — sin app extra | PagBrasil / COELSA |
+
+> **Killer insight iGaming**: Si el 32% de turistas argentinos ya usa PIX en Brasil para compras cotidianas, el jugador que llega al Mundial y quiere apostar ya tiene PIX activado. El operador que no lo acepta pierde al jugador más calificado (ya está en Brasil, ya tiene método, ya tiene intención).
+
+## 7. Contexto Fintech LATAM 2026 (Macro)
 
 | Métrica | Dato | Fuente |
 |---------|------|--------|
@@ -86,7 +100,7 @@
 | Fintechs colombianas con IA | reducen costos **44%** | Inswitch |
 | Acceso bancario LATAM | 50% (2017) → **70%** (2024) | Inswitch |
 
-## 7. Fuentes
+## 8. Fuentes
 
 - Yogonet LATAM — datos operacionales Club Mundial 2025
 - SBC Summit Americas 2026 — estrategia de pagos iGaming
@@ -94,6 +108,8 @@
 - Altenar — preferencias de pago LATAM
 - Slotegrator — proyecciones mercado 2028
 - iGaming Expert — Stake crypto → LATAM expansion
+- Ralf Germer / LinkedIn Pulse — PIX turismo Brasil 2026 (PagBrasil CEO)
+- PagBrasil / COELSA — Pix en Roaming cross-border
 
 ## 7. Oportunidad para Procesadores de Pagos
 
