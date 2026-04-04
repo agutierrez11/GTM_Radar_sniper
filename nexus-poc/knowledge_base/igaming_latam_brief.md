@@ -73,7 +73,20 @@
 > no solo tienen decline rates altos — están en riesgo regulatorio.
 > Una auditoría durante el Mundial podría costarles la licencia."
 
-## 6. Fuentes
+## 6. Contexto Fintech LATAM 2026 (Macro)
+
+| Métrica | Dato | Fuente |
+|---------|------|--------|
+| Fintechs en LATAM | 3,069 en 26 países | Inswitch |
+| Crecimiento revenue LATAM | **46% anual** (supera Asia-Pac) | Inswitch |
+| B2B embedded payments 2030 | $15.6B (desde $4.1B en 2024) | Dock.tech |
+| B2B fintech crecimiento anual | **32% CAGR** → $285B | BCG / Inswitch |
+| Consumidores BR que priorizan método de pago | **50%** antes que el producto | Dock.tech |
+| Stablecoins volumen transaccional 2024 | **$23 trillones** | Inswitch |
+| Fintechs colombianas con IA | reducen costos **44%** | Inswitch |
+| Acceso bancario LATAM | 50% (2017) → **70%** (2024) | Inswitch |
+
+## 7. Fuentes
 
 - Yogonet LATAM — datos operacionales Club Mundial 2025
 - SBC Summit Americas 2026 — estrategia de pagos iGaming
