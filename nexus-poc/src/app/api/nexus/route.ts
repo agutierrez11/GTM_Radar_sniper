@@ -14,6 +14,7 @@ export async function POST(req: NextRequest) {
 
     // --- FASE 0: RAG (Retrieval Augmented Generation) ---
     let ragContext = "No document evidence found in Knowledge Base.";
+    let ragChunks: Array<{ content: string; similarity: number; source: string }> = [];
     try {
       const { GoogleGenerativeAI } = await import("@google/generative-ai");
       const api_key = process.env.GEMINI_API_KEY_1 || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
@@ -28,12 +29,17 @@ export async function POST(req: NextRequest) {
         .rpc("match_knowledge", {
           query_embedding: embedding,
           match_threshold: 0.5,
-          match_count: 3,
+          match_count: 5,
         });
 
       if (!ragError && knowledge && knowledge.length > 0) {
-        ragContext = knowledge.map((k: any) => k.content).join("\n---\n");
-        console.log("[RAG HIT] Successfully injected context from Knowledge Base.");
+        ragChunks = knowledge.map((k: any) => ({
+          content: k.content,
+          similarity: k.similarity ?? 0,
+          source: k.metadata?.source ?? "unknown",
+        }));
+        ragContext = ragChunks.map((c) => c.content).join("\n---\n");
+        console.log(`[RAG HIT] ${ragChunks.length} chunks, avg_sim=${(ragChunks.reduce((a, c) => a + c.similarity, 0) / ragChunks.length).toFixed(3)}`);
       }
     } catch (ragErr) {
       console.warn("[RAG WARN] Retrieval failed, proceeding with baseline data:", ragErr);
@@ -129,12 +135,37 @@ export async function POST(req: NextRequest) {
     `;
 
     const gResp = await generateWithFallback(finalPrompt);
+
+    // --- METACOGNICIÓN DETERMINISTA ---
+    // Confianza calculada desde RAG similarity scores — no es opinión del LLM.
+    // El LLM genera auditoria.confianza subjetivo; este bloque lo sobreescribe con matemática real.
+    const synthOutput = gResp.data ?? {};
+    const ragCount = ragChunks.length;
+    const avgSim = ragCount > 0
+      ? ragChunks.reduce((a, c) => a + c.similarity, 0) / ragCount
+      : 0;
+    const computedConfianza: "ALTO" | "MEDIO" | "BAJO" =
+      ragCount === 0        ? "BAJO"
+      : avgSim >= 0.65      ? "ALTO"
+      : avgSim >= 0.52      ? "MEDIO"
+      : "BAJO";
+
+    if (synthOutput?.auditoria) {
+      synthOutput.auditoria.confianza = computedConfianza;
+    }
+
     return NextResponse.json({
-      ...gResp.data,
+      ...synthOutput,
       logId: null,
       cached: false,
       swarm_mode: true,
       mode: isVendorMode ? 'vendor_attack' : 'standard',
+      rag_evidence: {
+        chunks_retrieved: ragCount,
+        avg_similarity: Math.round(avgSim * 1000) / 1000,
+        computed_confianza: computedConfianza,
+        sources: [...new Set(ragChunks.map((c) => c.source))],
+      },
     });
 
   } catch (error: any) {
