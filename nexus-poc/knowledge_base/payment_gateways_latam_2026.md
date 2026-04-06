@@ -71,9 +71,15 @@ Transbank, Khipu, Flow.cl, Kushki CL, PayRetailers CL, dLocal CL, MercadoPago CL
 
 ### Contexto Regulatorio — CRÍTICO 2026
 - Regulador: **BCRP** (Banco Central de Reserva del Perú) + **SBS**
-- **Febrero 2026**: BCRP reconoció formalmente PSPs como actores regulados por primera vez
+- **Aprobación**: Circular 0022-2025-BCRP — Nuevo Reglamento del Sistema Nacional de Pagos
+- **Vigencia**: **1 de abril de 2026** — ya está en vigor
+- PSPs reconocidos formalmente como actores regulados por primera vez en la historia del sistema
 - Nuevos requisitos: capital mínimo, gestión de riesgos, consentimiento explícito del usuario
 - Impacto: fintechs de wallets y pagos inmediatos ahora tienen obligaciones equivalentes a entidades financieras
+- **Deadlines escalonados hasta fin de 2026** según volumen mensual de operaciones (los más grandes primero)
+- **5 poderes formales del BCRP**: regulatorio/mandatorio, interpretativo, implementación/administración, supervisorio, sancionatorio
+- El BCRP deja de ser árbitro técnico → pasa a ser orquestador de normas, supervisión, sanciones, interoperabilidad, tarifas y competencia
+- **No se fijarán topes de comisiones** pero se exigirá transparencia y justificación de tarifas
 
 ### Métodos de Pago Principales
 | Método | Tipo | Alcance |
@@ -98,6 +104,18 @@ PagoEfectivo, Culqi, Izipay, Niubiz, PayRetailers PE, dLocal PE, MercadoPago PE,
 ### Contexto Regulatorio — Complejidad Máxima
 - Regulador: **BCRA** (Banco Central de la República Argentina)
 - Registro de PSPs: bcra.gob.ar/registro-de-proveedores-de-servicios-de-pago
+- **9 categorías oficiales de PSPs registrados en BCRA**:
+  1. Proveedores de cuentas de pago
+  2. Aceptadores
+  3. Administradores de QR
+  4. Iniciadores de pago
+  5. Adquirentes
+  6. Redes de cajeros automáticos (ATM)
+  7. Agregadores
+  8. Redes de transferencia electrónica de fondos
+  9. Cobranzas extrabancarias
+- BCRA exige a billeteras digitales (Mercado Pago, Ualá) mismos estándares de protección al cliente que bancos tradicionales
+- Agenda 2026: crédito + open finance + salarios vía billeteras digitales — nueva etapa de madurez
 - **Control de cambios**: limita severamente el cross-border en pesos
 - Inflación + devaluación = stablecoins como alternativa creciente (USDT/USDC)
 - Mercado Pago procesa ~60% del volumen digital

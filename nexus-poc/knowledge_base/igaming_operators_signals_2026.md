@@ -75,6 +75,7 @@ Los eventos de pagos LATAM concentran a los decision makers de PSPs, adquirentes
 | **iFX Expo LATAM** | 2026 | México | FX/CFD brokers LATAM |
 | **SBC Summit Americas** | 2026 | — | iGaming payments LATAM |
 | **Finnosummit** | 2026 | LATAM | Fintech + eCommerce |
+| **ATPS LATAM 2026** | 16-17 Junio 2026 | Santiago, Chile | Pagos + fraude aerolíneas/travel. Sponsors: Mastercard, Nuvei. 200+ asistentes. Venue: Hotel Regal Pacific, Las Condes |
 
 ---
 
