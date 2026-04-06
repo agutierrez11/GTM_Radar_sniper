@@ -18,10 +18,10 @@ export async function POST(req: NextRequest) {
       const { GoogleGenerativeAI } = await import("@google/generative-ai");
       const api_key = process.env.GEMINI_API_KEY_1 || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
       const genAI = new GoogleGenerativeAI(api_key!);
-      const embedModel = genAI.getGenerativeModel({ model: "text-embedding-004" });
-      
+      const embedModel = genAI.getGenerativeModel({ model: "gemini-embedding-001" });
+
       const queryText = `${brief.empresa} ${brief.producto} ${brief.vertical} ${brief.pais}`;
-      const embedResult = await embedModel.embedContent(queryText);
+      const embedResult = await embedModel.embedContent({ content: { parts: [{ text: queryText }] }, outputDimensionality: 768 } as any);
       const embedding = embedResult.embedding.values;
 
       const { data: knowledge, error: ragError } = await (await import("../../../lib/supabase")).supabase
