@@ -180,7 +180,7 @@ function FeedbackWidget({ logId, empresa }: { logId: number; empresa: string }) 
 }
 
 // ── Main Component ─────────────────────────────────────────────────────
-export default function NervForm() {
+export default function NervForm({ userEmail }: { userEmail?: string } = {}) {
   const [activeHub, setActiveHub] = useState<"latam" | "europe">("latam");
   const [brief, setBrief] = useState<GTMBrief>({
     empresa: "",
@@ -264,6 +264,11 @@ export default function NervForm() {
     setBrief((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    window.location.href = "/login";
+  };
+
   const handleSubmit = async () => {
     if (!brief.empresa || !brief.producto) {
       setError("Completa empresa y producto.");
@@ -273,6 +278,7 @@ export default function NervForm() {
     if (!brief.pais) brief.pais = "México";
     if (!brief.vertical) brief.vertical = "Payments & Remittances";
 
+    const startTime = Date.now();
     setError(null);
     setLoading(true);
     setStep("loading");
@@ -371,6 +377,21 @@ export default function NervForm() {
       const data: NervResult = await response.json();
       setResult({ ...data, empresaId: empresaData?.id });
       setStep("result");
+
+      // Logging no-bloqueante — un fallo aquí nunca afecta al usuario
+      fetch("/api/log-usage", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          empresa: brief.empresa,
+          producto: brief.producto,
+          pais: brief.pais,
+          vertical: brief.vertical,
+          tier: brief.tier,
+          icp_score: data.icp_score ?? null,
+          duration_ms: Date.now() - startTime,
+        }),
+      }).catch(() => {});
     } catch (err: any) {
       console.error("DETAILED_FRONTEND_ERROR:", err);
       setError(err.message || "Error generando la estrategia. Intenta de nuevo.");
@@ -420,6 +441,17 @@ export default function NervForm() {
   if (step === "result" && result) {
     return (
       <div style={styles.resultWrap}>
+        {userEmail && (
+          <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", padding: "8px 20px 0", gap: 12 }}>
+            <span style={{ fontSize: 12, color: "#94a3b8" }}>👤 {userEmail}</span>
+            <button
+              style={{ fontSize: 11, color: "#94a3b8", background: "transparent", border: "1px solid #e2e8f0", borderRadius: 6, padding: "4px 10px", cursor: "pointer" }}
+              onClick={handleSignOut}
+            >
+              Salir
+            </button>
+          </div>
+        )}
         <div style={styles.resultHeader}>
           <div>
             <h1 style={styles.resultTitle}>{result.empresa}</h1>
@@ -621,6 +653,18 @@ export default function NervForm() {
   // ── Render: Form ─────────────────────────────────────────────────────
   return (
     <div style={styles.wrap}>
+      {/* Barra de usuario / sign-out */}
+      {userEmail && (
+        <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", padding: "8px 20px 0", gap: 12 }}>
+          <span style={{ fontSize: 12, color: "#94a3b8" }}>👤 {userEmail}</span>
+          <button
+            style={{ fontSize: 11, color: "#94a3b8", background: "transparent", border: "1px solid #e2e8f0", borderRadius: 6, padding: "4px 10px", cursor: "pointer" }}
+            onClick={handleSignOut}
+          >
+            Salir
+          </button>
+        </div>
+      )}
       {/* HUB SELECTOR */}
       <div style={{ display: "flex", gap: 12, marginBottom: 20 }}>
         {HUBS.map(hub => (

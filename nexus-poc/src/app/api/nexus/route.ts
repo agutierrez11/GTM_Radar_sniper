@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
       const embedding = norm > 0 ? rawEmbedding.map((v: number) => v / norm) : rawEmbedding;
 
       const { data: knowledge, error: ragError } = await (await import("../../../lib/supabase")).supabase
-        .rpc("match_kb", {
+        .rpc("match_knowledge", {
           query_embedding: embedding,
           match_threshold: 0.3,
           match_count: 5,
@@ -138,10 +138,25 @@ export async function POST(req: NextRequest) {
 
     const gResp = await generateWithFallback(finalPrompt);
 
+    // --- JSON RECOVERY: si Gemini devolvió texto plano en lugar de JSON ---
+    // generateWithFallback hace fallback a string cuando JSON.parse falla.
+    // Si synthOutput es string, intentar extraer el bloque JSON antes de continuar.
+    // Sin esto, el spread `...synthOutput` genera claves numéricas y todos los campos anidados quedan undefined.
+    let synthRaw = gResp.data ?? {};
+    if (typeof synthRaw === "string") {
+      try {
+        const jsonMatch = (synthRaw as string).match(/\{[\s\S]*\}/);
+        if (jsonMatch) synthRaw = JSON.parse(jsonMatch[0]);
+        else synthRaw = {};
+      } catch {
+        synthRaw = {};
+      }
+    }
+
     // --- METACOGNICIÓN DETERMINISTA ---
     // Confianza calculada desde RAG similarity scores — no es opinión del LLM.
     // El LLM genera auditoria.confianza subjetivo; este bloque lo sobreescribe con matemática real.
-    const synthOutput = gResp.data ?? {};
+    const synthOutput = synthRaw;
     const ragCount = ragChunks.length;
     const avgSim = ragCount > 0
       ? ragChunks.reduce((a, c) => a + c.similarity, 0) / ragCount

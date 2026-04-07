@@ -1,5 +1,20 @@
 [
   {
+    "_metadata": {
+      "advertencia": "DATOS NO VERIFICADOS — GENERADOS POR TEMPLATE IA",
+      "problemas": [
+        "killer_argument idéntico para todos los operadores — no verificado individualmente",
+        "strategic_hook clonado — no personalizado por empresa",
+        "tasas de rechazo '30-60%' son supuesto genérico, no dato específico por operador",
+        "retiros '5-10 días' son supuesto genérico, no verificado por operador",
+        "mercados LATAM pueden estar incompletos por operador",
+        "entrada 'Balzac casino.png' es error de generación automática"
+      ],
+      "uso_permitido": "Referencia de directorio únicamente — NO usar killer_argument ni strategic_hook sin verificación individual",
+      "accion_requerida": "Verificar cada operador individualmente antes de usar en outreach"
+    }
+  },
+  {
     "nombre": "Paypal casinos",
     "uvp": "Paypal casinos ofrece entretenimiento de casino online con una amplia biblioteca de juegos, bonos de bienvenida y programa de lealtad para jugadores en mercados LATAM.",
     "core": "Operador de casino online y/o apuestas deportivas con presencia en Argentina, Brasil, México.",

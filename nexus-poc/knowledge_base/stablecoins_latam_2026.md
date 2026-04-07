@@ -2,6 +2,9 @@
 > Fuente principal: BVNK Stablecoin Utility Report 2026 (YouGov + Coinbase + Artemis)
 > **Contexto estratégico: Mastercard adquirió BVNK → este reporte ES el playbook de Mastercard para rieles LATAM**
 
+> ⚠️ **ADVERTENCIA DE SESGO — LEER ANTES DE USAR ESTOS DATOS:**
+> Este reporte fue comisionado por BVNK (adquirida por Mastercard). Los porcentajes de adopción (54%, 67%, 78%, etc.) provienen de encuestas a personas que **ya conocen o usan stablecoins** — no representan a la población general de LATAM. Úsalos como señal de dirección, no como datos de mercado total. Verifica cifras clave con fuentes independientes antes de citarlas en reuniones.
+
 ---
 
 ## Mercado Global — Cifras Macro
@@ -13,7 +16,7 @@
 | Crecimiento active addresses (5 años) | **+1,300%** |
 | Volumen pagos B2B + card (anualizado) | **+$390B USD** |
 | Visa card settlement en stablecoins | **$1B → $3B** en un año |
-| Active addresses peak 2026 | ~**50 millones** |
+| Active addresses peak 2026 | ~**50 millones** — ⚠️ PROYECCIÓN FUTURA (abril 2026, no ocurrido) |
 | GENIUS Act (USA) | Aprobado julio 2025 — marco federal para "payment stablecoins" |
 
 ---
@@ -25,7 +28,7 @@
 | Ownership stablecoins LATAM | **54%** (promedio regional) |
 | Intent to acquire LATAM | **53%** |
 | Velocidad conversión/gasto | **32%** gasta inmediatamente o en días (2° globalmente, tras South Asia) |
-| Ahorro en fees vs. métodos tradicionales | **38%** promedio LATAM |
+| Ahorro en fees vs. métodos tradicionales | **38%** promedio LATAM — ⚠️ DATO DE REPORTE COMISIONADO (sesgo Mastercard) |
 | Interés en cobrar en stablecoins | **70%** LATAM |
 | Primeros en adoptar (últimos 2 años) | **57%** de holders LATAM |
 

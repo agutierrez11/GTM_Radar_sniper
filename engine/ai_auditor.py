@@ -129,6 +129,3 @@ def run_auditor(limit=50):
 
 if __name__ == "__main__":
     run_auditor(100)
-
-if __name__ == "__main__":
-    run_auditor(20)
