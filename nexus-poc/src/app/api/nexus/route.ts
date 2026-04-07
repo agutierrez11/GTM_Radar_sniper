@@ -22,13 +22,15 @@ export async function POST(req: NextRequest) {
       const embedModel = genAI.getGenerativeModel({ model: "gemini-embedding-001" });
 
       const queryText = `${brief.empresa} ${brief.producto} ${brief.vertical} ${brief.pais}`;
-      const embedResult = await embedModel.embedContent({ content: { parts: [{ text: queryText }] }, outputDimensionality: 768 } as any);
-      const embedding = embedResult.embedding.values;
+      const embedResult = await embedModel.embedContent({ content: { parts: [{ text: queryText }] }, taskType: 'RETRIEVAL_QUERY', outputDimensionality: 768 } as any);
+      const rawEmbedding = Array.from(embedResult.embedding.values);
+      const norm = Math.sqrt(rawEmbedding.reduce((s: number, v: number) => s + v * v, 0));
+      const embedding = norm > 0 ? rawEmbedding.map((v: number) => v / norm) : rawEmbedding;
 
       const { data: knowledge, error: ragError } = await (await import("../../../lib/supabase")).supabase
-        .rpc("match_knowledge", {
+        .rpc("match_kb", {
           query_embedding: embedding,
-          match_threshold: 0.5,
+          match_threshold: 0.3,
           match_count: 5,
         });
 
