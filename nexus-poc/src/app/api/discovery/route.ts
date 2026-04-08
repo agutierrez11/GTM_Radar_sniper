@@ -97,13 +97,49 @@ Si no se menciona país o vertical, deja null.
       usedFallback = true;
       console.log("[DISCOVERY] pgvector miss — fallback a búsqueda por campos");
 
-      let q = supabase.from("empresas_v3").select("id, nombre, vertical_finnovista, pais, descripcion, website, icp_score").limit(12);
+      // Intento 1: pais + vertical
+      if (pais && vertical) {
+        const { data } = await supabase
+          .from("empresas_v3")
+          .select("id, nombre, vertical_finnovista, pais, descripcion, website, icp_score")
+          .ilike("pais", `%${pais}%`)
+          .ilike("vertical_finnovista", `%${vertical.split(" ")[0]}%`)
+          .order("icp_score", { ascending: false })
+          .limit(12);
+        empresas = data || [];
+      }
 
-      if (pais) q = q.ilike("pais", `%${pais}%`);
-      if (vertical) q = q.ilike("vertical_finnovista", `%${vertical.split(" ")[0]}%`);
+      // Intento 2: solo pais
+      if (empresas.length === 0 && pais) {
+        const { data } = await supabase
+          .from("empresas_v3")
+          .select("id, nombre, vertical_finnovista, pais, descripcion, website, icp_score")
+          .ilike("pais", `%${pais}%`)
+          .order("icp_score", { ascending: false })
+          .limit(12);
+        empresas = data || [];
+      }
 
-      const { data: fallbackData } = await q.order("icp_score", { ascending: false });
-      empresas = fallbackData || [];
+      // Intento 3: solo vertical
+      if (empresas.length === 0 && vertical) {
+        const { data } = await supabase
+          .from("empresas_v3")
+          .select("id, nombre, vertical_finnovista, pais, descripcion, website, icp_score")
+          .ilike("vertical_finnovista", `%${vertical.split(" ")[0]}%`)
+          .order("icp_score", { ascending: false })
+          .limit(12);
+        empresas = data || [];
+      }
+
+      // Intento 4: top ICP sin filtros
+      if (empresas.length === 0) {
+        const { data } = await supabase
+          .from("empresas_v3")
+          .select("id, nombre, vertical_finnovista, pais, descripcion, website, icp_score")
+          .order("icp_score", { ascending: false })
+          .limit(12);
+        empresas = data || [];
+      }
     }
 
     return NextResponse.json({
