@@ -42,7 +42,7 @@ export async function generateWithGroq(prompt: string) {
       messages: [{ role: "user", content: prompt }],
       temperature: 0.1,
       max_tokens: 4096,
-      response_format: { type: "json_object" }
+      ...(prompt.toLowerCase().includes("json") ? { response_format: { type: "json_object" } } : {})
     });
 
     const responseText = completion.choices[0].message.content || "";
