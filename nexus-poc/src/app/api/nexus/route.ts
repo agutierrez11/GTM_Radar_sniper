@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
       const embedding = norm > 0 ? rawEmbedding.map((v: number) => v / norm) : rawEmbedding;
 
       const { data: knowledge, error: ragError } = await (await import("../../../lib/supabase")).supabase
-        .rpc("match_knowledge", {
+        .rpc("match_kb", {
           query_embedding: embedding,
           match_threshold: 0.3,
           match_count: 5,
