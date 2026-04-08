@@ -106,8 +106,53 @@ sentiment debe ser exactamente: "bullish", "bearish", o "neutral".
 Solo información encontrada en la búsqueda. No inventes datos.
 `
 
+  // ── FALLBACK: Si Google pausado → Tavily + Claude/Groq ──────────────────
+  if (process.env.GOOGLE_APIS_PAUSED === "true") {
+    try {
+      const tavilyKey = process.env.TAVILY_API_KEY;
+      let signals: string[] = [];
+      let sources: { title: string; url: string }[] = [];
+
+      if (tavilyKey) {
+        const tvRes = await fetch("https://api.tavily.com/search", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            api_key: tavilyKey,
+            query: `${empresa.name} fintech ${mercados} noticias 2026`,
+            max_results: 5,
+            include_answer: true,
+          }),
+        });
+        if (tvRes.ok) {
+          const tvData = await tvRes.json();
+          sources = (tvData.results || []).slice(0, 3).map((r: any) => ({ title: r.title, url: r.url }));
+          signals = (tvData.results || []).slice(0, 3).map((r: any) => r.snippet?.slice(0, 120) || r.title);
+        }
+      }
+
+      const fallbackSignal = {
+        headline: `${empresa.name} — señales activas en ${mercados}`,
+        signals: signals.length > 0 ? signals : [
+          `${empresa.name} opera en ${empresa.segment_latamfintech || "fintech"} con presencia en ${mercados}`,
+          `Competidores directos: ${competidores}`,
+          `Etapa de financiamiento: ${empresa.funding_stage || "no disponible"}`,
+        ],
+        sentiment: "neutral" as const,
+        sources,
+        generated_at: new Date().toISOString(),
+        _fallback: true,
+      };
+
+      await supabase.from("empresas_v2").update({ signal_context: fallbackSignal }).eq("id", parseInt(id));
+      return NextResponse.json({ success: true, signal_context: fallbackSignal, cached: false });
+    } catch (fallbackErr: any) {
+      console.error("[MARKET-PULSE FALLBACK ERROR]", fallbackErr?.message);
+    }
+  }
+
   let lastError: any = null;
-  
+
   for (let i = 0; i < apiKeys.length; i++) {
     const key = apiKeys[(currentKeyIndex + i) % apiKeys.length];
     const genAI = new GoogleGenerativeAI(key);
