@@ -1,0 +1,123 @@
+import { NextRequest, NextResponse } from "next/server";
+import { GoogleGenerativeAI } from "@google/generative-ai";
+import { supabase } from "@/lib/supabase";
+
+export const dynamic = "force-dynamic";
+
+/**
+ * POST /api/discovery
+ * Búsqueda semántica de empresas en lenguaje natural.
+ * Ejemplo: "quiero casinos en Brasil" → devuelve empresas iGaming en Brasil
+ *
+ * Usa match_empresas RPC (pgvector sobre empresas_v3, text-embedding-004, 768-dim)
+ * Extrae filtros (pais, vertical) con LLM antes de buscar.
+ */
+export async function POST(req: NextRequest) {
+  try {
+    const { query } = await req.json();
+    if (!query || typeof query !== "string") {
+      return NextResponse.json({ error: "query requerida" }, { status: 400 });
+    }
+
+    // ── Paso 1: Extraer filtros con Groq (rápido, JSON garantizado) ──
+    let pais: string | null = null;
+    let vertical: string | null = null;
+
+    try {
+      const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "llama-3.3-70b-versatile",
+          messages: [{
+            role: "user",
+            content: `Extrae los filtros de esta búsqueda de empresas fintech: "${query}"
+Responde SOLO con JSON:
+{
+  "pais": "México" | "Colombia" | "Brasil" | "Chile" | "Argentina" | "Perú" | null,
+  "vertical": "Payments & Remittances" | "Lending" | "Digital Banking" | "Tech Infrastructure" | "Open Finance" | "Insurtech" | "Enterprise Financial Mgmt" | "Crypto & Blockchain" | "Wealth Management" | "Proptech" | "Crowdfunding" | "Personal Financial Management" | null
+}
+Si no se menciona país o vertical, deja null.
+"casino", "igaming", "juegos" → vertical: "Payments & Remittances"
+"crédito", "préstamo" → vertical: "Lending"
+"banco", "neobank" → vertical: "Digital Banking"`
+          }],
+          max_tokens: 100,
+          response_format: { type: "json_object" },
+        }),
+      });
+
+      if (groqRes.ok) {
+        const groqData = await groqRes.json();
+        const parsed = JSON.parse(groqData.choices[0].message.content);
+        pais = parsed.pais ?? null;
+        vertical = parsed.vertical ?? null;
+      }
+    } catch (e) {
+      console.warn("[DISCOVERY] Groq filter extraction failed, proceeding without filters:", e);
+    }
+
+    // ── Paso 2: Embedding semántico de la query (text-embedding-004, 768-dim) ──
+    const apiKey = process.env.GEMINI_API_KEY_PROFESSIONAL
+      || process.env.GEMINI_API_KEY_1
+      || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+
+    const genAI = new GoogleGenerativeAI(apiKey!);
+    const model = genAI.getGenerativeModel({ model: "text-embedding-004" });
+    const embedResult = await model.embedContent(query);
+    const embedding = Array.from(embedResult.embedding.values);
+
+    // ── Paso 3: Búsqueda vectorial en empresas_v3 via match_empresas ──
+    const { data: results, error } = await supabase.rpc("match_empresas", {
+      query_embedding: embedding,
+      match_threshold: 0.1,
+      match_count: 12,
+      filter_pais: pais,
+    });
+
+    if (error) {
+      console.error("[DISCOVERY] match_empresas error:", error);
+      throw new Error(error.message);
+    }
+
+    // ── Fallback: si pgvector no devuelve resultados, búsqueda por vertical + país ──
+    let empresas = results || [];
+    let usedFallback = false;
+
+    if (empresas.length === 0) {
+      usedFallback = true;
+      console.log("[DISCOVERY] pgvector miss — fallback a búsqueda por campos");
+
+      let q = supabase.from("empresas_v3").select("id, nombre, vertical_finnovista, pais, descripcion, website, icp_score").limit(12);
+
+      if (pais) q = q.ilike("pais", `%${pais}%`);
+      if (vertical) q = q.ilike("vertical_finnovista", `%${vertical.split(" ")[0]}%`);
+
+      const { data: fallbackData } = await q.order("icp_score", { ascending: false });
+      empresas = fallbackData || [];
+    }
+
+    return NextResponse.json({
+      query,
+      filtros_detectados: { pais, vertical },
+      total: empresas.length,
+      used_fallback: usedFallback,
+      empresas: empresas.map((e: any) => ({
+        id: e.id,
+        nombre: e.nombre || e.name,
+        vertical: e.vertical_finnovista,
+        pais: e.pais || e.country,
+        descripcion: e.descripcion || e.description || null,
+        website: e.website || null,
+        icp_score: e.icp_score || null,
+        similarity: e.similarity || null,
+      })),
+    });
+  } catch (err: any) {
+    console.error("[DISCOVERY ERROR]", err?.message);
+    return NextResponse.json({ error: err?.message || "Error en Discovery" }, { status: 500 });
+  }
+}

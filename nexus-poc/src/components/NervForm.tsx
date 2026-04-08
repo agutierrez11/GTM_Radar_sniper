@@ -201,6 +201,34 @@ export default function NervForm({ userEmail }: { userEmail?: string } = {}) {
   const [step, setStep] = useState<"form" | "loading" | "result">("form");
   const [loadingMsg, setLoadingMsg] = useState("");
   const [isForensic, setIsForensic] = useState(true);
+
+  // ── Discovery Mode ─────────────────────────────────────────────────────
+  const [discoveryQuery, setDiscoveryQuery] = useState("");
+  const [discoverySearching, setDiscoverySearching] = useState(false);
+  const [discoveryResults, setDiscoveryResults] = useState<any[] | null>(null);
+  const [discoveryMeta, setDiscoveryMeta] = useState<{ pais: string | null; vertical: string | null; total: number } | null>(null);
+
+  const handleSemanticDiscovery = async () => {
+    if (!discoveryQuery.trim()) return;
+    setDiscoverySearching(true);
+    setDiscoveryResults(null);
+    setDiscoveryMeta(null);
+    try {
+      const res = await fetch("/api/discovery", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: discoveryQuery }),
+      });
+      if (!res.ok) throw new Error("Error en Discovery");
+      const data = await res.json();
+      setDiscoveryResults(data.empresas || []);
+      setDiscoveryMeta({ pais: data.filtros_detectados?.pais, vertical: data.filtros_detectados?.vertical, total: data.total });
+    } catch (e) {
+      console.error("Discovery error:", e);
+    } finally {
+      setDiscoverySearching(false);
+    }
+  };
   const [nexusResponse, setNexusResponse] = useState<{
     msg: string | null;
     type: "guide" | "error" | "success" | null;
@@ -665,6 +693,87 @@ export default function NervForm({ userEmail }: { userEmail?: string } = {}) {
           </button>
         </div>
       )}
+      {/* ── DISCOVERY SEMÁNTICO ── */}
+      <div style={{ margin: "16px 20px 8px", background: "linear-gradient(135deg,#0f172a,#1e1b4b)", borderRadius: 14, padding: "20px 24px", border: "1px solid rgba(99,102,241,0.3)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+          <span style={{ fontSize: 18 }}>🔭</span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: "#a5b4fc", letterSpacing: "0.05em", textTransform: "uppercase" }}>
+            Discovery Semántico
+          </span>
+          <span style={{ fontSize: 11, color: "#4c1d95", background: "rgba(167,139,250,0.15)", border: "1px solid rgba(167,139,250,0.3)", borderRadius: 100, padding: "2px 10px", fontWeight: 600 }}>
+            pgvector · 1,899 empresas
+          </span>
+        </div>
+        <p style={{ fontSize: 12, color: "#6366f1", margin: "0 0 12px", lineHeight: 1.5 }}>
+          Describe lo que buscas en lenguaje natural — sin escribir el nombre exacto.
+        </p>
+        <div style={{ display: "flex", gap: 8 }}>
+          <input
+            type="text"
+            value={discoveryQuery}
+            onChange={(e) => setDiscoveryQuery(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSemanticDiscovery()}
+            placeholder={`"quiero casinos en Brasil" · "fintechs de crédito en México" · "neobancos Colombia"`}
+            style={{
+              flex: 1, padding: "10px 14px", borderRadius: 8,
+              background: "rgba(255,255,255,0.05)", border: "1px solid rgba(99,102,241,0.4)",
+              color: "#e0e7ff", fontSize: 13, outline: "none",
+            }}
+          />
+          <button
+            onClick={handleSemanticDiscovery}
+            disabled={discoverySearching}
+            style={{
+              padding: "10px 20px", borderRadius: 8,
+              background: discoverySearching ? "#312e81" : "linear-gradient(135deg,#4f46e5,#7c3aed)",
+              color: "white", border: "none", fontSize: 13, fontWeight: 700,
+              cursor: discoverySearching ? "not-allowed" : "pointer", whiteSpace: "nowrap",
+            }}
+          >
+            {discoverySearching ? "Buscando..." : "Buscar →"}
+          </button>
+        </div>
+
+        {/* Resultados del Discovery */}
+        {discoveryMeta && (
+          <div style={{ marginTop: 12 }}>
+            <div style={{ fontSize: 11, color: "#818cf8", marginBottom: 8 }}>
+              {discoveryMeta.total} empresa{discoveryMeta.total !== 1 ? "s" : ""} encontrada{discoveryMeta.total !== 1 ? "s" : ""}
+              {discoveryMeta.pais ? ` · ${discoveryMeta.pais}` : ""}
+              {discoveryMeta.vertical ? ` · ${discoveryMeta.vertical}` : ""}
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+              {(discoveryResults || []).slice(0, 15).map((emp: any, i: number) => (
+                <button
+                  key={i}
+                  onClick={() => {
+                    setBrief((prev) => ({ ...prev, empresa: emp.nombre, pais: emp.pais || prev.pais, vertical: emp.vertical || prev.vertical }));
+                    setDiscoveryResults(null);
+                    setDiscoveryMeta(null);
+                    setDiscoveryQuery("");
+                  }}
+                  style={{
+                    padding: "5px 12px", borderRadius: 20,
+                    background: "rgba(99,102,241,0.15)", border: "1px solid rgba(99,102,241,0.4)",
+                    color: "#a5b4fc", fontSize: 12, fontWeight: 600,
+                    cursor: "pointer", transition: "all 0.15s",
+                  }}
+                  title={emp.descripcion || emp.vertical || ""}
+                >
+                  {emp.nombre}
+                  {emp.icp_score ? <span style={{ color: "#6366f1", marginLeft: 4 }}>· {emp.icp_score}</span> : ""}
+                </button>
+              ))}
+            </div>
+            {(discoveryResults?.length ?? 0) === 0 && (
+              <p style={{ fontSize: 12, color: "#4338ca", margin: 0 }}>
+                Sin resultados — intenta con términos más generales.
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+
       {/* HUB SELECTOR */}
       <div style={{ display: "flex", gap: 12, marginBottom: 20 }}>
         {HUBS.map(hub => (
