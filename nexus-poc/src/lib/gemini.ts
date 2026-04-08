@@ -237,7 +237,7 @@ async function generateWithFallbackNonGoogle(prompt: string, prompt_hash: string
           messages: [{ role: "user", content: prompt }],
           max_tokens: 4096,
           temperature: 0.1,
-          response_format: { type: "json_object" },
+          ...(prompt.toLowerCase().includes("json") ? { response_format: { type: "json_object" } } : {}),
         }),
       });
       if (!res.ok) throw new Error(`Groq HTTP ${res.status}`);
