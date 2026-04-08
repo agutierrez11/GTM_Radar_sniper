@@ -97,25 +97,23 @@ Si no se menciona país o vertical, deja null.
       usedFallback = true;
       console.log("[DISCOVERY] pgvector miss — fallback a búsqueda por campos");
 
-      // Intento 1: pais + vertical
+      // Intento 1: pais_hq + vertical
       if (pais && vertical) {
         const { data } = await supabase
           .from("empresas_v3")
-          .select("id, nombre, vertical_finnovista, pais, descripcion, website, icp_score")
-          .ilike("pais", `%${pais}%`)
-          .ilike("vertical_finnovista", `%${vertical.split(" ")[0]}%`)
-          .order("icp_score", { ascending: false })
+          .select("id, nombre, vertical, pais_hq, uvp, website, tier")
+          .ilike("pais_hq", `%${pais}%`)
+          .ilike("vertical", `%${vertical.split(" ")[0]}%`)
           .limit(12);
         empresas = data || [];
       }
 
-      // Intento 2: solo pais
+      // Intento 2: solo pais_hq
       if (empresas.length === 0 && pais) {
         const { data } = await supabase
           .from("empresas_v3")
-          .select("id, nombre, vertical_finnovista, pais, descripcion, website, icp_score")
-          .ilike("pais", `%${pais}%`)
-          .order("icp_score", { ascending: false })
+          .select("id, nombre, vertical, pais_hq, uvp, website, tier")
+          .ilike("pais_hq", `%${pais}%`)
           .limit(12);
         empresas = data || [];
       }
@@ -124,19 +122,18 @@ Si no se menciona país o vertical, deja null.
       if (empresas.length === 0 && vertical) {
         const { data } = await supabase
           .from("empresas_v3")
-          .select("id, nombre, vertical_finnovista, pais, descripcion, website, icp_score")
-          .ilike("vertical_finnovista", `%${vertical.split(" ")[0]}%`)
-          .order("icp_score", { ascending: false })
+          .select("id, nombre, vertical, pais_hq, uvp, website, tier")
+          .ilike("vertical", `%${vertical.split(" ")[0]}%`)
           .limit(12);
         empresas = data || [];
       }
 
-      // Intento 4: top ICP sin filtros
+      // Intento 4: top tier sin filtros
       if (empresas.length === 0) {
         const { data } = await supabase
           .from("empresas_v3")
-          .select("id, nombre, vertical_finnovista, pais, descripcion, website, icp_score")
-          .order("icp_score", { ascending: false })
+          .select("id, nombre, vertical, pais_hq, uvp, website, tier")
+          .eq("tier", "1")
           .limit(12);
         empresas = data || [];
       }
@@ -150,11 +147,11 @@ Si no se menciona país o vertical, deja null.
       empresas: empresas.map((e: any) => ({
         id: e.id,
         nombre: e.nombre || e.name,
-        vertical: e.vertical_finnovista,
-        pais: e.pais || e.country,
-        descripcion: e.descripcion || e.description || null,
+        vertical: e.vertical || e.vertical_finnovista,
+        pais: e.pais_hq || e.pais || e.country,
+        descripcion: e.uvp || e.descripcion || e.description || null,
         website: e.website || null,
-        icp_score: e.icp_score || null,
+        icp_score: e.tier ? (e.tier === "1" ? 90 : e.tier === "2" ? 70 : 50) : null,
         similarity: e.similarity || null,
       })),
     });
