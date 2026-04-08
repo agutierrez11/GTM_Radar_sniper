@@ -8,13 +8,20 @@ import NervForm from "@/components/NervForm";
  * Esta verificación server-side es una segunda capa de seguridad.
  */
 export default async function AppPage() {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const demoMode = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
 
-  if (!user) {
-    redirect("/login");
+  let userEmail: string | undefined = undefined;
+
+  if (!demoMode) {
+    const supabase = await createSupabaseServerClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      redirect("/login");
+    }
+    userEmail = user.email;
   }
 
   return (
@@ -26,7 +33,7 @@ export default async function AppPage() {
       </div>
 
       <div className="relative z-10 mx-auto px-0">
-        <NervForm userEmail={user.email} />
+        <NervForm userEmail={userEmail} />
       </div>
 
       <footer className="relative z-10 py-12 border-t border-zinc-100 text-center bg-white">

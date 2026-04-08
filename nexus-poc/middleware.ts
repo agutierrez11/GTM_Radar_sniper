@@ -41,7 +41,10 @@ export async function middleware(request: NextRequest) {
   const isProtected =
     pathname.startsWith("/app") || pathname.startsWith("/advanced");
 
-  if (!user && isProtected) {
+  // DEMO_MODE: bypass auth para demos sin login
+  const demoMode = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
+
+  if (!user && isProtected && !demoMode) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/login";
     return NextResponse.redirect(loginUrl);
