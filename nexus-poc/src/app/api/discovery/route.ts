@@ -60,32 +60,38 @@ Si no se menciona país o vertical, deja null.
       console.warn("[DISCOVERY] Groq filter extraction failed, proceeding without filters:", e);
     }
 
-    // ── Paso 2: Embedding semántico de la query (text-embedding-004, 768-dim) ──
-    const apiKey = process.env.GEMINI_API_KEY_PROFESSIONAL
-      || process.env.GEMINI_API_KEY_1
-      || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
-
-    const genAI = new GoogleGenerativeAI(apiKey!);
-    const model = genAI.getGenerativeModel({ model: "text-embedding-004" });
-    const embedResult = await model.embedContent(query);
-    const embedding = Array.from(embedResult.embedding.values);
-
-    // ── Paso 3: Búsqueda vectorial en empresas_v3 via match_empresas ──
-    const { data: results, error } = await supabase.rpc("match_empresas", {
-      query_embedding: embedding,
-      match_threshold: 0.1,
-      match_count: 12,
-      filter_pais: pais,
-    });
-
-    if (error) {
-      console.error("[DISCOVERY] match_empresas error:", error);
-      throw new Error(error.message);
-    }
-
-    // ── Fallback: si pgvector no devuelve resultados, búsqueda por vertical + país ──
-    let empresas = results || [];
+    // ── Paso 2 & 3: Embedding + búsqueda vectorial (skip si Google pausado) ──
+    let empresas: any[] = [];
     let usedFallback = false;
+
+    if (process.env.GOOGLE_APIS_PAUSED !== "true") {
+      try {
+        const apiKey = process.env.GEMINI_API_KEY_PROFESSIONAL
+          || process.env.GEMINI_API_KEY_1
+          || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+
+        const genAI = new GoogleGenerativeAI(apiKey!);
+        const model = genAI.getGenerativeModel({ model: "text-embedding-004" });
+        const embedResult = await model.embedContent(query);
+        const embedding = Array.from(embedResult.embedding.values);
+
+        const { data: results, error } = await supabase.rpc("match_empresas", {
+          query_embedding: embedding,
+          match_threshold: 0.1,
+          match_count: 12,
+          filter_pais: pais,
+        });
+
+        if (!error && results && results.length > 0) {
+          empresas = results;
+          console.log(`[DISCOVERY] pgvector: ${results.length} empresas`);
+        }
+      } catch (e) {
+        console.warn("[DISCOVERY] Embedding falló, usando fallback de texto:", e);
+      }
+    } else {
+      console.log("[DISCOVERY] GOOGLE_APIS_PAUSED=true — usando búsqueda por texto");
+    }
 
     if (empresas.length === 0) {
       usedFallback = true;

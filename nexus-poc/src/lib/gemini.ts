@@ -43,6 +43,12 @@ function hashPrompt(prompt: string): string {
 export async function generateWithFallback(prompt: string): Promise<GeminiResponse> {
   const prompt_hash = hashPrompt(prompt);
 
+  // --- BYPASS GOOGLE: si GOOGLE_APIS_PAUSED=true, saltar directo a Claude/Groq ---
+  if (process.env.GOOGLE_APIS_PAUSED === "true") {
+    console.log("[GOOGLE PAUSED] Bypassing Gemini — enrutando a Claude/Groq");
+    return generateWithFallbackNonGoogle(prompt, prompt_hash);
+  }
+
   // --- PRIORIDAD 3: CACHÉ INTELIGENTE ---
   try {
     const { data: cacheEntry, error: cacheError } = await supabase
@@ -167,4 +173,85 @@ export async function generateWithFallback(prompt: string): Promise<GeminiRespon
   }
 
   throw new Error("Gemini falló tras agotar todos los intentos. El sistema de resiliencia fue superado.");
+}
+
+/**
+ * Fallback engine sin Google: Claude 3.5 Sonnet → Groq Llama-3.3-70B
+ * Activado automáticamente cuando GOOGLE_APIS_PAUSED=true
+ * Los 3 agentes (Cosechador, Retador, Sintetizador) siguen funcionando al 100%.
+ * Solo baja la confianza RAG (sin embeddings de conocimiento).
+ */
+async function generateWithFallbackNonGoogle(prompt: string, prompt_hash: string): Promise<GeminiResponse> {
+  const timestamp = new Date().toISOString();
+
+  // 1. Intentar caché (misma tabla, sin importar el LLM que lo guardó)
+  try {
+    const { data: cacheEntry } = await supabase
+      .from("gemini_cache")
+      .select("response, created_at")
+      .eq("prompt_hash", prompt_hash)
+      .maybeSingle();
+
+    if (cacheEntry) {
+      const diffHours = (Date.now() - new Date(cacheEntry.created_at).getTime()) / 3_600_000;
+      if (diffHours < 24) {
+        console.log(`[NON-GOOGLE CACHÉ HIT] Hash: ${prompt_hash}`);
+        return { data: cacheEntry.response, cached: true, timestamp: cacheEntry.created_at };
+      }
+    }
+  } catch {}
+
+  // 2. Claude 3.5 Sonnet (primario)
+  if (process.env.ANTHROPIC_API_KEY) {
+    try {
+      const { default: Anthropic } = await import("@anthropic-ai/sdk");
+      const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+      const message = await client.messages.create({
+        model: "claude-3-5-sonnet-latest",
+        max_tokens: 4096,
+        messages: [{ role: "user", content: prompt }],
+      });
+      const raw = (message.content[0] as any).text as string;
+      const cleaned = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+      let data: any;
+      try { data = JSON.parse(cleaned); } catch {
+        const match = cleaned.match(/\{[\s\S]*\}/);
+        try { data = match ? JSON.parse(match[0]) : cleaned; } catch { data = cleaned; }
+      }
+      await supabase.from("gemini_cache").upsert({ prompt_hash, response: data, created_at: timestamp, expires_at: new Date(Date.now() + 86_400_000).toISOString() }).catch(() => {});
+      console.log("[NON-GOOGLE] Claude 3.5 Sonnet respondió ✓");
+      return { data, cached: false, timestamp };
+    } catch (e: any) {
+      console.warn("[NON-GOOGLE] Claude falló:", e?.message);
+    }
+  }
+
+  // 3. Groq Llama-3.3-70B (fallback)
+  if (process.env.GROQ_API_KEY) {
+    try {
+      const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${process.env.GROQ_API_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "llama-3.3-70b-versatile",
+          messages: [{ role: "user", content: prompt }],
+          max_tokens: 4096,
+          temperature: 0.1,
+          response_format: { type: "json_object" },
+        }),
+      });
+      if (!res.ok) throw new Error(`Groq HTTP ${res.status}`);
+      const groqData = await res.json();
+      const raw = groqData.choices[0].message.content || "";
+      let data: any;
+      try { data = JSON.parse(raw); } catch { data = raw; }
+      await supabase.from("gemini_cache").upsert({ prompt_hash, response: data, created_at: timestamp, expires_at: new Date(Date.now() + 86_400_000).toISOString() }).catch(() => {});
+      console.log("[NON-GOOGLE] Groq Llama-3.3 respondió ✓");
+      return { data, cached: false, timestamp };
+    } catch (e: any) {
+      console.warn("[NON-GOOGLE] Groq falló:", e?.message);
+    }
+  }
+
+  throw new Error("GOOGLE_APIS_PAUSED=true pero ANTHROPIC_API_KEY y GROQ_API_KEY no están configuradas.");
 }

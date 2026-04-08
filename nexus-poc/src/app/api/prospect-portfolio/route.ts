@@ -45,11 +45,14 @@ export async function POST(req: NextRequest) {
   try {
     const { vendedorUrl, pais, vertical, productosSeleccionados, empresaName } = await req.json();
 
-    // 1. Intentar Búsqueda Vectorial (pgvector)
+    // 1. Intentar Búsqueda Vectorial (pgvector) — skip si Google pausado
     const queryText = `Empresa B2B buscando clientes en el sector ${vertical} de ${pais} para vender: ${productosSeleccionados.join(', ')}. Necesitamos prospectos afines.`;
     let leads = null;
     let usingVectorSearch = false;
 
+    if (process.env.GOOGLE_APIS_PAUSED === "true") {
+      console.log("[PROSPECT] GOOGLE_APIS_PAUSED=true — saltando pgvector, usando fallback estático");
+    } else
     try {
        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY_PROFESSIONAL || process.env.GEMINI_API_KEY || "");
        const model = genAI.getGenerativeModel({ model: "text-embedding-004" });

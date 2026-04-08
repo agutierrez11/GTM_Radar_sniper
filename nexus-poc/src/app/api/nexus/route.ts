@@ -16,6 +16,11 @@ export async function POST(req: NextRequest) {
     let ragContext = "No document evidence found in Knowledge Base.";
     let ragChunks: Array<{ content: string; similarity: number; source: string }> = [];
     try {
+      // Si Google APIs están pausadas, saltamos el RAG — los 3 agentes siguen funcionando
+      if (process.env.GOOGLE_APIS_PAUSED === "true") {
+        console.log("[RAG SKIP] GOOGLE_APIS_PAUSED=true — continuando sin contexto documental");
+        throw new Error("GOOGLE_APIS_PAUSED");
+      }
       const { GoogleGenerativeAI } = await import("@google/generative-ai");
       const api_key = process.env.GEMINI_API_KEY_1 || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
       const genAI = new GoogleGenerativeAI(api_key!);
