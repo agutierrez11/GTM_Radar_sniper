@@ -1,16 +1,20 @@
-#!/bash
-# run_services.sh - Orchestrate NERV services on Linux using PM2
+#!/bin/bash
+# NERV — TACTICAL LAUNCHER (FastAPI + Next.js)
 
-echo "--- Iniciando servicios NERV Sniper ---"
+echo "🚀 Launching NERV Intelligence Platform..."
 
-# Ensure we are in the engine directory
-cd "$(dirname "$0")/engine"
+# Launch FastAPI Backend (Background)
+echo "📡 Starting FastAPI Backend (apps/backend)..."
+cd apps/backend && uvicorn main:app --reload --port 8000 &
+BACKEND_PID=$!
 
-# Start the main Sniper Engine
-# We use PM2 to keep it running and manage logs efficiently
-pm2 start v6_stable.py --name "sniper-engine" --interpreter python3
+# Launch Next.js Frontend
+echo "💻 Starting Next.js Frontend (apps/frontend)..."
+cd ../frontend && pnpm dev &
+FRONTEND_PID=$!
 
-# Start other supportive services if needed
-# pm2 start telegram_bot.py --name "nerv-bot" --interpreter python3
+# Trap signals to kill both processes on exit
+trap "kill $BACKEND_PID $FRONTEND_PID" EXIT
 
-echo "--- Servicios en ejecución. Usa 'pm2 status' para monitorear ---"
+echo "✅ NERV is online. Press Ctrl+C to stop all services."
+wait
