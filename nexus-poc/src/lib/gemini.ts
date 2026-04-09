@@ -172,7 +172,9 @@ export async function generateWithFallback(prompt: string): Promise<GeminiRespon
     }
   }
 
-  throw new Error("Gemini falló tras agotar todos los intentos. El sistema de resiliencia fue superado.");
+  // Gemini agotado — fallthrough a Claude/Groq aunque GOOGLE_APIS_PAUSED=false
+  console.warn("[GEMINI EXHAUSTED] Todos los intentos fallaron. Enrutando a Claude/Groq como emergencia.");
+  return generateWithFallbackNonGoogle(prompt, prompt_hash);
 }
 
 /**
