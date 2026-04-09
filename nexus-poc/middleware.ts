@@ -50,6 +50,13 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
+  // DEMO_MODE: si alguien llega a /login, mandarlo directo al app
+  if (demoMode && pathname === "/login") {
+    const appUrl = request.nextUrl.clone();
+    appUrl.pathname = "/app";
+    return NextResponse.redirect(appUrl);
+  }
+
   // Si ya está autenticado y va a /login, redirigir al app
   if (user && pathname === "/login") {
     const appUrl = request.nextUrl.clone();
