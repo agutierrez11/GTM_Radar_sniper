@@ -10,8 +10,9 @@ export const maxDuration = 60;
 async function createGalileoWorkflow(name: string) {
   if (!process.env.GALILEO_API_KEY) return null;
   try {
+    process.env.GALILEO_CONSOLE_URL = process.env.GALILEO_CONSOLE_URL || "https://console.galileo.ai";
     const { GalileoObserveWorkflow } = await import("@rungalileo/galileo");
-    const wf = new GalileoObserveWorkflow(name);
+    const wf = new GalileoObserveWorkflow("NERV_RaiSE");
     await wf.init();
     return wf;
   } catch (e) {

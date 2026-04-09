@@ -26,7 +26,8 @@
     "react-dom": "19.0.0",
     "react-globe.gl": "^2.37.0",
     "three": "^0.183.2",
-    "three-globe": "^2.45.1"
+    "three-globe": "^2.45.1",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
