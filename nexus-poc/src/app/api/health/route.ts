@@ -65,8 +65,9 @@ export async function GET() {
     tests.claude = "SKIPPED (no key)";
   }
 
-  // Quick smoke-test: OpenRouter
+  // Quick smoke-test: OpenRouter (con el mismo modelo que usa gemini.ts)
   if (process.env.OPENROUTER_API_KEY) {
+    const orModel = process.env.OPENROUTER_MODEL || "anthropic/claude-sonnet-4.5";
     try {
       const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
@@ -74,14 +75,16 @@ export async function GET() {
           Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
           "Content-Type": "application/json",
           "HTTP-Referer": "https://nerv.app",
+          "X-Title": "NERV RaiSE",
         },
         body: JSON.stringify({
-          model: "anthropic/claude-3.5-haiku",
+          model: orModel,
           messages: [{ role: "user", content: "ping" }],
           max_tokens: 5,
         }),
       });
-      tests.openrouter = res.ok ? "OK" : `FAIL: HTTP ${res.status}`;
+      const body = await res.json().catch(() => ({}));
+      tests.openrouter = res.ok ? `OK (model: ${orModel})` : `FAIL: HTTP ${res.status} — ${JSON.stringify(body).slice(0, 120)}`;
     } catch (e: any) {
       tests.openrouter = `FAIL: ${e?.message}`;
     }
@@ -89,5 +92,5 @@ export async function GET() {
     tests.openrouter = "SKIPPED (no key)";
   }
 
-  return NextResponse.json({ vars, tests, ts: new Date().toISOString() });
+  return NextResponse.json({ vars, tests, ts: new Date().toISOString(), deploy_commit: "39af5f4" });
 }
