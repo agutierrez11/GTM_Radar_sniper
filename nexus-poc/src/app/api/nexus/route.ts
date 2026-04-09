@@ -6,6 +6,20 @@ import { generateWithGroq } from "../../../lib/groq";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
+// ── GALILEO OBSERVE — LLM Observability ──────────────────────────────────
+async function createGalileoWorkflow(name: string) {
+  if (!process.env.GALILEO_API_KEY) return null;
+  try {
+    const { GalileoObserveWorkflow } = await import("@rungalileo/galileo");
+    const wf = new GalileoObserveWorkflow(name);
+    await wf.init();
+    return wf;
+  } catch (e) {
+    console.warn("[GALILEO] Init failed:", e);
+    return null;
+  }
+}
+
 // ── STRATEGIC NODE ROUTER (MemPalace / KB Intelligence Injection) ────────
 // Lee el nodo estratégico del knowledge_base si existe para la empresa target.
 // Si existe: inyecta "verdad absoluta" al Sintetizador — prohíbe alucinaciones.
@@ -107,6 +121,11 @@ export async function POST(req: NextRequest) {
       console.warn("[RAG WARN] Retrieval failed, proceeding with baseline data:", ragErr);
     }
 
+    // --- GALILEO WORKFLOW START ---
+    const galileoInput = `${brief.empresa} | ${brief.producto} | ${brief.vertical} | ${brief.pais}`;
+    const galileoWF = await createGalileoWorkflow(`NERV_RaiSE_${brief.empresa}`);
+    galileoWF?.addWorkflow({ input: galileoInput });
+
     // --- AGENTE 1: EL COSECHADOR (Facts & Signals) ---
     const harvesterPrompt = isVendorMode
       ? `Eres el Harvester Agent de NERV en modo VENDOR ATTACK.
@@ -129,8 +148,10 @@ export async function POST(req: NextRequest) {
       1. Identifica el dolor técnico de la PRESA (${brief.vertical} en ${brief.pais}).
       2. PRIORIZA la EVIDENCIA DOCUMENTAL (RAG) si está disponible.
       Responde con una lista de 5 hechos brutales. No hables, solo los hechos.`;
+    const t1 = Date.now();
     const harvestResult = await generateWithFallback(harvesterPrompt);
     const facts = harvestResult.data;
+    galileoWF?.addLlmStep({ input: harvesterPrompt, output: JSON.stringify(facts).slice(0, 2000), durationNs: (Date.now() - t1) * 1_000_000 });
 
     // --- AGENTE 2: EL ABOGADO DEL DIABLO (Red Teaming) ---
     const challengerPrompt = `
@@ -142,8 +163,10 @@ export async function POST(req: NextRequest) {
       ¿Qué objeciones pondría un CTO escéptico?
       Responde con 3 debilidades críticas.
     `;
+    const t2 = Date.now();
     const challengeResult = await generateWithFallback(challengerPrompt);
     const objections = challengeResult.data;
+    galileoWF?.addLlmStep({ input: challengerPrompt, output: JSON.stringify(objections).slice(0, 2000), durationNs: (Date.now() - t2) * 1_000_000 });
 
     // --- FASE 2.5: STRATEGIC NODE ROUTER + MEMPALACE ─────────────────────
     // Lee nodo estratégico del KB y MemPalace para inyectar "verdad absoluta"
@@ -225,6 +248,7 @@ PROHIBIDO: Alucinar o usar datos genéricos si este nodo existe. Usa SOLO esta i
       }
     `;
 
+    const t3 = Date.now();
     const gResp = await generateWithFallback(finalPrompt);
 
     // --- JSON RECOVERY: si Gemini devolvió texto plano en lugar de JSON ---
@@ -259,6 +283,16 @@ PROHIBIDO: Alucinar o usar datos genéricos si este nodo existe. Usa SOLO esta i
     if (synthOutput?.auditoria) {
       synthOutput.auditoria.confianza = computedConfianza;
     }
+
+    // --- GALILEO WORKFLOW CONCLUDE & UPLOAD ---
+    try {
+      if (galileoWF) {
+        galileoWF.addLlmStep({ input: finalPrompt, output: JSON.stringify(synthOutput).slice(0, 3000), durationNs: (Date.now() - t3) * 1_000_000 });
+        galileoWF.concludeWorkflow(JSON.stringify({ empresa: brief.empresa, icp_score: synthOutput?.icp_score }));
+        await galileoWF.uploadWorkflows();
+        console.log("[GALILEO] Workflow uploaded ✓");
+      }
+    } catch (ge) { console.warn("[GALILEO] Upload failed:", ge); }
 
     return NextResponse.json({
       ...synthOutput,
