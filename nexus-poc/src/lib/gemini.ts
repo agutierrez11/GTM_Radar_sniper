@@ -207,7 +207,7 @@ async function generateWithFallbackNonGoogle(prompt: string, prompt_hash: string
       const { default: Anthropic } = await import("@anthropic-ai/sdk");
       const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
       const message = await client.messages.create({
-        model: process.env.ANTHROPIC_MODEL || "claude-sonnet-4-6",
+        model: process.env.ANTHROPIC_MODEL || "claude-3-5-sonnet-20241022",
         max_tokens: 8192,
         messages: [{ role: "user", content: prompt }],
       });
