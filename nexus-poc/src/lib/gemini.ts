@@ -246,12 +246,15 @@ async function generateWithFallbackNonGoogle(prompt: string, prompt_hash: string
         body: JSON.stringify({
           model: orModel,
           messages: [{ role: "user", content: prompt }],
-          max_tokens: 8192,
+          max_tokens: 4096,
           temperature: 0.1,
         }),
       });
-      if (!res.ok) throw new Error(`OpenRouter HTTP ${res.status}`);
       const orData = await res.json();
+      if (!res.ok) {
+        const errMsg = orData?.error?.message || JSON.stringify(orData).slice(0, 200);
+        throw new Error(`OpenRouter HTTP ${res.status}: ${errMsg}`);
+      }
       const raw = orData.choices[0].message.content || "";
       const cleaned = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
       let data: any;
