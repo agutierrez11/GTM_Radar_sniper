@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "src/app/api/nexus/route.ts": {
+      "maxDuration": 60
+    }
+  }
+}

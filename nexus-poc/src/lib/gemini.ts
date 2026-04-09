@@ -207,8 +207,8 @@ async function generateWithFallbackNonGoogle(prompt: string, prompt_hash: string
       const { default: Anthropic } = await import("@anthropic-ai/sdk");
       const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
       const message = await client.messages.create({
-        model: process.env.ANTHROPIC_MODEL || "claude-sonnet-4-5",
-        max_tokens: 4096,
+        model: process.env.ANTHROPIC_MODEL || "claude-sonnet-4-6",
+        max_tokens: 8192,
         messages: [{ role: "user", content: prompt }],
       });
       const raw = (message.content[0] as any).text as string;
@@ -235,7 +235,7 @@ async function generateWithFallbackNonGoogle(prompt: string, prompt_hash: string
         body: JSON.stringify({
           model: "llama-3.3-70b-versatile",
           messages: [{ role: "user", content: prompt }],
-          max_tokens: 4096,
+          max_tokens: 8192,
           temperature: 0.1,
           ...(prompt.toLowerCase().includes("json") ? { response_format: { type: "json_object" } } : {}),
         }),
