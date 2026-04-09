@@ -234,7 +234,7 @@ async function generateWithFallbackNonGoogle(prompt: string, prompt_hash: string
   // 3. OpenRouter (Claude/Llama via proxy — fallback)
   if (process.env.OPENROUTER_API_KEY) {
     try {
-      const orModel = process.env.OPENROUTER_MODEL || "anthropic/claude-3.5-sonnet";
+      const orModel = process.env.OPENROUTER_MODEL || "anthropic/claude-sonnet-4.5";
       const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
         headers: {
