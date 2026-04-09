@@ -4,6 +4,7 @@ import { generateWithClaude } from "../../../lib/claude";
 import { generateWithGroq } from "../../../lib/groq";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 // ── STRATEGIC NODE ROUTER (MemPalace / KB Intelligence Injection) ────────
 // Lee el nodo estratégico del knowledge_base si existe para la empresa target.
