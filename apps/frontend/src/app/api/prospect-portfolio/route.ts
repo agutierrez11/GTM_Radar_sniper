@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateWithFallback } from "@/lib/gemini";
-import { generateWithGroq } from "@/lib/groq";
-import { supabase } from "@/lib/supabase";
+import { supabaseRouteAnon as supabase } from "@/lib/supabase-route-anon";
 import { searchTavily } from "@/lib/tavily";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
@@ -147,10 +146,10 @@ REGLA DE ORO: USA NOMBRES REALES. NADA DE PLACEHOLDERS.
     try {
       const gResp = await generateWithFallback(prompt);
       return NextResponse.json(gResp.data);
-    } catch (err: any) {
-      console.warn("Gemini falló en portfolio, intentando Groq...");
-      const groqData = await generateWithGroq(prompt);
-      return NextResponse.json(groqData);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("PROSPECT_PORTFOLIO_LLM:", err);
+      return NextResponse.json({ error: msg || "Fallo del modelo (Gemini)" }, { status: 500 });
     }
 
   } catch (error: any) {

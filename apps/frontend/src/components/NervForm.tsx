@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { nervApi } from "@/lib/apiClient";
 import ContactCard from "./ContactCard";
 import CommentsSection from "./CommentsSection";
 import { MarketPulse } from "./MarketPulse";
@@ -46,7 +47,7 @@ interface NervResult {
   markdown: string;
   discovery_mode?: boolean;
   logId?: number;
-  empresaId?: number;
+  empresaId?: number | string;
   analisis_forense?: {
     inferencia_raise: string;
     friccion_tecnica: string;
@@ -207,24 +208,34 @@ export default function NervForm({ userEmail }: { userEmail?: string } = {}) {
   const [discoverySearching, setDiscoverySearching] = useState(false);
   const [discoveryResults, setDiscoveryResults] = useState<any[] | null>(null);
   const [discoveryMeta, setDiscoveryMeta] = useState<{ pais: string | null; vertical: string | null; total: number } | null>(null);
+  const [discoveryError, setDiscoveryError] = useState<string | null>(null);
 
   const handleSemanticDiscovery = async () => {
     if (!discoveryQuery.trim()) return;
     setDiscoverySearching(true);
     setDiscoveryResults(null);
     setDiscoveryMeta(null);
+    setDiscoveryError(null);
     try {
       const res = await fetch("/api/discovery", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query: discoveryQuery }),
       });
-      if (!res.ok) throw new Error("Error en Discovery");
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error((data as { error?: string }).error || `Discovery ${res.status}`);
+      }
       setDiscoveryResults(data.empresas || []);
-      setDiscoveryMeta({ pais: data.filtros_detectados?.pais, vertical: data.filtros_detectados?.vertical, total: data.total });
+      setDiscoveryMeta({
+        pais: data.filtros_detectados?.pais,
+        vertical: data.filtros_detectados?.vertical,
+        total: data.total ?? (data.empresas?.length ?? 0),
+      });
     } catch (e) {
+      const msg = e instanceof Error ? e.message : "Error de red";
       console.error("Discovery error:", e);
+      setDiscoveryError(msg);
     } finally {
       setDiscoverySearching(false);
     }
@@ -350,9 +361,17 @@ export default function NervForm({ userEmail }: { userEmail?: string } = {}) {
       try {
         const name = brief.empresa.trim();
         // Competidores
-        const { data: v3C } = await supabase.from("empresas_v3").select("competitors_verified").ilike("nombre", `%${name}%`).maybeSingle();
-        if (v3C?.competitors_verified?.length > 0) {
-          competidoresData = v3C.competitors_verified.map((n: string) => ({ name: n, url: null }));
+        const { data: v3C, error: v3Err } = await supabase
+          .from("empresas_v3")
+          .select("competidor_1, competidor_2, competidor_3")
+          .ilike("nombre", `%${name}%`)
+          .maybeSingle();
+        if (v3Err) console.warn("empresas_v3 competidores:", v3Err.message);
+        const v3Names = [v3C?.competidor_1, v3C?.competidor_2, v3C?.competidor_3].filter(
+          (n): n is string => Boolean(n && String(n).trim())
+        );
+        if (v3Names.length > 0) {
+          competidoresData = v3Names.map((n: string) => ({ name: n.trim(), url: null }));
         } else {
           const { data: v2C } = await supabase.from("empresas_v2").select("competitors_verified").ilike("name", `%${name}%`).maybeSingle();
           if (v2C?.competitors_verified?.length > 0) {
@@ -416,7 +435,18 @@ export default function NervForm({ userEmail }: { userEmail?: string } = {}) {
       }).catch(() => {});
     } catch (err: any) {
       console.error("DETAILED_FRONTEND_ERROR:", err);
-      setError(err.message || "Error generando la estrategia. Intenta de nuevo.");
+      const ax = err?.response?.data;
+      const detail =
+        (typeof ax?.detail === "string" && ax.detail) ||
+        (Array.isArray(ax?.detail)
+          ? ax.detail.map((d: { msg?: string }) => d.msg || JSON.stringify(d)).join("; ")
+          : null) ||
+        (typeof ax === "string" ? ax : null);
+      setError(
+        detail ||
+          err.message ||
+          "Error generando la estrategia. Revisa la consola (Network) para el cuerpo del error."
+      );
       setStep("form");
     } finally {
       clearInterval(msgInterval);
@@ -727,6 +757,12 @@ export default function NervForm({ userEmail }: { userEmail?: string } = {}) {
             {discoverySearching ? "Buscando..." : "Buscar →"}
           </button>
         </div>
+
+        {discoveryError && (
+          <p style={{ fontSize: 12, color: "#f87171", margin: "10px 0 0" }}>
+            {discoveryError}
+          </p>
+        )}
 
         {/* Resultados del Discovery */}
         {discoveryMeta && (

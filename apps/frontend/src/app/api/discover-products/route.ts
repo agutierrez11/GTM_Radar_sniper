@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateWithFallback } from "@/lib/gemini";
-import { generateWithGroq } from "@/lib/groq";
 
 export const dynamic = "force-dynamic";
 
@@ -57,10 +56,10 @@ export async function POST(req: NextRequest) {
       const gResp = await generateWithFallback(prompt);
       if (!gResp || !gResp.data) throw new Error("Gemini invalid response");
       return NextResponse.json(gResp.data);
-    } catch (err: any) {
-      console.warn("Gemini falló en discover-products, intentando Groq...");
-      const groqData = await generateWithGroq(prompt);
-      return NextResponse.json(groqData);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("DISCOVER_PRODUCTS_LLM:", err);
+      return NextResponse.json({ error: msg || "Fallo del modelo (Gemini)" }, { status: 500 });
     }
 
   } catch (error: any) {

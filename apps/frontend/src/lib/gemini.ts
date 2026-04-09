@@ -88,7 +88,7 @@ export async function generateWithFallback(prompt: string): Promise<GeminiRespon
 
     try {
       const genAI = new GoogleGenerativeAI(key);
-      const modelsToTry = ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"];
+      const modelsToTry = ["gemini-3-flash-preview", "gemini-3.1-flash-lite-preview", "gemini-2.5-flash"];
       let lastError: any = null;
 
       for (const modelName of modelsToTry) {
@@ -144,7 +144,7 @@ export async function generateWithFallback(prompt: string): Promise<GeminiRespon
       console.error(`[GEMINI ERROR] Attempt ${attempts + 1} with Key Index ${currentKeyIndex} (${maskedKey}):`, error?.status || error?.message);
 
       if (error?.status === 404 || error?.message?.includes("404")) {
-        console.error(`[GEMINI CRITICAL] El modelo gemini-2.0-flash NO fue encontrado para la llave ${maskedKey}. Revisa si la llave tiene acceso a este modelo en AI Studio.`);
+        console.error(`[GEMINI CRITICAL] Ningún modelo de la lista (Gemini 3 Flash / 3.1 Flash-Lite / 2.5) respondió para la llave ${maskedKey}. Revisa AI Studio / cuota GCP.`);
       }
 
       // Si es error de cuota (429) o similar

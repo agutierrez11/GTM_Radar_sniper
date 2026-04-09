@@ -50,7 +50,7 @@ interface NervResult {
   };
   markdown: string;
   logId?: number;
-  empresaId?: number;
+  empresaId?: number | string;
   tech_summary?: { crm: string; pagos: string; kyc: string };
   signal_type?: string;
 }
@@ -707,7 +707,9 @@ export default function NervFormAdvanced() {
         )}
         
         <div className="mt-20 border-t border-zinc-100 pt-20" />
-        <MarketPulse empresaId={result.empresaId || 0} empresaNombre={result.empresa} />
+        {result.empresaId != null && result.empresaId !== "" && (
+          <MarketPulse empresaId={result.empresaId} empresaNombre={result.empresa} />
+        )}
       </div>
     );
   }

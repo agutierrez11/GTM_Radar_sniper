@@ -11,7 +11,8 @@ interface SignalContext {
 }
 
 interface MarketPulseProps {
-  empresaId: number
+  /** empresas_v3 puede usar UUID o entero según el proyecto */
+  empresaId: number | string
   empresaNombre: string
   cachedSignal?: SignalContext | null
 }
@@ -164,7 +165,7 @@ export function MarketPulse({ empresaId, empresaNombre, cachedSignal }: MarketPu
             )}
 
             <p className="text-white/20 text-xs font-mono">
-              {timeAgo(data.generated_at)} · gemini-2.0-flash + Google Search
+              {timeAgo(data.generated_at)} · gemini-3-flash-preview
             </p>
           </div>
         )}

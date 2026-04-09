@@ -25,9 +25,14 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
 
-    // Siempre el origen de la página actual: si NEXT_PUBLIC_SITE_URL quedó como
-    // localhost en el build, no debe pisar producción (magic link a localhost).
-    const siteBase = window.location.origin.replace(/\/$/, "");
+    // Prioridad: NEXT_PUBLIC_SITE_URL en el build (Docker) si NO es localhost — evita magic link a localhost
+    // cuando el panel de Supabase tenía Site URL en 3000. Si no hay env útil, el origen del navegador.
+    const origin = window.location.origin.replace(/\/$/, "");
+    const fromEnv = (process.env.NEXT_PUBLIC_SITE_URL || "").replace(/\/$/, "");
+    const envUsable =
+      fromEnv &&
+      !/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(fromEnv);
+    const siteBase = envUsable ? fromEnv : origin;
     const { error: authError } = await supabase.auth.signInWithOtp({
       email: email.trim().toLowerCase(),
       options: {

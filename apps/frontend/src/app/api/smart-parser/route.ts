@@ -1,9 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-// import { generateWithFallback } from "@/lib/gemini";
-import { generateWithClaude } from "@/lib/claude";
-import { generateWithGroq } from "@/lib/groq";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export const dynamic = "force-dynamic";
+
+function geminiKey() {
+  return (
+    process.env.GEMINI_API_KEY_PROFESSIONAL ||
+    process.env.GEMINI_API_KEY_1 ||
+    process.env.NEXT_PUBLIC_GEMINI_API_KEY ||
+    process.env.GEMINI_API_KEY ||
+    ""
+  );
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -41,50 +49,44 @@ REGLAS CRÍTICAS:
 2. NO RESPONDAS AL USUARIO. Solo devuelve el JSON.
 3. Si un campo no está claro, deja el string vacío "".
 4. Para el 'pais', si no se menciona un país de la lista, deja vacío.
-5. Para 'tier', si no se especifica volumen o tamaño de deal, por defecto usa "Tier2".
+5. Para el 'tier', si no se especifica volumen o tamaño de deal, por defecto usa "Tier2".
 
 TEXTO DEL USUARIO:
 "${prompt}"
 `;
 
-    // MOTOR GROQ DIRECTO
-    let responseData;
-    try {
-      const groqResponse = await fetch(
-        "https://api.groq.com/openai/v1/chat/completions",
-        {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            model: "llama-3.3-70b-versatile",
-            messages: [{ role: "user", content: systemPrompt }],
-            max_tokens: 1000,
-            response_format: { type: "json_object" }
-          })
-        }
-      );
-
-      const groqData = await groqResponse.json();
-      
-      if (!groqResponse.ok) {
-        throw new Error(groqData.error?.message || "Error en Groq API");
-      }
-
-      const text = groqData.choices[0].message.content;
-      responseData = JSON.parse(text);
-
-      return NextResponse.json({ ...responseData, cached: false });
-    } catch (genError: any) {
-      console.error("SMART_PARSER_GENERATION_FAILED:", genError);
+    const key = geminiKey();
+    if (!key) {
       return NextResponse.json(
-        { error: "Error en el procesamiento con Groq.", details: genError.message },
+        { error: "GEMINI_API_KEY no configurada (smart-parser)." },
         { status: 500 }
       );
     }
-  } catch (error: any) {
+
+    const genAI = new GoogleGenerativeAI(key);
+    const model = genAI.getGenerativeModel({
+      model: "gemini-3-flash-preview",
+      generationConfig: {
+        responseMimeType: "application/json",
+        maxOutputTokens: 1000,
+        temperature: 0.1,
+      },
+    });
+
+    try {
+      const result = await model.generateContent(systemPrompt);
+      const text = result.response.text();
+      const responseData = JSON.parse(text);
+      return NextResponse.json({ ...responseData, cached: false });
+    } catch (genError: unknown) {
+      const msg = genError instanceof Error ? genError.message : String(genError);
+      console.error("SMART_PARSER_GENERATION_FAILED:", genError);
+      return NextResponse.json(
+        { error: "Error en el procesamiento con Gemini.", details: msg },
+        { status: 500 }
+      );
+    }
+  } catch (error: unknown) {
     console.error("Smart Parser Error:", error);
     return NextResponse.json(
       { error: "Sistema ocupado. Intenta en unos momentos." },

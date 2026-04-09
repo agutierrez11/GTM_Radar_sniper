@@ -3,7 +3,7 @@ from typing import List, Optional, Dict, Any
 from models.empresa import EmpresaResponse, SemanticSearchRequest, SearchResult
 from core.db import supabase
 from services.nexus_service import nexus_service
-from services.llm_service import llm_service
+from services.llm_service import llm_service, GeminiQuotaError, GeminiUnavailableError
 
 router = APIRouter(prefix="/empresas", tags=["empresas"])
 
@@ -44,10 +44,30 @@ async def search_empresas(request: SemanticSearchRequest):
 
 @router.post("/nexus")
 async def analyze_nexus(payload: Dict[str, Any] = Body(...)):
-    """Ejecuta el Swarm de Agentes para generar un reporte estratégico (NEXUS)."""
+    """Ejecuta el Swarm de Agentes para generar un reporte estratégico (NEXUS).
+
+    Si el LLM o el RAG fallan, responder **siempre** con HTTP de error (429/503/500),
+    nunca 200 con cuerpo “degradado” que simule éxito.
+    """
     try:
         result = await nexus_service.run_swarm(payload)
         return result
+    except GeminiQuotaError as e:
+        raise HTTPException(
+            status_code=429,
+            detail=(
+                "Cuota de Gemini agotada (429). Revisa facturación en Google AI Studio. "
+                f"Detalle upstream: {str(e)}"
+            ),
+        ) from e
+    except GeminiUnavailableError as e:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Gemini no disponible (503 / saturación). Reintenta más tarde. "
+                f"Detalle upstream: {str(e)}"
+            ),
+        ) from e
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

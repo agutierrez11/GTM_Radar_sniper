@@ -2,6 +2,9 @@
 # Despliegue a EasyEngine (equalitech) + verificación HTTPS al final.
 # Raíz del repo. Requisitos: ssh, scp, tar, curl (Git Bash / WSL / Linux).
 # Solo verificar sin desplegar: VERIFY_ONLY=1 bash scripts/deploy-equalitech.sh
+#
+# Secretos: el tar EXCLUYE .env. Sincroniza .env con:
+#   scp .env root@equalitech.xyz:/root/GTM_Radar_sniper/.env
 set -euo pipefail
 
 REMOTE="${DEPLOY_REMOTE:-root@equalitech.xyz}"

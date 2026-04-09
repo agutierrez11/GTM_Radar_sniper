@@ -44,9 +44,11 @@ export const nervApi = {
     return response.data;
   },
 
-  // Análisis Nexus (Swarm de Agentes)
+  // Análisis Nexus (Swarm de Agentes) — puede tardar >60s; nginx y axios deben permitirlo
   analyzeNexus: async (payload: any) => {
-    const response = await apiClient.post('/empresas/nexus', payload);
+    const response = await apiClient.post('/empresas/nexus', payload, {
+      timeout: 300000,
+    });
     return response.data;
   },
 

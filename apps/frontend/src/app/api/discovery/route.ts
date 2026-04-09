@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { supabase } from "@/lib/supabase";
+import { supabaseDiscovery as supabase } from "@/lib/supabase-discovery";
 
 export const dynamic = "force-dynamic";
 
@@ -19,23 +19,29 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "query requerida" }, { status: 400 });
     }
 
-    // ── Paso 1: Extraer filtros con Groq (rápido, JSON garantizado) ──
+    // ── Paso 1: Extraer filtros con Gemini (JSON) ──
     let pais: string | null = null;
     let vertical: string | null = null;
 
+    const filterKey =
+      process.env.GEMINI_API_KEY_PROFESSIONAL ||
+      process.env.GEMINI_API_KEY_1 ||
+      process.env.NEXT_PUBLIC_GEMINI_API_KEY ||
+      process.env.GEMINI_API_KEY;
+
     try {
-      const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "llama-3.3-70b-versatile",
-          messages: [{
-            role: "user",
-            content: `Extrae los filtros de esta búsqueda de empresas fintech: "${query}"
-Responde SOLO con JSON:
+      if (filterKey) {
+        const genAIFilter = new GoogleGenerativeAI(filterKey);
+        const filterModel = genAIFilter.getGenerativeModel({
+          model: "gemini-3-flash-preview",
+          generationConfig: {
+            responseMimeType: "application/json",
+            maxOutputTokens: 200,
+            temperature: 0.1,
+          },
+        });
+        const filterPrompt = `Extrae los filtros de esta búsqueda de empresas fintech: "${query}"
+Responde SOLO con JSON válido (sin markdown):
 {
   "pais": "México" | "Colombia" | "Brasil" | "Chile" | "Argentina" | "Perú" | null,
   "vertical": "Payments & Remittances" | "Lending" | "Digital Banking" | "Tech Infrastructure" | "Open Finance" | "Insurtech" | "Enterprise Financial Mgmt" | "Crypto & Blockchain" | "Wealth Management" | "Proptech" | "Crowdfunding" | "Personal Financial Management" | null
@@ -43,21 +49,15 @@ Responde SOLO con JSON:
 Si no se menciona país o vertical, deja null.
 "casino", "igaming", "juegos" → vertical: "Payments & Remittances"
 "crédito", "préstamo" → vertical: "Lending"
-"banco", "neobank" → vertical: "Digital Banking"`
-          }],
-          max_tokens: 100,
-          response_format: { type: "json_object" },
-        }),
-      });
-
-      if (groqRes.ok) {
-        const groqData = await groqRes.json();
-        const parsed = JSON.parse(groqData.choices[0].message.content);
+"banco", "neobank" → vertical: "Digital Banking"`;
+        const fr = await filterModel.generateContent(filterPrompt);
+        const raw = fr.response.text();
+        const parsed = JSON.parse(raw) as { pais?: string | null; vertical?: string | null };
         pais = parsed.pais ?? null;
         vertical = parsed.vertical ?? null;
       }
     } catch (e) {
-      console.warn("[DISCOVERY] Groq filter extraction failed, proceeding without filters:", e);
+      console.warn("[DISCOVERY] Gemini filter extraction failed, proceeding without filters:", e);
     }
 
     // ── Paso 2 & 3: Embedding + búsqueda vectorial (skip si Google pausado) ──
@@ -66,9 +66,11 @@ Si no se menciona país o vertical, deja null.
 
     if (process.env.GOOGLE_APIS_PAUSED !== "true") {
       try {
-        const apiKey = process.env.GEMINI_API_KEY_PROFESSIONAL
-          || process.env.GEMINI_API_KEY_1
-          || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+        const apiKey =
+          process.env.GEMINI_API_KEY_PROFESSIONAL ||
+          process.env.GEMINI_API_KEY_1 ||
+          process.env.NEXT_PUBLIC_GEMINI_API_KEY ||
+          process.env.GEMINI_API_KEY;
 
         const genAI = new GoogleGenerativeAI(apiKey!);
         const model = genAI.getGenerativeModel({ model: "text-embedding-004" });
@@ -128,12 +130,29 @@ Si no se menciona país o vertical, deja null.
         empresas = data || [];
       }
 
-      // Intento 4: top tier sin filtros
+      // Intento 4: tier 1 (texto o numérico en DB)
+      if (empresas.length === 0) {
+        const { data: d1 } = await supabase
+          .from("empresas_v3")
+          .select("id, nombre, vertical, pais_hq, uvp, website, tier")
+          .eq("tier", "1")
+          .limit(12);
+        empresas = d1 || [];
+        if (empresas.length === 0) {
+          const { data: d2 } = await supabase
+            .from("empresas_v3")
+            .select("id, nombre, vertical, pais_hq, uvp, website, tier")
+            .eq("tier", 1)
+            .limit(12);
+          empresas = d2 || [];
+        }
+      }
+
+      // Intento 5: cualquier muestra (último recurso)
       if (empresas.length === 0) {
         const { data } = await supabase
           .from("empresas_v3")
           .select("id, nombre, vertical, pais_hq, uvp, website, tier")
-          .eq("tier", "1")
           .limit(12);
         empresas = data || [];
       }

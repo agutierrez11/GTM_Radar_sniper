@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateWithFallback } from "../../../lib/gemini";
-import { generateWithGroq } from "../../../lib/groq";
 import { supabase as db } from "../../../lib/supabase";
 import { searchTavily } from "../../../lib/tavily";
 
@@ -139,10 +138,10 @@ ESTRUCTURA DEL RESULTADO (JSON):
     try {
       const gResp = await generateWithFallback(prompt);
       return NextResponse.json(gResp.data);
-    } catch (err: any) {
-      console.warn("Gemini falló, intentando Groq...");
-      const groqData = await generateWithGroq(prompt);
-       return NextResponse.json(groqData);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("NEXUS_V2_LLM:", err);
+      return NextResponse.json({ error: msg || "Fallo del modelo (Gemini)" }, { status: 500 });
     }
 
   } catch (error: any) {

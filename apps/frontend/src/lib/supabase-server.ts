@@ -5,7 +5,7 @@ import { cookies } from "next/headers";
  * Supabase client para Server Components, Route Handlers y middleware.
  * Usa @supabase/ssr para manejar cookies correctamente en Next.js App Router.
  * En Next.js 15, cookies() es async — esta función debe ser llamada con await.
- * NO usar en "use client" components — usar @/lib/supabase en su lugar.
+ * NO usar en "use client" — ahí usar @/lib/supabase (createBrowserClient + cookies).
  */
 export async function createSupabaseServerClient() {
   const cookieStore = await cookies();

@@ -38,7 +38,7 @@ async function run() {
   console.log("Found " + keys.length + " keys to test...");
   for (let i = 0; i < keys.length; i++) {
     await testKey(keys[i], i, "gemini-1.5-flash");
-    await testKey(keys[i], i, "gemini-2.5-flash");
+    await testKey(keys[i], i, "gemini-3-flash-preview");
   }
 }
 

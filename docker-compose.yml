@@ -21,8 +21,10 @@ services:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
         NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL}
         SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+    env_file:
+      - .env
     # Sin publish de puertos: en prod EasyEngine/nginx llega por red Docker (ee-global).
-    # Local: `pnpm dev` en apps/frontend o añade override con ports.
+    # env_file: API routes (/api/discovery, etc.) necesitan GROQ, GEMINI, SERVICE_ROLE en runtime.
     environment:
       - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
     depends_on:

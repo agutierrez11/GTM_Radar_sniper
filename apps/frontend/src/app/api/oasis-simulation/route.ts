@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateWithFallback } from "@/lib/gemini";
-import { generateWithGroq } from "@/lib/groq";
 
 export const dynamic = "force-dynamic";
 
@@ -42,9 +41,10 @@ RESPONDE ÚNICAMENTE CON UN JSON VÁLIDO:
     try {
       const gResp = await generateWithFallback(prompt);
       return NextResponse.json(gResp.data);
-    } catch (err) {
-      const groqData = await generateWithGroq(prompt);
-      return NextResponse.json(groqData);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("OASIS_SIMULATION_LLM:", err);
+      return NextResponse.json({ error: msg || "Fallo del modelo (Gemini)" }, { status: 500 });
     }
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

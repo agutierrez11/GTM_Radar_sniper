@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateWithFallback } from "../../../lib/gemini";
-import { generateWithClaude } from "../../../lib/claude";
-import { generateWithGroq } from "../../../lib/groq";
 
 export const dynamic = "force-dynamic";
 
@@ -76,7 +74,11 @@ export async function POST(req: NextRequest) {
         throw new Error("GOOGLE_APIS_PAUSED");
       }
       const { GoogleGenerativeAI } = await import("@google/generative-ai");
-      const api_key = process.env.GEMINI_API_KEY_1 || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+      const api_key =
+        process.env.GEMINI_API_KEY_PROFESSIONAL ||
+        process.env.GEMINI_API_KEY_1 ||
+        process.env.NEXT_PUBLIC_GEMINI_API_KEY ||
+        process.env.GEMINI_API_KEY;
       const genAI = new GoogleGenerativeAI(api_key!);
       const embedModel = genAI.getGenerativeModel({ model: "gemini-embedding-001" });
 
