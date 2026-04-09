@@ -78,13 +78,13 @@ export async function generateWithFallback(prompt: string): Promise<GeminiRespon
   }
 
   // --- PRIORIDAD 1 & 2: BACKOFF Y ROTACIÓN ---
-  const waitTimes = [10000, 20000, 30000]; // 10s, 20s, 30s
+  const waitTimes = [2000, 4000, 6000]; // reducido: 2s, 4s, 6s
   let attempts = 0;
-  const maxAttempts = 50; // Permitir rotación completa y múltiples ciclos de espera en Free Tier
+  const maxAttempts = Math.max(apiKeys.length * 2, 3); // máx 3 intentos si hay 1 key
 
   while (attempts < maxAttempts) {
     const key = apiKeys[currentKeyIndex];
-    console.log(`[GEMINI ATTEMPT ${attempts + 1}] Usando Key Index: ${currentKeyIndex}`);
+    console.log(`[GEMINI ATTEMPT ${attempts + 1}/${maxAttempts}] Usando Key Index: ${currentKeyIndex}`);
 
     try {
       const genAI = new GoogleGenerativeAI(key);
@@ -143,8 +143,11 @@ export async function generateWithFallback(prompt: string): Promise<GeminiRespon
       const maskedKey = key ? `${key.substring(0, 6)}...${key.substring(key.length - 4)}` : "NULL";
       console.error(`[GEMINI ERROR] Attempt ${attempts + 1} with Key Index ${currentKeyIndex} (${maskedKey}):`, error?.status || error?.message);
 
-      if (error?.status === 404 || error?.message?.includes("404")) {
-        console.error(`[GEMINI CRITICAL] El modelo gemini-2.0-flash NO fue encontrado para la llave ${maskedKey}. Revisa si la llave tiene acceso a este modelo en AI Studio.`);
+      // Key inválida o sin permisos — no reintentar, ir directo a Claude/Groq
+      if (error?.status === 400 || error?.status === 401 || error?.status === 403 ||
+          error?.message?.includes("API Key not found") || error?.message?.includes("API_KEY_INVALID")) {
+        console.error(`[GEMINI DEAD KEY] Key inválida o sin permisos. Saltando directo a Claude/Groq.`);
+        return generateWithFallbackNonGoogle(prompt, prompt_hash);
       }
 
       // Si es error de cuota (429) o similar
