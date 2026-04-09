@@ -1,0 +1,10 @@
+{
+  "mode": "interactive",
+  "artifact_store": "engram",
+  "tdd": true,
+  "stack": {
+    "frontend": "nextjs",
+    "backend": "fastapi",
+    "database": "supabase"
+  }
+}

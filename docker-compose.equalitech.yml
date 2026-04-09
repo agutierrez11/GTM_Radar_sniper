@@ -1,0 +1,15 @@
+# EasyEngine: une el stack al mismo bridge que el nginx del sitio.
+# Uso:
+#   docker compose -f docker-compose.yml -f docker-compose.equalitech.yml up -d --build
+services:
+  backend:
+    networks:
+      - ee-global-frontend
+  frontend:
+    networks:
+      - ee-global-frontend
+
+networks:
+  ee-global-frontend:
+    external: true
+    name: ee-global-frontend-network

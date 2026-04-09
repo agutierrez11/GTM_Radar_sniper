@@ -1,0 +1,23 @@
+---
+description: Tras cambios desplegables, deploy a nerv.equalitech.xyz y verificación.
+globs: apps/**/*,docker-compose*.yml,scripts/deploy-equalitech.sh,scripts/nginx*.conf
+alwaysApply: false
+---
+
+# Deploy NERV + verificación
+
+Tras cambios en `apps/frontend`, `apps/backend`, `docker-compose*.yml`, `scripts/nginx-easyengine-nerv.user.conf` o `scripts/deploy-equalitech.sh`, desde la **raíz del repo**:
+
+```bash
+bash scripts/deploy-equalitech.sh
+```
+
+El script despliega y al final comprueba `GET /`, `GET /health` y contenido en la home. Solo comprobar sin desplegar:
+
+```bash
+VERIFY_ONLY=1 bash scripts/deploy-equalitech.sh
+```
+
+No desplegar por cambios solo en documentación salvo que el usuario lo pida.
+
+URL: [https://nerv.equalitech.xyz/](https://nerv.equalitech.xyz/)

@@ -1,12 +1,14 @@
 @echo off
-cd "C:\Users\nerv_gtm\.gemini\antigravity\scratch\nexus-poc"
-echo Checking for running engines...
-tasklist /fi "imagename eq python.exe" | find ":" > nul
-if errorlevel 1 (
-    echo Engine already running. Skipping restart to maintain stability.
-) else (
-    echo Launching NERV RADAR Engine...
-    start /b python engine\v6_stable.py > new_engine.log 2>&1
-    start /b python engine\slack_listener.py > slack_bot.log 2>&1
-    echo Radar Online.
-)
+title NERV TACTICAL LAUNCHER
+echo 🚀 Launching NERV Intelligence Platform...
+
+:: Start FastAPI Backend
+echo 📡 Starting FastAPI Backend (apps/backend)...
+start "NERV Backend" /d "apps\backend" uvicorn main:app --reload --port 8000
+
+:: Start Next.js Frontend
+echo 💻 Starting Next.js Frontend (apps/frontend)...
+start "NERV Frontend" /d "apps\frontend" pnpm dev
+
+echo ✅ NERV is online. Close the windows to stop services.
+pause
