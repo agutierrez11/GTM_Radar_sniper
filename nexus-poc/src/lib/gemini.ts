@@ -231,7 +231,43 @@ async function generateWithFallbackNonGoogle(prompt: string, prompt_hash: string
     }
   }
 
-  // 3. Groq Llama-3.3-70B (fallback)
+  // 3. OpenRouter (Claude/Llama via proxy — fallback)
+  if (process.env.OPENROUTER_API_KEY) {
+    try {
+      const orModel = process.env.OPENROUTER_MODEL || "anthropic/claude-3.5-sonnet";
+      const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": "https://nerv.app",
+          "X-Title": "NERV RaiSE",
+        },
+        body: JSON.stringify({
+          model: orModel,
+          messages: [{ role: "user", content: prompt }],
+          max_tokens: 8192,
+          temperature: 0.1,
+        }),
+      });
+      if (!res.ok) throw new Error(`OpenRouter HTTP ${res.status}`);
+      const orData = await res.json();
+      const raw = orData.choices[0].message.content || "";
+      const cleaned = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+      let data: any;
+      try { data = JSON.parse(cleaned); } catch {
+        const match = cleaned.match(/\{[\s\S]*\}/);
+        try { data = match ? JSON.parse(match[0]) : cleaned; } catch { data = cleaned; }
+      }
+      await supabase.from("gemini_cache").upsert({ prompt_hash, response: data, created_at: timestamp, expires_at: new Date(Date.now() + 86_400_000).toISOString() }).catch(() => {});
+      console.log(`[NON-GOOGLE] OpenRouter (${orModel}) respondió ✓`);
+      return { data, cached: false, timestamp };
+    } catch (e: any) {
+      console.warn("[NON-GOOGLE] OpenRouter falló:", e?.message);
+    }
+  }
+
+  // 4. Groq Llama-3.3-70B (último recurso)
   if (process.env.GROQ_API_KEY) {
     try {
       const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -258,5 +294,10 @@ async function generateWithFallbackNonGoogle(prompt: string, prompt_hash: string
     }
   }
 
-  throw new Error("GOOGLE_APIS_PAUSED=true pero ANTHROPIC_API_KEY y GROQ_API_KEY no están configuradas.");
+  const configured = [
+    process.env.ANTHROPIC_API_KEY && "ANTHROPIC_API_KEY",
+    process.env.OPENROUTER_API_KEY && "OPENROUTER_API_KEY",
+    process.env.GROQ_API_KEY && "GROQ_API_KEY",
+  ].filter(Boolean);
+  throw new Error(`Todos los LLMs fallaron. Configuradas: [${configured.join(", ") || "NINGUNA"}]. Revisa las variables en Vercel.`);
 }
