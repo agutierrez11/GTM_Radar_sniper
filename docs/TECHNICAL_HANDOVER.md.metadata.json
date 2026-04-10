@@ -1,5 +1,0 @@
-{
-  "artifactType": "ARTIFACT_TYPE_OTHER",
-  "summary": "Guía técnica detallada para ingenieros (Data, Java, Frontend). Explica la ubicación del código, la conexión a la base de datos Supabase, los scripts de orquestación y el flujo de scraping con Firecrawl. Es el mapa para no perderse en los cambios del proyecto.",
-  "updatedAt": "2026-03-12T03:29:12.078737900Z"
-}

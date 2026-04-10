@@ -1,0 +1,9 @@
+services:
+  gtm-intel:
+    container_name: nerv2-intel
+    networks:
+      - ee-global-frontend-network
+
+networks:
+  ee-global-frontend-network:
+    external: true

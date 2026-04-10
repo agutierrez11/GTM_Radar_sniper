@@ -1,0 +1,9 @@
+services:
+  gtm-intel:
+    build: .
+    container_name: gtm-intel
+    ports:
+      - "9995:8000"
+    environment:
+      - GEMINI_API_KEY=AIzaSyCzDVhjeiBA9TIuy6r0btOOibFxMEZd2oU
+    restart: unless-stopped
