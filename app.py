@@ -95,9 +95,8 @@ def _stream_generate(empresa_vende: str, empresa_compra: str, concepto_venta: st
     import httpx
     from bs4 import BeautifulSoup
 
-    FETCH_LIMIT = 10          # max pages to fetch
-    MAX_CHARS   = 3000        # chars to keep per page
     FETCH_TIMEOUT = 8
+    MAX_CHARS   = 3000
 
     def _fetch_text(url: str) -> str:
         try:
@@ -121,16 +120,10 @@ def _stream_generate(empresa_vende: str, empresa_compra: str, concepto_venta: st
             return ""
 
     context_lines = []
-    fetched = 0
     for s in snippets:
-        if fetched >= FETCH_LIMIT:
-            # remaining snippets: use DDG body only
-            context_lines.append(f"[{s['title']}]({s['url']}): {s['body']}")
-            continue
         full = _fetch_text(s["url"])
         if full:
             context_lines.append(f"[{s['title']}]({s['url']}):\n{full}")
-            fetched += 1
         else:
             context_lines.append(f"[{s['title']}]({s['url']}): {s['body']}")
 
