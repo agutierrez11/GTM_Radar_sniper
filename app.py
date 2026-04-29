@@ -127,6 +127,8 @@ def _stream_generate(empresa_vende: str, empresa_compra: str, concepto_venta: st
         except Exception:
             pass
 
+    yield _sse({"type": "research_done", "count": len(snippets)})
+
     # ── fetch full page content in parallel ──
     import httpx
     from bs4 import BeautifulSoup
@@ -156,13 +158,26 @@ def _stream_generate(empresa_vende: str, empresa_compra: str, concepto_venta: st
         except Exception:
             return ""
 
-    # Fetch all URLs in parallel (max 10 workers)
+    total_fetch = len(snippets)
+    yield _sse({"type": "fetch_started", "total": total_fetch})
+
     fetched = {}
+    completed = 0
     with ThreadPoolExecutor(max_workers=10) as pool:
         future_to_s = {pool.submit(_fetch_text, s["url"]): s for s in snippets}
         for future in as_completed(future_to_s):
             s = future_to_s[future]
             fetched[s["url"]] = future.result()
+            completed += 1
+            yield _sse({
+                "type": "fetch_progress",
+                "done": completed,
+                "total": total_fetch,
+                "url": s["url"],
+                "title": s["title"],
+            })
+
+    yield _sse({"type": "fetch_done", "count": len(snippets)})
 
     context_lines = []
     for s in snippets:
@@ -177,7 +192,7 @@ def _stream_generate(empresa_vende: str, empresa_compra: str, concepto_venta: st
         + "\n\n".join(context_lines)
     ) if context_lines else ""
 
-    yield _sse({"type": "research_done", "count": len(snippets)})
+    yield _sse({"type": "model_started"})
 
     # ── modelo ──
     prompt = build_prompt(empresa_vende, empresa_compra, concepto_venta, web_context)

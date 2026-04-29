@@ -463,8 +463,20 @@
             document.getElementById('loading-msg').textContent = `Recopilando fuentes… (${snippetCount})`;
 
           } else if (evt.type === 'research_done') {
+            document.getElementById('loading-msg').textContent = 'Obteniendo contenido web...';
+
+          } else if (evt.type === 'fetch_started') {
+            document.getElementById('loading-msg').textContent = `Obteniendo contenido web... (0/${evt.total})`;
+
+          } else if (evt.type === 'fetch_progress') {
+            document.getElementById('loading-msg').textContent = `Obteniendo contenido web... (${evt.done}/${evt.total})`;
+
+          } else if (evt.type === 'fetch_done') {
             document.getElementById('loading-msg').textContent = 'Generando análisis...';
             startMessages();
+
+          } else if (evt.type === 'model_started') {
+            document.getElementById('loading-msg').textContent = 'Generando análisis...';
 
           } else if (evt.type === 'done') {
             document.getElementById('result-content').innerHTML = marked.parse(evt.markdown);
