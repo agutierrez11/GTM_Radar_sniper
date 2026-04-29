@@ -63,14 +63,6 @@ def _stream_generate(empresa_vende: str, empresa_compra: str, concepto_venta: st
         f"{empresa_vende} clientes casos de uso fintech",
     ]
 
-    keywords = {empresa_compra.lower(), empresa_vende.lower()} | {
-        w.lower() for w in concepto_venta.split() if len(w) > 3
-    }
-
-    def is_relevant(r: dict) -> bool:
-        text = (r.get("title", "") + " " + r.get("body", "")).lower()
-        return any(kw in text for kw in keywords)
-
     snippets = []
     seen_urls = set()
 
@@ -82,10 +74,9 @@ def _stream_generate(empresa_vende: str, empresa_compra: str, concepto_venta: st
                         break
                     try:
                         for r in ddgs.text(q, max_results=5):
-                            if r["href"] not in seen_urls and is_relevant(r):
+                            if r["href"] not in seen_urls:
                                 seen_urls.add(r["href"])
-                                snippet_line = f"- [{r['title']}]({r['href']}): {r['body']}"
-                                snippets.append(snippet_line)
+                                snippets.append(f"- [{r['title']}]({r['href']}): {r['body']}")
                                 yield _sse({"type": "snippet", "title": r["title"], "url": r["href"], "body": r["body"]})
                     except Exception:
                         continue
