@@ -1,6 +1,5 @@
 import os
 import time
-from typing import Literal
 
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
@@ -8,22 +7,11 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from openai import OpenAI
 
-ALIBABA_API_KEY = os.environ.get("ALIBABA_API_KEY", "")
-QWEN_BASE_URL = os.environ.get(
-    "QWEN_BASE_URL", "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
-)
-QWEN_MODEL = os.environ.get("QWEN_MODEL", "qwen3.6-plus")
-
-qwen_client = OpenAI(
-    api_key=ALIBABA_API_KEY,
-    base_url=QWEN_BASE_URL,
-)
-
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
 OPENROUTER_BASE_URL = os.environ.get("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
 OPENROUTER_MODEL = os.environ.get("OPENROUTER_MODEL", "tencent/hy3-preview:free")
 
-openrouter_client = OpenAI(
+client = OpenAI(
     api_key=OPENROUTER_API_KEY,
     base_url=OPENROUTER_BASE_URL,
 )
@@ -38,7 +26,6 @@ class AnalysisRequest(BaseModel):
     empresa_vende: str
     empresa_compra: str
     concepto_venta: str
-    provider: Literal["qwen", "openrouter"] = "qwen"
 
 
 def _web_research(empresa_vende: str, empresa_compra: str, concepto_venta: str) -> str:
@@ -104,19 +91,26 @@ def _web_research(empresa_vende: str, empresa_compra: str, concepto_venta: str) 
 
 def build_prompt(empresa_vende: str, empresa_compra: str, concepto_venta: str, web_context: str = "") -> str:
     ctx_block = f"\n\n{web_context}\n\n---\n" if web_context else ""
+    ctx_instruction = (
+        "1. TIENES ACCESO A RESULTADOS DE BÚSQUEDA WEB REALES inyectados al inicio de este mensaje bajo '## CONTEXTO WEB'. "
+        "Úsalos como tu FUENTE PRIMARIA. Cita datos concretos de esos resultados (nombres, fechas, cifras, URLs). "
+        "Si un dato del contexto web contradice tu conocimiento previo, prioriza el contexto web."
+    ) if web_context else (
+        "1. Usa tu conocimiento interno sobre el ecosistema fintech latinoamericano. Sé específico con datos reales conocidos."
+    )
     return f"""{ctx_block}
 Eres un analista de inteligencia comercial especializado en fintechs latinoamericanas.
 Contexto de venta: {empresa_vende} quiere vender {concepto_venta} a {empresa_compra}.
 
 REGLAS ABSOLUTAS:
-1. Usa Google Search activamente para encontrar información actualizada. No te limites a lo que ya sabes.
-2. En todas las secciones de listas (lookalikes, competidores, leads, mercados, clientes) sé EXHAUSTIVO: busca y lista TODOS los que puedas encontrar, no solo los más famosos. Un comercial no puede descubrir después que faltaron actores relevantes.
+{ctx_instruction}
+2. En todas las secciones de listas (lookalikes, competidores, leads, mercados, clientes) sé EXHAUSTIVO: lista TODOS los que puedas identificar, no solo los más famosos. Un comercial no puede descubrir después que faltaron actores relevantes.
 3. Detalle ≠ verborrea. En las secciones narrativas sé conciso. En las listas sé completo.
-4. Para lookalikes y leads: busca explícitamente en fuentes como Latamfintech, Finnovista, F10, CB Insights, Crunchbase, LinkedIn, noticias recientes. No pares en los primeros 5 resultados.
+4. Para lookalikes y leads: busca en el contexto web y en tu conocimiento de Latamfintech, Finnovista, F10, CB Insights, Crunchbase, LinkedIn. No pares en los primeros 5.
 5. Nunca digas "entre otros" o "etc." — si no encontraste más, dilo explícitamente.
-6. CRÍTICO — ENFOQUE DE PRODUCTO: Todo el análisis (hipótesis, dolor, plan de ataque, apertura, dossier) debe estar 100% anclado en "{concepto_venta}". No menciones, sugieras ni impliques otros productos o capacidades de {empresa_vende} fuera de "{concepto_venta}". Si el análisis no puede conectarse directamente con "{concepto_venta}", no lo incluyas.
+6. CRÍTICO — ENFOQUE DE PRODUCTO: Todo el análisis debe estar 100% anclado en "{concepto_venta}". No menciones otros productos o capacidades de {empresa_vende} fuera de "{concepto_venta}".
 
-Investiga a fondo a {empresa_compra} y devuelve tu análisis SIEMPRE en el siguiente formato estructurado, enfocado en cómo {empresa_vende} puede ganar esta cuenta vendiendo específicamente "{concepto_venta}". No omitas ninguna sección.
+Investiga a fondo a {empresa_compra} y devuelve tu análisis SIEMPRE en el siguiente formato estructurado. No omitas ninguna sección.
 
 ---
 
@@ -226,35 +220,10 @@ def clean_response(text: str) -> str:
 async def analyze(req: AnalysisRequest):
     web_context = _web_research(req.empresa_vende, req.empresa_compra, req.concepto_venta)
     prompt = build_prompt(req.empresa_vende, req.empresa_compra, req.concepto_venta, web_context)
-    if req.provider == "openrouter":
-        return _run_openrouter(prompt)
-    return _run_qwen(prompt)
-
-
-def _run_qwen(prompt: str):
     last_error = None
     for attempt in range(1, MAX_RETRIES + 1):
         try:
-            response = qwen_client.chat.completions.create(
-                model=QWEN_MODEL,
-                messages=[{"role": "user", "content": prompt}],
-                extra_body={"enable_search": True},
-            )
-            return {"markdown": clean_response(response.choices[0].message.content)}
-        except Exception as e:
-            last_error = str(e)
-            if attempt < MAX_RETRIES:
-                time.sleep(RETRY_DELAY)
-            else:
-                break
-    return JSONResponse(status_code=503, content={"error": last_error})
-
-
-def _run_openrouter(prompt: str):
-    last_error = None
-    for attempt in range(1, MAX_RETRIES + 1):
-        try:
-            response = openrouter_client.chat.completions.create(
+            response = client.chat.completions.create(
                 model=OPENROUTER_MODEL,
                 messages=[{"role": "user", "content": prompt}],
             )

@@ -78,23 +78,6 @@
     .btn:active { transform: scale(.98); }
     .btn:disabled { opacity: .35; cursor: not-allowed; }
 
-    /* ── PROVIDER TOGGLE ── */
-    .provider-toggle {
-      display: flex; gap: .5rem; margin-top: 1.25rem;
-    }
-    .provider-btn {
-      flex: 1; background: var(--bg); border: 1px solid var(--border);
-      border-radius: 7px; padding: .55rem .5rem;
-      font-family: 'JetBrains Mono', monospace; font-size: .7rem; font-weight: 500;
-      letter-spacing: .1em; text-transform: uppercase; color: var(--text-muted);
-      cursor: pointer; transition: all .2s;
-    }
-    .provider-btn.active {
-      border-color: var(--accent); color: var(--accent);
-      background: rgba(0,229,160,.06); box-shadow: 0 0 12px rgba(0,229,160,.12);
-    }
-    .provider-btn:hover:not(.active) { border-color: var(--dim); color: var(--text); }
-
     /* ── LOADING ── */
     #loading { display: none; margin-top: 2.5rem; }
     .loading-inner {
@@ -220,11 +203,6 @@
       </div>
     </div>
 
-    <div class="provider-toggle">
-      <button class="provider-btn" id="prov-qwen" onclick="setProvider('qwen')">⚡ Qwen Web Search</button>
-      <button class="provider-btn active" id="prov-openrouter" onclick="setProvider('openrouter')">🐱 OpenRouter (Tencent Hy3)</button>
-    </div>
-
     <button class="btn" id="analyze-btn" onclick="runAnalysis()">⚡ Generar Dossier Forense</button>
   </div>
 
@@ -262,13 +240,7 @@
 
 <script>
   // ── PROVIDER ──
-  let selectedProvider = 'openrouter';
-
-  function setProvider(p) {
-    selectedProvider = p;
-    document.getElementById('prov-qwen').classList.toggle('active', p === 'qwen');
-    document.getElementById('prov-openrouter').classList.toggle('active', p === 'openrouter');
-  }
+  // Single provider: OpenRouter via backend DDG web search
 
   // ── CLOCK ──
   function updateClock() {
@@ -409,7 +381,7 @@
       const res = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ empresa_vende, empresa_compra, concepto_venta, provider: selectedProvider })
+        body: JSON.stringify({ empresa_vende, empresa_compra, concepto_venta })
       });
 
       const contentType = res.headers.get('content-type') || '';

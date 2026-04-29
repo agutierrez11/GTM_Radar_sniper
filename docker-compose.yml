@@ -5,7 +5,5 @@ services:
     ports:
       - "9995:8000"
     environment:
-      - GEMINI_API_KEY=${GTM_GEMINI_API_KEY}
-      - ALIBABA_API_KEY=${GTM_ALIBABA_API_KEY}
       - OPENROUTER_API_KEY=${GTM_OPENROUTER_API_KEY}
     restart: unless-stopped
