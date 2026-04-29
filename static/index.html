@@ -161,6 +161,31 @@
     .md a { color: var(--accent2); text-decoration: none; }
     .md a:hover { text-decoration: underline; }
 
+    /* ── WEB CONTEXT BOX ── */
+    #web-context-box { display: none; margin-top: 2.5rem; }
+    .wc-header {
+      display: flex; align-items: center; justify-content: space-between;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px 10px 0 0; padding: .65rem 1.1rem;
+      cursor: pointer; user-select: none;
+    }
+    .wc-header:hover { border-color: var(--dim); }
+    .wc-label { font-family: 'JetBrains Mono', monospace; font-size: .65rem; letter-spacing: .18em; color: var(--accent2); text-transform: uppercase; }
+    .wc-count { font-family: 'JetBrains Mono', monospace; font-size: .62rem; color: var(--text-muted); }
+    .wc-chevron { font-size: .7rem; color: var(--text-muted); transition: transform .25s; }
+    .wc-chevron.open { transform: rotate(180deg); }
+    .wc-body {
+      background: rgba(0,180,216,.03); border: 1px solid var(--border); border-top: none;
+      border-radius: 0 0 10px 10px; padding: 1rem 1.2rem;
+      max-height: 380px; overflow-y: auto; display: none;
+    }
+    .wc-body.open { display: block; }
+    .wc-snippet { font-family: 'JetBrains Mono', monospace; font-size: .72rem; color: var(--text); line-height: 1.65; padding: .4rem 0; border-bottom: 1px solid rgba(255,255,255,.04); }
+    .wc-snippet:last-child { border-bottom: none; }
+    .wc-snippet a { color: var(--accent2); text-decoration: none; word-break: break-all; }
+    .wc-snippet a:hover { text-decoration: underline; }
+    .wc-snippet .wc-body-text { color: var(--text-muted); display: block; margin-top: .2rem; }
+
     /* ── ERROR ── */
     #error { display: none; margin-top: 2rem; padding: 1rem 1.5rem;
       background: rgba(255,68,102,.06); border: 1px solid rgba(255,68,102,.25);
@@ -216,6 +241,18 @@
       <div class="loading-msg" id="loading-msg">Iniciando motores de inteligencia...</div>
       <div class="loading-bar-wrap"><div class="loading-bar"></div></div>
     </div>
+  </div>
+
+  <!-- WEB CONTEXT BOX -->
+  <div id="web-context-box">
+    <div class="wc-header" onclick="toggleWebContext()">
+      <span class="wc-label">🔎 Contexto web inyectado al modelo</span>
+      <span style="display:flex;align-items:center;gap:.75rem">
+        <span class="wc-count" id="wc-count"></span>
+        <span class="wc-chevron" id="wc-chevron">▼</span>
+      </span>
+    </div>
+    <div class="wc-body" id="wc-body"></div>
   </div>
 
   <!-- ERROR -->
@@ -371,8 +408,11 @@
     }
 
     // reset UI
-    document.getElementById('error').style.display   = 'none';
-    document.getElementById('result').style.display  = 'none';
+    document.getElementById('error').style.display          = 'none';
+    document.getElementById('result').style.display         = 'none';
+    document.getElementById('web-context-box').style.display = 'none';
+    document.getElementById('wc-body').classList.remove('open');
+    document.getElementById('wc-chevron').classList.remove('open');
     document.getElementById('loading').style.display = 'block';
     document.getElementById('analyze-btn').disabled  = true;
     startMessages();
@@ -396,6 +436,11 @@
       document.getElementById('result-content').innerHTML = marked.parse(data.markdown);
       document.getElementById('result').style.display = 'block';
 
+      // show web context box
+      if (data.web_context) {
+        renderWebContext(data.web_context);
+      }
+
     } catch (err) {
       const errEl = document.getElementById('error');
       errEl.textContent = `ERROR: ${err.message}`;
@@ -405,6 +450,26 @@
       document.getElementById('loading').style.display = 'none';
       document.getElementById('analyze-btn').disabled  = false;
     }
+  }
+
+  // ── WEB CONTEXT ──
+  function renderWebContext(raw) {
+    const lines = raw.split('\n').filter(l => l.startsWith('- ['));
+    const body = document.getElementById('wc-body');
+    body.innerHTML = lines.map(line => {
+      const m = line.match(/^- \[(.+?)\]\((.+?)\): (.*)$/);
+      if (!m) return `<div class="wc-snippet">${line}</div>`;
+      return `<div class="wc-snippet"><a href="${m[2]}" target="_blank" rel="noopener">${m[1]}</a><span class="wc-body-text">${m[3]}</span></div>`;
+    }).join('');
+    document.getElementById('wc-count').textContent = `${lines.length} fuentes`;
+    document.getElementById('web-context-box').style.display = 'block';
+  }
+
+  function toggleWebContext() {
+    const body = document.getElementById('wc-body');
+    const chevron = document.getElementById('wc-chevron');
+    body.classList.toggle('open');
+    chevron.classList.toggle('open');
   }
 
   // ── COPY & DOWNLOAD ––

@@ -227,7 +227,10 @@ async def analyze(req: AnalysisRequest):
                 model=OPENROUTER_MODEL,
                 messages=[{"role": "user", "content": prompt}],
             )
-            return {"markdown": clean_response(response.choices[0].message.content)}
+            return {
+                "markdown": clean_response(response.choices[0].message.content),
+                "web_context": web_context,
+            }
         except Exception as e:
             last_error = str(e)
             if attempt < MAX_RETRIES:
