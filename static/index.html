@@ -221,8 +221,8 @@
     </div>
 
     <div class="provider-toggle">
-      <button class="provider-btn active" id="prov-qwen" onclick="setProvider('qwen')">⚡ Qwen Web Search</button>
-      <button class="provider-btn" id="prov-openrouter" onclick="setProvider('openrouter')">🐱 OpenRouter (Tencent Hy3)</button>
+      <button class="provider-btn" id="prov-qwen" onclick="setProvider('qwen')">⚡ Qwen Web Search</button>
+      <button class="provider-btn active" id="prov-openrouter" onclick="setProvider('openrouter')">🐱 OpenRouter (Tencent Hy3)</button>
     </div>
 
     <button class="btn" id="analyze-btn" onclick="runAnalysis()">⚡ Generar Dossier Forense</button>
@@ -262,7 +262,7 @@
 
 <script>
   // ── PROVIDER ──
-  let selectedProvider = 'qwen';
+  let selectedProvider = 'openrouter';
 
   function setProvider(p) {
     selectedProvider = p;
