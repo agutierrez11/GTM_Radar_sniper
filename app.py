@@ -21,7 +21,7 @@ qwen_client = OpenAI(
 
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
 OPENROUTER_BASE_URL = os.environ.get("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
-OPENROUTER_MODEL = os.environ.get("OPENROUTER_MODEL", "tencent/hy3-preview:free:online")
+OPENROUTER_MODEL = os.environ.get("OPENROUTER_MODEL", "tencent/hy3-preview:free")
 
 openrouter_client = OpenAI(
     api_key=OPENROUTER_API_KEY,
@@ -41,8 +41,43 @@ class AnalysisRequest(BaseModel):
     provider: Literal["qwen", "openrouter"] = "qwen"
 
 
-def build_prompt(empresa_vende: str, empresa_compra: str, concepto_venta: str) -> str:
-    return f"""
+def _web_research(empresa_compra: str, concepto_venta: str) -> str:
+    """Run DuckDuckGo searches and return a context block to inject into the prompt."""
+    try:
+        from duckduckgo_search import DDGS
+    except ImportError:
+        return ""
+
+    queries = [
+        f"{empresa_compra} empresa fintech",
+        f"{empresa_compra} {concepto_venta}",
+        f"{empresa_compra} noticias 2025",
+        f"{empresa_compra} competitors funding investors",
+    ]
+
+    snippets = []
+    try:
+        with DDGS() as ddgs:
+            for q in queries:
+                try:
+                    for r in ddgs.text(q, max_results=5, timelimit="y"):
+                        line = f"- [{r['title']}]({r['href']}): {r['body']}"
+                        if line not in snippets:
+                            snippets.append(line)
+                except Exception:
+                    continue
+    except Exception:
+        return ""
+
+    if not snippets:
+        return ""
+
+    return "## CONTEXTO WEB (búsqueda reciente)\n" + "\n".join(snippets[:20])
+
+
+def build_prompt(empresa_vende: str, empresa_compra: str, concepto_venta: str, web_context: str = "") -> str:
+    ctx_block = f"\n\n{web_context}\n\n---\n" if web_context else ""
+    return f"""{ctx_block}
 Eres un analista de inteligencia comercial especializado en fintechs latinoamericanas.
 Contexto de venta: {empresa_vende} quiere vender {concepto_venta} a {empresa_compra}.
 
@@ -162,7 +197,8 @@ def clean_response(text: str) -> str:
 
 @app.post("/api/analyze")
 async def analyze(req: AnalysisRequest):
-    prompt = build_prompt(req.empresa_vende, req.empresa_compra, req.concepto_venta)
+    web_context = _web_research(req.empresa_compra, req.concepto_venta)
+    prompt = build_prompt(req.empresa_vende, req.empresa_compra, req.concepto_venta, web_context)
     if req.provider == "openrouter":
         return _run_openrouter(prompt)
     return _run_qwen(prompt)
