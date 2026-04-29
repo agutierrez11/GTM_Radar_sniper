@@ -408,38 +408,40 @@
     }
 
     // reset UI
-    document.getElementById('error').style.display          = 'none';
-    document.getElementById('result').style.display         = 'none';
+    document.getElementById('error').style.display           = 'none';
+    document.getElementById('result').style.display          = 'none';
     document.getElementById('web-context-box').style.display = 'none';
     document.getElementById('wc-body').classList.remove('open');
     document.getElementById('wc-chevron').classList.remove('open');
     document.getElementById('loading').style.display = 'block';
     document.getElementById('analyze-btn').disabled  = true;
-    startMessages();
 
     try {
-      const res = await fetch('/api/analyze', {
+      // ── FASE 1: web research ──
+      document.getElementById('loading-msg').textContent = 'Ejecutando web research (DuckDuckGo)...';
+      const r1 = await fetch('/api/research', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ empresa_vende, empresa_compra, concepto_venta })
       });
+      const d1 = await r1.json();
+      if (!r1.ok || d1.error) throw new Error(d1.error || `HTTP ${r1.status}`);
 
-      const contentType = res.headers.get('content-type') || '';
-      const data = contentType.includes('application/json')
-        ? await res.json()
-        : { error: await res.text() };
+      // mostrar contexto web ANTES del modelo
+      if (d1.web_context) renderWebContext(d1.web_context);
 
-      if (!res.ok || data.error) {
-        throw new Error(data.error || `HTTP ${res.status}`);
-      }
+      // ── FASE 2: modelo ──
+      startMessages();
+      const r2 = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ empresa_vende, empresa_compra, concepto_venta, web_context: d1.web_context || '' })
+      });
+      const d2 = await r2.json();
+      if (!r2.ok || d2.error) throw new Error(d2.error || `HTTP ${r2.status}`);
 
-      document.getElementById('result-content').innerHTML = marked.parse(data.markdown);
+      document.getElementById('result-content').innerHTML = marked.parse(d2.markdown);
       document.getElementById('result').style.display = 'block';
-
-      // show web context box
-      if (data.web_context) {
-        renderWebContext(data.web_context);
-      }
 
     } catch (err) {
       const errEl = document.getElementById('error');

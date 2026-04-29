@@ -26,6 +26,13 @@ class AnalysisRequest(BaseModel):
     empresa_vende: str
     empresa_compra: str
     concepto_venta: str
+    web_context: str = ""
+
+
+class ResearchRequest(BaseModel):
+    empresa_vende: str
+    empresa_compra: str
+    concepto_venta: str
 
 
 def _web_research(empresa_vende: str, empresa_compra: str, concepto_venta: str) -> str:
@@ -216,9 +223,15 @@ def clean_response(text: str) -> str:
     return text
 
 
+@app.post("/api/research")
+async def research(req: ResearchRequest):
+    web_context = _web_research(req.empresa_vende, req.empresa_compra, req.concepto_venta)
+    return {"web_context": web_context}
+
+
 @app.post("/api/analyze")
 async def analyze(req: AnalysisRequest):
-    web_context = _web_research(req.empresa_vende, req.empresa_compra, req.concepto_venta)
+    web_context = req.web_context or _web_research(req.empresa_vende, req.empresa_compra, req.concepto_venta)
     prompt = build_prompt(req.empresa_vende, req.empresa_compra, req.concepto_venta, web_context)
     last_error = None
     for attempt in range(1, MAX_RETRIES + 1):
@@ -229,7 +242,6 @@ async def analyze(req: AnalysisRequest):
             )
             return {
                 "markdown": clean_response(response.choices[0].message.content),
-                "web_context": web_context,
             }
         except Exception as e:
             last_error = str(e)
