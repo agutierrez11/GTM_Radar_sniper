@@ -145,61 +145,52 @@ Investiga a fondo a {empresa_compra} y devuelve tu análisis SIEMPRE en el sigui
 
 ## ⚖️ Veredicto de Relación: {empresa_vende} → {empresa_compra}
 **Clasificación:** 🟢 LEAD / 🤝 SOCIO/ALIANZA / 🔴 COMPETENCIA
-**Justificación:** (en 2-3 líneas: por qué es esa relación y no otra, considerando el {concepto_venta})
+**Justificación:**
 
 ---
 
 ## 🧠 Hipótesis Forense
-(Por qué {empresa_compra} necesitaría hoy lo que ofrece {empresa_vende}: tensiones internas, movimiento estratégico probable)
 
 ## 🔬 Fricción Técnica
-(El principal cuello de botella técnico u operativo de {empresa_compra} que {concepto_venta} podría resolver)
 
 ## 💸 Dolor Financiero / Riesgo
-(El riesgo financiero o competitivo más crítico de {empresa_compra} hoy)
 
 ---
 
 ## 🔬 Dossier de Estrategia
 | Dimensión | Detalle |
 |---|---|
-| ⚙️ Fricción Operativa | ... |
-| 🚨 Dolor Crítico | ... |
-| 🎯 Resolución Táctica | cómo {empresa_vende} resuelve esto con {concepto_venta} |
+| ⚙️ Fricción Operativa | |
+| 🚨 Dolor Crítico | |
+| 🎯 Resolución Táctica | |
 
 ---
 
 ## ⚔️ Plan de Ataque
-**Schwerpunkt** (foco principal para que {empresa_vende} entre en {empresa_compra}):
-...
+**Schwerpunkt:**
 
-**Flanqueo** (ángulo secundario de entrada):
-...
+**Flanqueo:**
 
-**Apertura recomendada** (frase de entrada para la primera reunión):
+**Apertura recomendada:**
 > "..."
 
 ---
 
 ## 🧠 Auditoría
 **⚠️ Abogado del Diablo:**
-...
 
 **🔍 Sesgo detectado:**
-...
 
 **Confianza general:** ALTA / MEDIA / BAJA
 
 ---
 
 ## 🔗 Lookalikes de {empresa_compra}
-(Empresas similares a {empresa_compra} — mismo modelo, mismo mercado, mismo problema. Sé exhaustivo, busca en Latamfintech, Finnovista, Crunchbase, LinkedIn y noticias. No uses "etc.")
-- Empresa — País — Por qué es similar a {empresa_compra}
+- Empresa — País — Por qué es similar
 
 ---
 
 ## ⚔️ Competidores de {empresa_compra}
-(Competidores directos de {empresa_compra})
 - Empresa — País — Por qué compite
 
 ---
@@ -210,28 +201,25 @@ Investiga a fondo a {empresa_compra} y devuelve tu análisis SIEMPRE en el sigui
 ---
 
 ## 👥 Clientes de {empresa_compra}
-(Segmentos que atiende)
 - Segmento
 
 ---
 
 ## 💡 Propuesta de Valor de {empresa_compra}
-- ...
+-
 
 ---
 
 ## 📈 Latido del Mercado
 **Tendencia:** ↑ Bullish / ↓ Bearish / ↔ Neutral
 
-(3 señales recientes relevantes para la venta, con fuente y fecha aproximada)
-1. ...
-2. ...
-3. ...
+1.
+2.
+3.
 
 ---
 
 ## 🎯 Leads para {empresa_vende}
-(Empresas a las que {empresa_vende} debería llamar — incluye los lookalikes de {empresa_compra} y otras cuentas del ecosistema. EXCLUYE cualquier empresa que compita directamente con {empresa_vende}. Clasifica cada una solo como 🟢 LEAD o 🤝 SOCIO/ALIANZA. Sé exhaustivo.)
 - Empresa — País — 🟢 LEAD / 🤝 SOCIO — Justificación
 """
 
