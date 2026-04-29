@@ -246,7 +246,7 @@
   <!-- WEB CONTEXT BOX -->
   <div id="web-context-box">
     <div class="wc-header" onclick="toggleWebContext()">
-      <span class="wc-label">🔎 Contexto web inyectado al modelo</span>
+      <span class="wc-label">🌐 Fuentes encontradas</span>
       <span style="display:flex;align-items:center;gap:.75rem">
         <span class="wc-count" id="wc-count"></span>
         <span class="wc-chevron" id="wc-chevron">▼</span>
@@ -411,37 +411,72 @@
     document.getElementById('error').style.display           = 'none';
     document.getElementById('result').style.display          = 'none';
     document.getElementById('web-context-box').style.display = 'none';
+    document.getElementById('wc-body').innerHTML             = '';
     document.getElementById('wc-body').classList.remove('open');
     document.getElementById('wc-chevron').classList.remove('open');
-    document.getElementById('loading').style.display = 'block';
-    document.getElementById('analyze-btn').disabled  = true;
+    document.getElementById('wc-count').textContent          = '';
+    document.getElementById('loading').style.display         = 'block';
+    document.getElementById('loading-msg').textContent       = 'Buscando información...';
+    document.getElementById('analyze-btn').disabled          = true;
+
+    let snippetCount = 0;
 
     try {
-      // ── FASE 1: web research ──
-      document.getElementById('loading-msg').textContent = 'Ejecutando web research (DuckDuckGo)...';
-      const r1 = await fetch('/api/research', {
+      const res = await fetch('/api/stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ empresa_vende, empresa_compra, concepto_venta })
       });
-      const d1 = await r1.json();
-      if (!r1.ok || d1.error) throw new Error(d1.error || `HTTP ${r1.status}`);
 
-      // mostrar contexto web ANTES del modelo
-      if (d1.web_context) renderWebContext(d1.web_context);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-      // ── FASE 2: modelo ──
-      startMessages();
-      const r2 = await fetch('/api/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ empresa_vende, empresa_compra, concepto_venta, web_context: d1.web_context || '' })
-      });
-      const d2 = await r2.json();
-      if (!r2.ok || d2.error) throw new Error(d2.error || `HTTP ${r2.status}`);
+      const reader  = res.body.getReader();
+      const decoder = new TextDecoder();
+      let   buffer  = '';
 
-      document.getElementById('result-content').innerHTML = marked.parse(d2.markdown);
-      document.getElementById('result').style.display = 'block';
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        // SSE lines are separated by \n\n
+        const parts = buffer.split('\n\n');
+        buffer = parts.pop();
+
+        for (const part of parts) {
+          const line = part.trim();
+          if (!line.startsWith('data: ')) continue;
+          let evt;
+          try { evt = JSON.parse(line.slice(6)); } catch { continue; }
+
+          if (evt.type === 'snippet') {
+            snippetCount++;
+            // show context box on first snippet
+            if (snippetCount === 1) {
+              document.getElementById('web-context-box').style.display = 'block';
+              document.getElementById('wc-body').classList.add('open');
+              document.getElementById('wc-chevron').classList.add('open');
+            }
+            const div = document.createElement('div');
+            div.className = 'wc-snippet';
+            div.innerHTML = `<a href="${escHtml(evt.url)}" target="_blank" rel="noopener">${escHtml(evt.title)}</a><span class="wc-body-text">${escHtml(evt.body)}</span>`;
+            document.getElementById('wc-body').appendChild(div);
+            document.getElementById('wc-count').textContent = `${snippetCount} fuentes`;
+            document.getElementById('loading-msg').textContent = `Recopilando fuentes… (${snippetCount})`;
+
+          } else if (evt.type === 'research_done') {
+            document.getElementById('loading-msg').textContent = 'Generando análisis...';
+            startMessages();
+
+          } else if (evt.type === 'done') {
+            document.getElementById('result-content').innerHTML = marked.parse(evt.markdown);
+            document.getElementById('result').style.display = 'block';
+
+          } else if (evt.type === 'error') {
+            throw new Error(evt.error);
+          }
+        }
+      }
 
     } catch (err) {
       const errEl = document.getElementById('error');
@@ -454,27 +489,14 @@
     }
   }
 
-  // ── WEB CONTEXT ──
-  function renderWebContext(raw) {
-    const lines = raw.split('\n').filter(l => l.startsWith('- ['));
-    const body = document.getElementById('wc-body');
-    body.innerHTML = lines.map(line => {
-      const m = line.match(/^- \[(.+?)\]\((.+?)\): (.*)$/);
-      if (!m) return `<div class="wc-snippet">${line}</div>`;
-      return `<div class="wc-snippet"><a href="${m[2]}" target="_blank" rel="noopener">${m[1]}</a><span class="wc-body-text">${m[3]}</span></div>`;
-    }).join('');
-    document.getElementById('wc-count').textContent = `${lines.length} fuentes`;
-    document.getElementById('web-context-box').style.display = 'block';
-    // auto-expand
-    body.classList.add('open');
-    document.getElementById('wc-chevron').classList.add('open');
+  function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
+  // ── WEB CONTEXT toggle ──
   function toggleWebContext() {
-    const body = document.getElementById('wc-body');
-    const chevron = document.getElementById('wc-chevron');
-    body.classList.toggle('open');
-    chevron.classList.toggle('open');
+    document.getElementById('wc-body').classList.toggle('open');
+    document.getElementById('wc-chevron').classList.toggle('open');
   }
 
   // ── COPY & DOWNLOAD ––

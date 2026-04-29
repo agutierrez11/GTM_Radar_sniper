@@ -1,9 +1,10 @@
 import os
 import time
+import json
 
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import JSONResponse
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from openai import OpenAI
 
@@ -22,62 +23,46 @@ RETRY_DELAY = 10
 app = FastAPI()
 
 
-class AnalysisRequest(BaseModel):
-    empresa_vende: str
-    empresa_compra: str
-    concepto_venta: str
-    web_context: str = ""
-
-
-class ResearchRequest(BaseModel):
+class StreamRequest(BaseModel):
     empresa_vende: str
     empresa_compra: str
     concepto_venta: str
 
 
-def _web_research(empresa_vende: str, empresa_compra: str, concepto_venta: str) -> str:
-    """Run DuckDuckGo searches covering every dossier section and return a context block."""
+def _sse(obj: dict) -> str:
+    return f"data: {json.dumps(obj, ensure_ascii=False)}\n\n"
+
+
+def _stream_generate(empresa_vende: str, empresa_compra: str, concepto_venta: str):
+    from datetime import date
     try:
         from duckduckgo_search import DDGS
     except ImportError:
-        return ""
+        yield _sse({"type": "research_done", "count": 0})
+        DDGS = None
 
-    from datetime import date
     year = date.today().year
-
     queries = [
-        # Perfil general
         f"{empresa_compra} fintech que es modelo negocio",
         f"{empresa_compra} fundadores CEO historia",
-        # Mercados y clientes
         f"{empresa_compra} paises opera expansion latam",
         f"{empresa_compra} clientes segmentos mercado objetivo",
-        # Producto y propuesta de valor
         f"{empresa_compra} producto plataforma tecnologia stack",
         f"{empresa_compra} {concepto_venta}",
-        # Funding e inversores
         f"{empresa_compra} funding ronda inversion inversores {year} {year-1}",
         f"{empresa_compra} revenue crecimiento metricas",
-        # Noticias recientes y señales de mercado
         f"{empresa_compra} noticias {year}",
         f"{empresa_compra} alianzas partnerships integraciones",
-        # Competidores
         f"{empresa_compra} competidores alternativas",
         f"competidores de {empresa_compra} fintech latam",
-        # Lookalikes — empresas similares en LATAM
         f"fintechs similares a {empresa_compra} latam",
         f"empresas como {empresa_compra} latam fintech",
-        # Dolor / fricción técnica
         f"{empresa_compra} problemas desafios tecnicos operativos",
         f"{empresa_compra} {concepto_venta} integracion proveedor",
-        # Contexto del vendedor
         f"{empresa_vende} {concepto_venta} latam",
         f"{empresa_vende} clientes casos de uso fintech",
     ]
 
-    snippets = []
-    seen_urls = set()
-    # Keywords that must appear in title or body for a result to be relevant
     keywords = {empresa_compra.lower(), empresa_vende.lower()} | {
         w.lower() for w in concepto_venta.split() if len(w) > 3
     }
@@ -86,25 +71,53 @@ def _web_research(empresa_vende: str, empresa_compra: str, concepto_venta: str) 
         text = (r.get("title", "") + " " + r.get("body", "")).lower()
         return any(kw in text for kw in keywords)
 
-    try:
-        with DDGS() as ddgs:
-            for q in queries:
-                try:
-                    results = ddgs.text(q, max_results=5)
-                    for r in results:
-                        if r["href"] not in seen_urls and is_relevant(r):
-                            seen_urls.add(r["href"])
-                            snippets.append(f"- [{r['title']}]({r['href']}): {r['body']}")
-                except Exception:
-                    continue
-                time.sleep(0.3)
-    except Exception:
-        return ""
+    snippets = []
+    seen_urls = set()
 
-    if not snippets:
-        return ""
+    if DDGS:
+        try:
+            with DDGS() as ddgs:
+                for q in queries:
+                    if len(snippets) >= 40:
+                        break
+                    try:
+                        for r in ddgs.text(q, max_results=5):
+                            if r["href"] not in seen_urls and is_relevant(r):
+                                seen_urls.add(r["href"])
+                                snippet_line = f"- [{r['title']}]({r['href']}): {r['body']}"
+                                snippets.append(snippet_line)
+                                yield _sse({"type": "snippet", "title": r["title"], "url": r["href"], "body": r["body"]})
+                    except Exception:
+                        continue
+                    time.sleep(0.25)
+        except Exception:
+            pass
 
-    return "## CONTEXTO WEB (búsqueda reciente — usa esto para fundamentar el análisis)\n" + "\n".join(snippets[:40])
+    web_context = (
+        "## CONTEXTO WEB (búsqueda reciente — usa esto para fundamentar el análisis)\n"
+        + "\n".join(snippets[:40])
+    ) if snippets else ""
+
+    yield _sse({"type": "research_done", "count": len(snippets)})
+
+    # ── modelo ──
+    prompt = build_prompt(empresa_vende, empresa_compra, concepto_venta, web_context)
+    last_error = None
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            response = client.chat.completions.create(
+                model=OPENROUTER_MODEL,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            markdown = clean_response(response.choices[0].message.content)
+            yield _sse({"type": "done", "markdown": markdown})
+            return
+        except Exception as e:
+            last_error = str(e)
+            if attempt < MAX_RETRIES:
+                time.sleep(RETRY_DELAY)
+    yield _sse({"type": "error", "error": last_error})
+
 
 
 def build_prompt(empresa_vende: str, empresa_compra: str, concepto_venta: str, web_context: str = "") -> str:
@@ -234,33 +247,13 @@ def clean_response(text: str) -> str:
     return text
 
 
-@app.post("/api/research")
-async def research(req: ResearchRequest):
-    web_context = _web_research(req.empresa_vende, req.empresa_compra, req.concepto_venta)
-    return {"web_context": web_context}
-
-
-@app.post("/api/analyze")
-async def analyze(req: AnalysisRequest):
-    web_context = req.web_context or _web_research(req.empresa_vende, req.empresa_compra, req.concepto_venta)
-    prompt = build_prompt(req.empresa_vende, req.empresa_compra, req.concepto_venta, web_context)
-    last_error = None
-    for attempt in range(1, MAX_RETRIES + 1):
-        try:
-            response = client.chat.completions.create(
-                model=OPENROUTER_MODEL,
-                messages=[{"role": "user", "content": prompt}],
-            )
-            return {
-                "markdown": clean_response(response.choices[0].message.content),
-            }
-        except Exception as e:
-            last_error = str(e)
-            if attempt < MAX_RETRIES:
-                time.sleep(RETRY_DELAY)
-            else:
-                break
-    return JSONResponse(status_code=503, content={"error": last_error})
+@app.post("/api/stream")
+def stream(req: StreamRequest):
+    return StreamingResponse(
+        _stream_generate(req.empresa_vende, req.empresa_compra, req.concepto_venta),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 app.mount("/", StaticFiles(directory="static", html=True), name="static")
