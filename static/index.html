@@ -465,6 +465,9 @@
     }).join('');
     document.getElementById('wc-count').textContent = `${lines.length} fuentes`;
     document.getElementById('web-context-box').style.display = 'block';
+    // auto-expand
+    body.classList.add('open');
+    document.getElementById('wc-chevron').classList.add('open');
   }
 
   function toggleWebContext() {
