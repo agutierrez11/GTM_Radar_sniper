@@ -70,20 +70,20 @@ def _stream_generate(empresa_vende: str, empresa_compra: str, concepto_venta: st
         text = (r.get("title", "") + " " + r.get("body", "") + " " + r.get("href", "")).lower()
         return any(kw in text for kw in company_keywords)
 
-    snippets = []
+    snippets = []        # (title, url, body_text)
     seen_urls = set()
 
     if DDGS:
         try:
             with DDGS() as ddgs:
                 for q in queries:
-                    if len(snippets) >= 40:
+                    if len(snippets) >= 25:
                         break
                     try:
                         for r in ddgs.text(q, max_results=5):
                             if r["href"] not in seen_urls and is_relevant(r):
                                 seen_urls.add(r["href"])
-                                snippets.append(f"- [{r['title']}]({r['href']}): {r['body']}")
+                                snippets.append({"title": r["title"], "url": r["href"], "body": r["body"]})
                                 yield _sse({"type": "snippet", "title": r["title"], "url": r["href"], "body": r["body"]})
                     except Exception:
                         continue
@@ -91,10 +91,53 @@ def _stream_generate(empresa_vende: str, empresa_compra: str, concepto_venta: st
         except Exception:
             pass
 
+    # ── fetch full page content for top URLs ──
+    import httpx
+    from bs4 import BeautifulSoup
+
+    FETCH_LIMIT = 10          # max pages to fetch
+    MAX_CHARS   = 3000        # chars to keep per page
+    FETCH_TIMEOUT = 8
+
+    def _fetch_text(url: str) -> str:
+        try:
+            resp = httpx.get(
+                url,
+                timeout=FETCH_TIMEOUT,
+                follow_redirects=True,
+                headers={"User-Agent": "Mozilla/5.0 (compatible; GTMIntel/1.0)"},
+            )
+            if resp.status_code != 200:
+                return ""
+            ct = resp.headers.get("content-type", "")
+            if "html" not in ct:
+                return ""
+            soup = BeautifulSoup(resp.text, "html.parser")
+            for tag in soup(["script", "style", "nav", "footer", "header", "aside"]):
+                tag.decompose()
+            text = " ".join(soup.get_text(" ", strip=True).split())
+            return text[:MAX_CHARS]
+        except Exception:
+            return ""
+
+    context_lines = []
+    fetched = 0
+    for s in snippets:
+        if fetched >= FETCH_LIMIT:
+            # remaining snippets: use DDG body only
+            context_lines.append(f"[{s['title']}]({s['url']}): {s['body']}")
+            continue
+        full = _fetch_text(s["url"])
+        if full:
+            context_lines.append(f"[{s['title']}]({s['url']}):\n{full}")
+            fetched += 1
+        else:
+            context_lines.append(f"[{s['title']}]({s['url']}): {s['body']}")
+
     web_context = (
-        "## CONTEXTO WEB (búsqueda reciente — usa esto para fundamentar el análisis)\n"
-        + "\n".join(snippets[:40])
-    ) if snippets else ""
+        "## CONTEXTO WEB\n"
+        + "\n\n".join(context_lines)
+    ) if context_lines else ""
 
     yield _sse({"type": "research_done", "count": len(snippets)})
 
@@ -121,11 +164,12 @@ def _stream_generate(empresa_vende: str, empresa_compra: str, concepto_venta: st
 def build_prompt(empresa_vende: str, empresa_compra: str, concepto_venta: str, web_context: str = "") -> str:
     ctx_block = f"\n\n{web_context}\n\n---\n" if web_context else ""
     ctx_instruction = (
-        "1. TIENES ACCESO A RESULTADOS DE BÚSQUEDA WEB REALES inyectados al inicio de este mensaje bajo '## CONTEXTO WEB'. "
-        "Úsalos como tu FUENTE PRIMARIA. Cita datos concretos de esos resultados (nombres, fechas, cifras, URLs). "
-        "Si un dato del contexto web contradice tu conocimiento previo, prioriza el contexto web."
+        "1. SOLO puedes usar la información del '## CONTEXTO WEB' que está al inicio de este mensaje. "
+        "NO uses tu conocimiento de entrenamiento para afirmar hechos sobre las empresas. "
+        "Si un dato no está en el contexto web, escribe explícitamente 'No encontré información sobre esto en las fuentes.' "
+        "Cita siempre la URL fuente entre paréntesis al lado del dato."
     ) if web_context else (
-        "1. Usa tu conocimiento interno sobre el ecosistema fintech latinoamericano. Sé específico con datos reales conocidos."
+        "1. No tienes contexto web disponible para este análisis. Indica explícitamente qué datos son de tu conocimiento de entrenamiento y cuáles no pudiste verificar."
     )
     return f"""{ctx_block}
 Eres un analista de inteligencia comercial especializado en fintechs latinoamericanas.
