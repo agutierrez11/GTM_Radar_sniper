@@ -41,29 +41,56 @@ class AnalysisRequest(BaseModel):
     provider: Literal["qwen", "openrouter"] = "qwen"
 
 
-def _web_research(empresa_compra: str, concepto_venta: str) -> str:
-    """Run DuckDuckGo searches and return a context block to inject into the prompt."""
+def _web_research(empresa_vende: str, empresa_compra: str, concepto_venta: str) -> str:
+    """Run DuckDuckGo searches covering every dossier section and return a context block."""
     try:
         from duckduckgo_search import DDGS
     except ImportError:
         return ""
 
+    from datetime import date
+    year = date.today().year
+
     queries = [
-        f"{empresa_compra} empresa fintech",
+        # Perfil general
+        f"{empresa_compra} fintech que es modelo negocio",
+        f"{empresa_compra} fundadores CEO historia",
+        # Mercados y clientes
+        f"{empresa_compra} paises opera expansion latam",
+        f"{empresa_compra} clientes segmentos mercado objetivo",
+        # Producto y propuesta de valor
+        f"{empresa_compra} producto plataforma tecnologia stack",
         f"{empresa_compra} {concepto_venta}",
-        f"{empresa_compra} noticias 2025",
-        f"{empresa_compra} competitors funding investors",
+        # Funding e inversores
+        f"{empresa_compra} funding ronda inversion inversores {year} {year-1}",
+        f"{empresa_compra} revenue crecimiento metricas",
+        # Noticias recientes y señales de mercado
+        f"{empresa_compra} noticias {year}",
+        f"{empresa_compra} alianzas partnerships integraciones",
+        # Competidores
+        f"{empresa_compra} competidores alternativas",
+        f"competidores de {empresa_compra} fintech latam",
+        # Lookalikes — empresas similares en LATAM
+        f"fintechs similares a {empresa_compra} latam",
+        f"empresas como {empresa_compra} latam fintech",
+        # Dolor / fricción técnica
+        f"{empresa_compra} problemas desafios tecnicos operativos",
+        f"{empresa_compra} {concepto_venta} integracion proveedor",
+        # Contexto del vendedor
+        f"{empresa_vende} {concepto_venta} latam",
+        f"{empresa_vende} clientes casos de uso fintech",
     ]
 
     snippets = []
+    seen_urls = set()
     try:
         with DDGS() as ddgs:
             for q in queries:
                 try:
-                    for r in ddgs.text(q, max_results=5, timelimit="y"):
-                        line = f"- [{r['title']}]({r['href']}): {r['body']}"
-                        if line not in snippets:
-                            snippets.append(line)
+                    for r in ddgs.text(q, max_results=4, timelimit="y"):
+                        if r["href"] not in seen_urls:
+                            seen_urls.add(r["href"])
+                            snippets.append(f"- [{r['title']}]({r['href']}): {r['body']}")
                 except Exception:
                     continue
     except Exception:
@@ -72,7 +99,7 @@ def _web_research(empresa_compra: str, concepto_venta: str) -> str:
     if not snippets:
         return ""
 
-    return "## CONTEXTO WEB (búsqueda reciente)\n" + "\n".join(snippets[:20])
+    return "## CONTEXTO WEB (búsqueda reciente — usa esto para fundamentar el análisis)\n" + "\n".join(snippets[:40])
 
 
 def build_prompt(empresa_vende: str, empresa_compra: str, concepto_venta: str, web_context: str = "") -> str:
@@ -197,7 +224,7 @@ def clean_response(text: str) -> str:
 
 @app.post("/api/analyze")
 async def analyze(req: AnalysisRequest):
-    web_context = _web_research(req.empresa_compra, req.concepto_venta)
+    web_context = _web_research(req.empresa_vende, req.empresa_compra, req.concepto_venta)
     prompt = build_prompt(req.empresa_vende, req.empresa_compra, req.concepto_venta, web_context)
     if req.provider == "openrouter":
         return _run_openrouter(prompt)
