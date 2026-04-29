@@ -451,11 +451,9 @@
 
           if (evt.type === 'snippet') {
             snippetCount++;
-            // show context box on first snippet
+            // show context box on first snippet (collapsed)
             if (snippetCount === 1) {
               document.getElementById('web-context-box').style.display = 'block';
-              document.getElementById('wc-body').classList.add('open');
-              document.getElementById('wc-chevron').classList.add('open');
             }
             const div = document.createElement('div');
             div.className = 'wc-snippet';
