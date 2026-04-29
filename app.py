@@ -76,12 +76,26 @@ def _stream_generate(empresa_vende: str, empresa_compra: str, concepto_venta: st
         # Ecosystem queries — no filtrar por empresa, capturan lookalikes del sector
         (f"{concepto_venta} latam fintechs empresas startups", False),
         (f"{concepto_venta} latam proveedores competidores ecosistema", False),
+        (f"{concepto_venta} latam 2025 tendencias mercado", False),
+        (f"{concepto_venta} startups latam crunchbase 2024 2025", False),
+        (f"fintech latam {concepto_venta} lista empresas directorio", False),
         # Dolor y fricción
         (f"{empresa_compra} problemas desafios tecnicos operativos", True),
         (f"{empresa_compra} {concepto_venta} integracion desafio", True),
-        # Contexto del vendedor
+        (f"{empresa_compra} downtime incidente falla {year}", True),
+        (f"{empresa_compra} regulacion compliance riesgo", True),
+        (f"{empresa_compra} migracion cambio proveedor tecnologia", True),
+        # Señales de compra y timing
+        (f"{empresa_compra} licitacion contrato proveedor {year}", True),
+        (f"{empresa_compra} job opening CTO engineering {year}", True),
+        (f"{empresa_compra} hiring tecnologia infraestructura {year}", True),
+        # Contexto del vendedor — más variantes
         (f"{empresa_vende} {concepto_venta} latam clientes", True),
         (f"{empresa_vende} casos de uso fintech {concepto_venta}", True),
+        (f"{empresa_vende} {empresa_compra}", True),
+        (f"{empresa_vende} integraciones api {concepto_venta} latam", True),
+        (f"site:linkedin.com {empresa_compra} {concepto_venta}", True),
+        (f"site:linkedin.com {empresa_compra} proveedor tecnologia", True),
     ]
 
     company_keywords = {empresa_compra.lower(), empresa_vende.lower()}
@@ -99,7 +113,7 @@ def _stream_generate(empresa_vende: str, empresa_compra: str, concepto_venta: st
         try:
             with DDGS() as ddgs:
                 for q, apply_filter in queries:
-                    if len(snippets) >= 40:
+                    if len(snippets) >= 50:
                         break
                     try:
                         for r in ddgs.text(q, max_results=7):
