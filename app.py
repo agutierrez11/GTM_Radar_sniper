@@ -63,6 +63,13 @@ def _stream_generate(empresa_vende: str, empresa_compra: str, concepto_venta: st
         f"{empresa_vende} clientes casos de uso fintech",
     ]
 
+    # Only keep results that mention at least one of the companies by name
+    company_keywords = {empresa_compra.lower(), empresa_vende.lower()}
+
+    def is_relevant(r: dict) -> bool:
+        text = (r.get("title", "") + " " + r.get("body", "") + " " + r.get("href", "")).lower()
+        return any(kw in text for kw in company_keywords)
+
     snippets = []
     seen_urls = set()
 
@@ -74,7 +81,7 @@ def _stream_generate(empresa_vende: str, empresa_compra: str, concepto_venta: st
                         break
                     try:
                         for r in ddgs.text(q, max_results=5):
-                            if r["href"] not in seen_urls:
+                            if r["href"] not in seen_urls and is_relevant(r):
                                 seen_urls.add(r["href"])
                                 snippets.append(f"- [{r['title']}]({r['href']}): {r['body']}")
                                 yield _sse({"type": "snippet", "title": r["title"], "url": r["href"], "body": r["body"]})
