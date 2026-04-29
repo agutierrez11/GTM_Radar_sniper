@@ -78,6 +78,23 @@
     .btn:active { transform: scale(.98); }
     .btn:disabled { opacity: .35; cursor: not-allowed; }
 
+    /* ── PROVIDER TOGGLE ── */
+    .provider-toggle {
+      display: flex; gap: .5rem; margin-top: 1.25rem;
+    }
+    .provider-btn {
+      flex: 1; background: var(--bg); border: 1px solid var(--border);
+      border-radius: 7px; padding: .55rem .5rem;
+      font-family: 'JetBrains Mono', monospace; font-size: .7rem; font-weight: 500;
+      letter-spacing: .1em; text-transform: uppercase; color: var(--text-muted);
+      cursor: pointer; transition: all .2s;
+    }
+    .provider-btn.active {
+      border-color: var(--accent); color: var(--accent);
+      background: rgba(0,229,160,.06); box-shadow: 0 0 12px rgba(0,229,160,.12);
+    }
+    .provider-btn:hover:not(.active) { border-color: var(--dim); color: var(--text); }
+
     /* ── LOADING ── */
     #loading { display: none; margin-top: 2.5rem; }
     .loading-inner {
@@ -179,7 +196,7 @@
     <div class="topbar-dot"></div>
     <span class="topbar-brand">GTM INTEL</span>
   </div>
-  <span class="topbar-sub">DOSSIER FORENSE · POWERED BY GEMINI</span>
+  <span class="topbar-sub">DOSSIER FORENSE · GTM INTELLIGENCE</span>
   <span class="topbar-sub" id="clock"></span>
 </nav>
 
@@ -202,6 +219,12 @@
         <input type="text" id="concepto_venta" placeholder="ej: procesamiento de pagos y plataforma core de adquirencia" />
       </div>
     </div>
+
+    <div class="provider-toggle">
+      <button class="provider-btn active" id="prov-qwen" onclick="setProvider('qwen')">⚡ Qwen Web Search</button>
+      <button class="provider-btn" id="prov-openrouter" onclick="setProvider('openrouter')">🐱 OpenRouter (Tencent Hy3)</button>
+    </div>
+
     <button class="btn" id="analyze-btn" onclick="runAnalysis()">⚡ Generar Dossier Forense</button>
   </div>
 
@@ -224,17 +247,29 @@
   <div id="result">
     <div class="result-header">
       <span class="result-label">// dossier forense</span>
-      <button class="copy-btn" onclick="copyResult()">[ copiar markdown ]</button>
+      <div style="display:flex;gap:.5rem">
+        <button class="copy-btn" onclick="downloadMarkdown()">[ descargar markdown ]</button>
+        <button class="copy-btn" onclick="copyResult()">[ copiar markdown ]</button>
+      </div>
     </div>
     <div class="result-body">
       <div class="md" id="result-content"></div>
     </div>
   </div>
 
-  <div class="footer">GTM INTELLIGENCE OS · FINTECH LATAM · GEMINI 2.5 PRO</div>
+  <div class="footer">GTM INTELLIGENCE OS · FINTECH LATAM</div>
 </main>
 
 <script>
+  // ── PROVIDER ──
+  let selectedProvider = 'qwen';
+
+  function setProvider(p) {
+    selectedProvider = p;
+    document.getElementById('prov-qwen').classList.toggle('active', p === 'qwen');
+    document.getElementById('prov-openrouter').classList.toggle('active', p === 'openrouter');
+  }
+
   // ── CLOCK ──
   function updateClock() {
     document.getElementById('clock').textContent =
@@ -374,10 +409,13 @@
       const res = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ empresa_vende, empresa_compra, concepto_venta })
+        body: JSON.stringify({ empresa_vende, empresa_compra, concepto_venta, provider: selectedProvider })
       });
 
-      const data = await res.json();
+      const contentType = res.headers.get('content-type') || '';
+      const data = contentType.includes('application/json')
+        ? await res.json()
+        : { error: await res.text() };
 
       if (!res.ok || data.error) {
         throw new Error(data.error || `HTTP ${res.status}`);
@@ -397,14 +435,26 @@
     }
   }
 
-  // ── COPY ──
-  let rawMarkdown = '';
+  // ── COPY & DOWNLOAD ––
   async function copyResult() {
     const content = document.getElementById('result-content').innerText;
     await navigator.clipboard.writeText(content);
     const btn = document.querySelector('.copy-btn');
     btn.textContent = '[ ✓ copiado ]';
     setTimeout(() => { btn.textContent = '[ copiar markdown ]'; }, 2000);
+  }
+
+  function downloadMarkdown() {
+    const content = document.getElementById('result-content').innerText;
+    const blob = new Blob([content], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `dossier-${new Date().toISOString().split('T')[0]}.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   }
 
   // ── ENTER KEY ──

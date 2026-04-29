@@ -1,16 +1,32 @@
 import os
 import time
+from typing import Literal
 
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
-from google import genai
-from google.genai import types
-from google.genai.errors import ServerError
+from openai import OpenAI
 
-API_KEY = os.environ.get("GEMINI_API_KEY", "")
-client = genai.Client(api_key=API_KEY)
+ALIBABA_API_KEY = os.environ.get("ALIBABA_API_KEY", "")
+QWEN_BASE_URL = os.environ.get(
+    "QWEN_BASE_URL", "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
+)
+QWEN_MODEL = os.environ.get("QWEN_MODEL", "qwen3.6-plus")
+
+qwen_client = OpenAI(
+    api_key=ALIBABA_API_KEY,
+    base_url=QWEN_BASE_URL,
+)
+
+OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
+OPENROUTER_BASE_URL = os.environ.get("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
+OPENROUTER_MODEL = os.environ.get("OPENROUTER_MODEL", "tencent/hy3-preview:free")
+
+openrouter_client = OpenAI(
+    api_key=OPENROUTER_API_KEY,
+    base_url=OPENROUTER_BASE_URL,
+)
 
 MAX_RETRIES = 5
 RETRY_DELAY = 10
@@ -22,6 +38,7 @@ class AnalysisRequest(BaseModel):
     empresa_vende: str
     empresa_compra: str
     concepto_venta: str
+    provider: Literal["qwen", "openrouter"] = "qwen"
 
 
 def build_prompt(empresa_vende: str, empresa_compra: str, concepto_venta: str) -> str:
@@ -134,28 +151,57 @@ Investiga a fondo a {empresa_compra} y devuelve tu análisis SIEMPRE en el sigui
 """
 
 
+def clean_response(text: str) -> str:
+    """Strip any model preamble before the first markdown heading."""
+    import re
+    match = re.search(r"^##\s", text, re.MULTILINE)
+    if match:
+        return text[match.start():]
+    return text
+
+
 @app.post("/api/analyze")
 async def analyze(req: AnalysisRequest):
     prompt = build_prompt(req.empresa_vende, req.empresa_compra, req.concepto_venta)
-    last_error = None
+    if req.provider == "openrouter":
+        return _run_openrouter(prompt)
+    return _run_qwen(prompt)
 
+
+def _run_qwen(prompt: str):
+    last_error = None
     for attempt in range(1, MAX_RETRIES + 1):
         try:
-            response = client.models.generate_content(
-                model="gemini-2.5-pro",
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    tools=[types.Tool(google_search=types.GoogleSearch())]
-                ),
+            response = qwen_client.chat.completions.create(
+                model=QWEN_MODEL,
+                messages=[{"role": "user", "content": prompt}],
+                extra_body={"enable_search": True},
             )
-            return {"markdown": response.text}
-        except ServerError as e:
+            return {"markdown": clean_response(response.choices[0].message.content)}
+        except Exception as e:
             last_error = str(e)
-            if "503" in str(e) and attempt < MAX_RETRIES:
+            if attempt < MAX_RETRIES:
                 time.sleep(RETRY_DELAY)
             else:
                 break
+    return JSONResponse(status_code=503, content={"error": last_error})
 
+
+def _run_openrouter(prompt: str):
+    last_error = None
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            response = openrouter_client.chat.completions.create(
+                model=OPENROUTER_MODEL,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            return {"markdown": clean_response(response.choices[0].message.content)}
+        except Exception as e:
+            last_error = str(e)
+            if attempt < MAX_RETRIES:
+                time.sleep(RETRY_DELAY)
+            else:
+                break
     return JSONResponse(status_code=503, content={"error": last_error})
 
 
