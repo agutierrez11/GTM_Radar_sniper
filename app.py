@@ -42,46 +42,68 @@ def _stream_generate(empresa_vende: str, empresa_compra: str, concepto_venta: st
         DDGS = None
 
     year = date.today().year
+    # Tuples of (query, apply_company_filter)
     queries = [
-        f"{empresa_compra} fintech que es modelo negocio",
-        f"{empresa_compra} fundadores CEO historia",
-        f"{empresa_compra} paises opera expansion latam",
-        f"{empresa_compra} clientes segmentos mercado objetivo",
-        f"{empresa_compra} producto plataforma tecnologia stack",
-        f"{empresa_compra} {concepto_venta}",
-        f"{empresa_compra} funding ronda inversion inversores {year} {year-1}",
-        f"{empresa_compra} revenue crecimiento metricas",
-        f"{empresa_compra} noticias {year}",
-        f"{empresa_compra} alianzas partnerships integraciones",
-        f"{empresa_compra} competidores alternativas",
-        f"competidores de {empresa_compra} fintech latam",
-        f"fintechs similares a {empresa_compra} latam",
-        f"empresas como {empresa_compra} latam fintech",
-        f"{empresa_compra} problemas desafios tecnicos operativos",
-        f"{empresa_compra} {concepto_venta} integracion proveedor",
-        f"{empresa_vende} {concepto_venta} latam",
-        f"{empresa_vende} clientes casos de uso fintech",
+        # Perfil general
+        (f"{empresa_compra} fintech que es modelo negocio", True),
+        (f"{empresa_compra} fundadores CEO historia", True),
+        (f"{empresa_compra} crunchbase funding investors", True),
+        (f"{empresa_compra} linkedin empresa perfil", True),
+        # Mercados y clientes
+        (f"{empresa_compra} paises opera expansion latam", True),
+        (f"{empresa_compra} clientes segmentos mercado objetivo", True),
+        (f"{empresa_compra} casos de uso clientes referencias {year}", True),
+        # Producto y propuesta de valor
+        (f"{empresa_compra} producto plataforma tecnologia stack", True),
+        (f"{empresa_compra} {concepto_venta}", True),
+        (f"{empresa_compra} proveedores tecnologia integraciones api", True),
+        (f"{empresa_compra} {concepto_venta} proveedor actual procesador", True),
+        # Funding y métricas
+        (f"{empresa_compra} funding ronda inversion inversores {year} {year-1}", True),
+        (f"{empresa_compra} revenue crecimiento metricas ARR", True),
+        # Noticias y señales
+        (f"{empresa_compra} noticias {year}", True),
+        (f"{empresa_compra} press release comunicado {year}", True),
+        (f"{empresa_compra} expansion nuevos mercados {year}", True),
+        (f"{empresa_compra} alianzas partnerships integraciones", True),
+        # Competidores y lookalikes
+        (f"{empresa_compra} competidores alternativas", True),
+        (f"competidores de {empresa_compra} fintech latam", True),
+        (f"fintechs similares a {empresa_compra} latam", True),
+        (f"empresas como {empresa_compra} latam fintech", True),
+        (f"site:latamfintech.co {empresa_compra}", True),
+        (f"site:finnovista.com {empresa_compra}", True),
+        # Ecosystem queries — no filtrar por empresa, capturan lookalikes del sector
+        (f"{concepto_venta} latam fintechs empresas startups", False),
+        (f"{concepto_venta} latam proveedores competidores ecosistema", False),
+        # Dolor y fricción
+        (f"{empresa_compra} problemas desafios tecnicos operativos", True),
+        (f"{empresa_compra} {concepto_venta} integracion desafio", True),
+        # Contexto del vendedor
+        (f"{empresa_vende} {concepto_venta} latam clientes", True),
+        (f"{empresa_vende} casos de uso fintech {concepto_venta}", True),
     ]
 
-    # Only keep results that mention at least one of the companies by name
     company_keywords = {empresa_compra.lower(), empresa_vende.lower()}
 
-    def is_relevant(r: dict) -> bool:
+    def is_relevant(r: dict, apply_filter: bool) -> bool:
+        if not apply_filter:
+            return True
         text = (r.get("title", "") + " " + r.get("body", "") + " " + r.get("href", "")).lower()
         return any(kw in text for kw in company_keywords)
 
-    snippets = []        # (title, url, body_text)
+    snippets = []
     seen_urls = set()
 
     if DDGS:
         try:
             with DDGS() as ddgs:
-                for q in queries:
-                    if len(snippets) >= 25:
+                for q, apply_filter in queries:
+                    if len(snippets) >= 40:
                         break
                     try:
-                        for r in ddgs.text(q, max_results=5):
-                            if r["href"] not in seen_urls and is_relevant(r):
+                        for r in ddgs.text(q, max_results=7):
+                            if r["href"] not in seen_urls and is_relevant(r, apply_filter):
                                 seen_urls.add(r["href"])
                                 snippets.append({"title": r["title"], "url": r["href"], "body": r["body"]})
                                 yield _sse({"type": "snippet", "title": r["title"], "url": r["href"], "body": r["body"]})
