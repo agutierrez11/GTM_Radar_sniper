@@ -21,7 +21,7 @@ qwen_client = OpenAI(
 
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
 OPENROUTER_BASE_URL = os.environ.get("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
-OPENROUTER_MODEL = os.environ.get("OPENROUTER_MODEL", "tencent/hy3-preview:free")
+OPENROUTER_MODEL = os.environ.get("OPENROUTER_MODEL", "tencent/hy3-preview:free:online")
 
 openrouter_client = OpenAI(
     api_key=OPENROUTER_API_KEY,
