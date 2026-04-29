@@ -77,16 +77,27 @@ def _web_research(empresa_vende: str, empresa_compra: str, concepto_venta: str) 
 
     snippets = []
     seen_urls = set()
+    # Keywords that must appear in title or body for a result to be relevant
+    keywords = {empresa_compra.lower(), empresa_vende.lower()} | {
+        w.lower() for w in concepto_venta.split() if len(w) > 3
+    }
+
+    def is_relevant(r: dict) -> bool:
+        text = (r.get("title", "") + " " + r.get("body", "")).lower()
+        return any(kw in text for kw in keywords)
+
     try:
         with DDGS() as ddgs:
             for q in queries:
                 try:
-                    for r in ddgs.text(q, max_results=4, timelimit="y"):
-                        if r["href"] not in seen_urls:
+                    results = ddgs.text(q, max_results=5)
+                    for r in results:
+                        if r["href"] not in seen_urls and is_relevant(r):
                             seen_urls.add(r["href"])
                             snippets.append(f"- [{r['title']}]({r['href']}): {r['body']}")
                 except Exception:
                     continue
+                time.sleep(0.3)
     except Exception:
         return ""
 
