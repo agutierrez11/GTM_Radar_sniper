@@ -127,11 +127,12 @@ def _stream_generate(empresa_vende: str, empresa_compra: str, concepto_venta: st
         except Exception:
             pass
 
-    # ── fetch full page content for top URLs ──
+    # ── fetch full page content in parallel ──
     import httpx
     from bs4 import BeautifulSoup
+    from concurrent.futures import ThreadPoolExecutor, as_completed
 
-    FETCH_TIMEOUT = 8
+    FETCH_TIMEOUT = 5
     MAX_CHARS   = 3000
 
     def _fetch_text(url: str) -> str:
@@ -155,9 +156,17 @@ def _stream_generate(empresa_vende: str, empresa_compra: str, concepto_venta: st
         except Exception:
             return ""
 
+    # Fetch all URLs in parallel (max 10 workers)
+    fetched = {}
+    with ThreadPoolExecutor(max_workers=10) as pool:
+        future_to_s = {pool.submit(_fetch_text, s["url"]): s for s in snippets}
+        for future in as_completed(future_to_s):
+            s = future_to_s[future]
+            fetched[s["url"]] = future.result()
+
     context_lines = []
     for s in snippets:
-        full = _fetch_text(s["url"])
+        full = fetched.get(s["url"], "")
         if full:
             context_lines.append(f"[{s['title']}]({s['url']}):\n{full}")
         else:

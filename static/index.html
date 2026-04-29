@@ -478,7 +478,11 @@
 
     } catch (err) {
       const errEl = document.getElementById('error');
-      errEl.textContent = `ERROR: ${err.message}`;
+      let msg = err.message || 'Error desconocido';
+      if (msg === 'Failed to fetch' || msg === 'network error' || msg === 'Load failed') {
+        msg = 'La conexión se interrumpió. Puede que el análisis esté tardando demasiado. Intenta de nuevo o reduce el número de fuentes.';
+      }
+      errEl.textContent = `ERROR: ${msg}`;
       errEl.style.display = 'block';
     } finally {
       stopMessages();
