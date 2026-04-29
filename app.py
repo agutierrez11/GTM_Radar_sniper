@@ -36,7 +36,7 @@ def _sse(obj: dict) -> str:
 def _stream_generate(empresa_vende: str, empresa_compra: str, concepto_venta: str):
     from datetime import date
     try:
-        from duckduckgo_search import DDGS
+        from ddgs import DDGS
     except ImportError:
         yield _sse({"type": "research_done", "count": 0})
         DDGS = None
