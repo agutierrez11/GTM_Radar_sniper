@@ -2,7 +2,7 @@ import os
 import time
 import json
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
@@ -10,18 +10,28 @@ from openai import OpenAI
 
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
 OPENROUTER_BASE_URL = os.environ.get("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
-OPENROUTER_MODEL = os.environ.get("OPENROUTER_MODEL", "tencent/hy3-preview:free")
 
 client = OpenAI(
     api_key=OPENROUTER_API_KEY,
     base_url=OPENROUTER_BASE_URL,
 )
 
-MAX_RETRIES = 5
-RETRY_DELAY = 10
+MAX_RETRIES_PER_MODEL = 2
+RETRY_DELAY_SECONDS = 2
+MODEL_ATTEMPT_TIMEOUT_SECONDS = 40
+REQUEST_BUDGET_SECONDS = 560
 
 app = FastAPI()
 
+# Define fallback models
+FALLBACK_MODELS = [
+    "gemma-4-31b-it:free",
+    "openrouter/owl-alpha:free",
+    "nvidia/nemotron-3-super:free",
+    "poolside/laguna-m1:free",
+    "openai/gpt-oss-120b:free",
+    "z-ai/glm-4-5-air:free",
+]
 
 class StreamRequest(BaseModel):
     empresa_vende: str
@@ -29,17 +39,83 @@ class StreamRequest(BaseModel):
     concepto_venta: str
 
 
+class GenerateRequest(BaseModel):
+    empresa_vende: str
+    empresa_compra: str
+    concepto_venta: str
+    web_context: str
+
+
 def _sse(obj: dict) -> str:
     return f"data: {json.dumps(obj, ensure_ascii=False)}\n\n"
 
 
-def _stream_generate(empresa_vende: str, empresa_compra: str, concepto_venta: str):
+def _normalize_url_candidate(value: str) -> str | None:
+    from urllib.parse import urlparse
+
+    candidate = value.strip()
+    if not candidate or " " in candidate:
+        return None
+
+    try:
+        parsed = urlparse(candidate)
+        if parsed.scheme in {"http", "https"} and parsed.netloc:
+            return candidate
+    except Exception:
+        pass
+
+    try:
+        parsed = urlparse(f"https://{candidate}")
+        if parsed.netloc and "." in parsed.netloc:
+            return f"https://{candidate}"
+    except Exception:
+        pass
+
+    return None
+
+
+def _extract_title_from_url(url: str) -> str | None:
+    import httpx
+    from bs4 import BeautifulSoup
+
+    normalized_url = _normalize_url_candidate(url)
+    if normalized_url is None:
+        return None
+
+    try:
+        resp = httpx.get(
+            normalized_url,
+            timeout=5,
+            follow_redirects=True,
+            headers={"User-Agent": "Mozilla/5.0 (compatible; GTMIntel/1.0)"},
+        )
+        if resp.status_code != 200:
+            return None
+        soup = BeautifulSoup(resp.text, "html.parser")
+        title = soup.find("title")
+        if title and title.string:
+            cleaned = title.string.strip()
+            return cleaned or None
+        return None
+    except Exception:
+        return None
+
+def _normalize_company_name(text: str) -> str:
+    extracted_title = _extract_title_from_url(text)
+    if extracted_title:
+        return extracted_title
+    return text
+
+def _prepare_stream(empresa_vende: str, empresa_compra: str, concepto_venta: str):
     from datetime import date
     try:
         from ddgs import DDGS
     except ImportError:
         yield _sse({"type": "research_done", "count": 0})
         DDGS = None
+
+    empresa_vende = _normalize_company_name(empresa_vende)
+    empresa_compra = _normalize_company_name(empresa_compra)
 
     year = date.today().year
     # Tuples of (query, apply_company_filter)
@@ -66,19 +142,21 @@ def _stream_generate(empresa_vende: str, empresa_compra: str, concepto_venta: st
         (f"{empresa_compra} press release comunicado {year}", True),
         (f"{empresa_compra} expansion nuevos mercados {year}", True),
         (f"{empresa_compra} alianzas partnerships integraciones", True),
-        # Competidores y lookalikes
-        (f"{empresa_compra} competidores alternativas", True),
-        (f"competidores de {empresa_compra} fintech latam", True),
-        (f"fintechs similares a {empresa_compra} latam", True),
-        (f"empresas como {empresa_compra} latam fintech", True),
-        (f"site:latamfintech.co {empresa_compra}", True),
-        (f"site:finnovista.com {empresa_compra}", True),
-        # Ecosystem queries — no filtrar por empresa, capturan lookalikes del sector
-        (f"{concepto_venta} latam fintechs empresas startups", False),
-        (f"{concepto_venta} latam proveedores competidores ecosistema", False),
-        (f"{concepto_venta} latam 2025 tendencias mercado", False),
-        (f"{concepto_venta} startups latam crunchbase 2024 2025", False),
-        (f"fintech latam {concepto_venta} lista empresas directorio", False),
+        # Competidores y lookalikes de la VENTA
+        (f"{empresa_vende} competidores alternativas", True),
+        (f"competidores de {empresa_vende} fintech latam", True),
+        (f"fintechs similares a {empresa_vende} latam", True),
+        (f"empresas como {empresa_vende} latam fintech", True),
+        (f"site:latamfintech.co {empresa_vende}", True),
+        (f"site:finnovista.com {empresa_vende}", True),
+        # Competidores del vendedor: búsquedas directas de alternativas
+        (f"{empresa_vende} vs competencia", True),
+        (f"{empresa_vende} alternativas mejores opciones", True),
+        (f"{concepto_venta} competidores empresas similares", False),
+        (f"{concepto_venta} empresas alternativas a {empresa_vende}", False),
+        (f"mejores {concepto_venta} similares a {empresa_vende}", False),
+        (f"{concepto_venta} {empresa_vende} competencia directa", False),
+        (f"crunchbase {empresa_vende} competitors", False),
         # Dolor y fricción
         (f"{empresa_compra} problemas desafios tecnicos operativos", True),
         (f"{empresa_compra} {concepto_venta} integracion desafio", True),
@@ -192,25 +270,48 @@ def _stream_generate(empresa_vende: str, empresa_compra: str, concepto_venta: st
         + "\n\n".join(context_lines)
     ) if context_lines else ""
 
-    yield _sse({"type": "model_started"})
+    yield _sse({"type": "prepare_complete", "web_context": web_context})
 
-    # ── modelo ──
-    prompt = build_prompt(empresa_vende, empresa_compra, concepto_venta, web_context)
-    last_error = None
-    for attempt in range(1, MAX_RETRIES + 1):
-        try:
-            response = client.chat.completions.create(
-                model=OPENROUTER_MODEL,
-                messages=[{"role": "user", "content": prompt}],
-            )
-            markdown = clean_response(response.choices[0].message.content)
-            yield _sse({"type": "done", "markdown": markdown})
-            return
-        except Exception as e:
-            last_error = str(e)
-            if attempt < MAX_RETRIES:
-                time.sleep(RETRY_DELAY)
-    yield _sse({"type": "error", "error": last_error})
+
+def generate_markdown(req: GenerateRequest) -> str:
+    prompt = build_prompt(req.empresa_vende, req.empresa_compra, req.concepto_venta, req.web_context)
+    last_error: str | None = None
+    deadline = time.monotonic() + REQUEST_BUDGET_SECONDS
+
+    def should_retry(error_text: str) -> bool:
+        lower = error_text.lower()
+        non_retryable_signatures = (
+            "not found",
+            "invalid model",
+            "unknown model",
+            "does not exist",
+        )
+        return not any(signature in lower for signature in non_retryable_signatures)
+
+    for model in FALLBACK_MODELS:
+        if time.monotonic() >= deadline:
+            break
+        for attempt in range(1, MAX_RETRIES_PER_MODEL + 1):
+            try:
+                response = client.chat.completions.create(
+                    model=model,
+                    messages=[{"role": "user", "content": prompt}],
+                    timeout=MODEL_ATTEMPT_TIMEOUT_SECONDS,
+                )
+                content = response.choices[0].message.content
+                if content is None:
+                    raise RuntimeError("El modelo devolvió contenido vacío")
+                return clean_response(content)
+            except Exception as e:
+                last_error = str(e)
+                if not should_retry(last_error):
+                    break
+                if attempt < MAX_RETRIES_PER_MODEL and time.monotonic() < deadline:
+                    time.sleep(RETRY_DELAY_SECONDS)
+
+    if time.monotonic() >= deadline:
+        raise HTTPException(status_code=504, detail="Tiempo agotado al intentar modelos de fallback")
+    raise HTTPException(status_code=502, detail=last_error or "Sin respuesta del proveedor")
 
 
 
@@ -287,7 +388,7 @@ Investiga a fondo a {empresa_compra} y devuelve tu análisis SIEMPRE en el sigui
 
 ---
 
-## ⚔️ Competidores de {empresa_compra}
+## ⚔️ Competidores de {empresa_vende}
 - Empresa — País — Por qué compite
 
 ---
@@ -330,13 +431,40 @@ def clean_response(text: str) -> str:
     return text
 
 
-@app.post("/api/stream")
-def stream(req: StreamRequest):
+@app.post("/api/prepare-stream")
+def prepare_stream(req: StreamRequest):
+    """Solo websearch + webfetch por SSE. El cliente llama después a POST /api/generate."""
     return StreamingResponse(
-        _stream_generate(req.empresa_vende, req.empresa_compra, req.concepto_venta),
+        _prepare_stream(req.empresa_vende, req.empresa_compra, req.concepto_venta),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+@app.post("/api/generate")
+def generate(req: GenerateRequest):
+    """Una sola llamada HTTP request/response al modelo (sin SSE)."""
+    normalized_req = GenerateRequest(
+        empresa_vende=_normalize_company_name(req.empresa_vende),
+        empresa_compra=_normalize_company_name(req.empresa_compra),
+        concepto_venta=req.concepto_venta,
+        web_context=req.web_context,
+    )
+    markdown = generate_markdown(normalized_req)
+    return {"markdown": markdown}
+
+
+class ExtractTitleRequest(BaseModel):
+    url: str
+
+
+@app.post("/api/extract-title")
+def extract_title(req: ExtractTitleRequest):
+    """Extract title from a URL."""
+    title = _extract_title_from_url(req.url)
+    if not title:
+        return {"success": False, "title": None, "error": "No se pudo extraer el título"}
+    return {"success": True, "title": title}
 
 
 app.mount("/", StaticFiles(directory="static", html=True), name="static")

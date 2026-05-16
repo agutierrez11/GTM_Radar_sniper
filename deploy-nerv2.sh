@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Deploy de gtm-intel a nerv2.equalitech.xyz (EasyEngine)
-# Uso: bash scripts/deploy-nerv2.sh
-# Solo verificar: VERIFY_ONLY=1 bash scripts/deploy-nerv2.sh
-set -euo pipefail
+# Uso: bash deploy-nerv2.sh
+# Solo verificar: VERIFY_ONLY=1 bash deploy-nerv2.sh
+set -eu
 
 REMOTE="${DEPLOY_REMOTE:-root@equalitech.xyz}"
 REMOTE_DIR="${DEPLOY_REMOTE_DIR:-/root/gtm-intel}"

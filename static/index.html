@@ -64,6 +64,23 @@
       box-shadow: 0 0 0 3px rgba(0,229,160,.1);
     }
     input::placeholder, textarea::placeholder { color: var(--dim); }
+    input.url-loading {
+      border-color: var(--accent2);
+      box-shadow: 0 0 0 3px rgba(0,180,216,.1);
+      padding-right: 2.5rem;
+    }
+    input.url-error {
+      border-color: var(--danger);
+      box-shadow: 0 0 0 3px rgba(255,68,102,.1);
+    }
+    .input-wrapper { position: relative; display: flex; align-items: stretch; }
+    .url-loader {
+      position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+      width: 16px; height: 16px; border: 2px solid rgba(0,229,160,.3);
+      border-top-color: var(--accent2); border-radius: 50%;
+      animation: spin .6s linear infinite; display: none;
+    }
+    .url-loader.show { display: block; }
 
     .btn {
       margin-top: 1.5rem; width: 100%;
@@ -216,11 +233,17 @@
     <div class="fields">
       <div>
         <label for="empresa_vende">¿Quién vende?</label>
-        <input type="text" id="empresa_vende" placeholder="ej: Fiserv" />
+        <div class="input-wrapper">
+          <input type="text" id="empresa_vende" placeholder="ej: Fiserv o https://fiserv.com" />
+          <div class="url-loader" id="loader-vende"></div>
+        </div>
       </div>
       <div>
         <label for="empresa_compra">¿A quién le vende?</label>
-        <input type="text" id="empresa_compra" placeholder="ej: Deuna" />
+        <div class="input-wrapper">
+          <input type="text" id="empresa_compra" placeholder="ej: Deuna o https://deuna.io" />
+          <div class="url-loader" id="loader-compra"></div>
+        </div>
       </div>
       <div class="field-full">
         <label for="concepto_venta">¿Qué quiere vender?</label>
@@ -288,70 +311,52 @@
   updateClock();
 
   // ── LOADING MESSAGES ──
-  const MESSAGES = [
+  // Solo en fase modelo (tras fetch_done). Sin verbos de “ir a buscar datos”: consultar / buscar / cruzar (ni variantes tipo triangulación de fuentes).
+  const LOADING_MESSAGES = [
     "Escaneando ecosistema fintech latinoamericano...",
-    "Consultando señales de mercado en tiempo real...",
     "Triangulando posición competitiva del target...",
     "Ejecutando análisis forense de la cuenta...",
-    "Identificando lookalikes en 6 mercados LATAM...",
     "Procesando señales de crecimiento y funding...",
     "Evaluando stack tecnológico del prospecto...",
-    "Cruzando datos de Crunchbase y Latamfintech...",
     "Calculando fricción técnica y dolor financiero...",
     "Verificando rondas de inversión recientes...",
     "Analizando movimientos estratégicos del mercado...",
     "Construyendo dossier de estrategia...",
-    "Aplicando metodología RaiSE v3...",
     "Identificando competidores y socios potenciales...",
     "Formulando apertura de reunión optimizada...",
     "Detectando sesgo y validando hipótesis forense...",
-    "Buscando en Finnovista, F10 y CB Insights...",
     "Generando Schwerpunkt y flanqueo táctico...",
     "Compilando leads calificados para el equipo comercial...",
     "Redactando veredicto final del dossier...",
-    "Rastreando últimas noticias del prospecto...",
-    "Verificando presencia en LinkedIn y redes...",
     "Analizando perfil de decisores clave...",
-    "Consultando base de datos de fintechs LATAM...",
     "Mapeando cadena de valor del sector...",
     "Evaluando madurez regulatoria del mercado objetivo...",
-    "Cruzando señales de contratación y vacantes abiertas...",
     "Detectando expansión geográfica reciente...",
     "Analizando partnerships y alianzas estratégicas...",
     "Verificando historial de integraciones tecnológicas...",
-    "Consultando reportes de Mastercard Economics Institute...",
     "Procesando datos de BID Lab y IFC...",
     "Escaneando cobertura de prensa financiera...",
-    "Buscando señales de dolor en foros técnicos...",
     "Calibrando ICP Score del prospecto...",
-    "Triangulando datos de múltiples fuentes abiertas...",
     "Analizando modelo de monetización y unit economics...",
     "Detectando cambios recientes en liderazgo ejecutivo...",
     "Validando presencia en ferias y eventos del sector...",
     "Procesando menciones en medios especializados...",
     "Evaluando penetración de mercado actual...",
-    "Consultando benchmarks de la industria...",
-    "Cruzando datos de App Store y Play Store...",
     "Analizando velocidad de crecimiento de usuarios...",
     "Verificando cumplimiento regulatorio por país...",
-    "Buscando patrones de churn en el segmento...",
     "Mapeando ecosistema de proveedores del target...",
     "Analizando estructura de precios y márgenes...",
     "Detectando señales de stress financiero...",
-    "Consultando trackers de rondas de inversión...",
     "Evaluando potencial de expansión cross-border...",
     "Procesando inteligencia competitiva del sector...",
     "Identificando ventanas de oportunidad táctica...",
     "Verificando integraciones con procesadores actuales...",
     "Analizando dependencias tecnológicas críticas...",
-    "Consultando whitepapers y research reports...",
-    "Cruzando base de datos de Finnovista Fintech Radar...",
     "Evaluando posicionamiento en el mercado local...",
     "Detectando movimientos de fundraising recientes...",
     "Analizando estrategia de go-to-market del prospecto...",
     "Verificando contratos gubernamentales y licitaciones...",
     "Procesando feedback de clientes en Trustpilot y G2...",
-    "Consultando fuentes de inteligencia de Latam Fintech Hub...",
     "Triangulando dolor operativo con oferta comercial...",
     "Generando argumentario de venta personalizado...",
     "Analizando timing óptimo para el acercamiento...",
@@ -363,7 +368,6 @@
     "Construyendo narrativa de valor diferencial...",
     "Procesando contexto macroeconómico regional...",
     "Analizando tasas de interés y su impacto en el sector...",
-    "Consultando últimas resoluciones regulatorias CNBV, SBS, Banco de la República...",
     "Evaluando impacto de open banking en el target...",
     "Verificando roadmap público de producto...",
     "Detectando brechas entre capacidad actual y ambición estratégica...",
@@ -378,15 +382,16 @@
   let msgIndex = 0;
 
   function startMessages() {
+    stopMessages();
     msgIndex = 0;
     const el = document.getElementById('loading-msg');
-    el.textContent = MESSAGES[0];
+    el.textContent = LOADING_MESSAGES[0];
 
     msgInterval = setInterval(() => {
       el.classList.add('fade');
       setTimeout(() => {
-        msgIndex = (msgIndex + 1) % MESSAGES.length;
-        el.textContent = MESSAGES[msgIndex];
+        msgIndex = (msgIndex + 1) % LOADING_MESSAGES.length;
+        el.textContent = LOADING_MESSAGES[msgIndex];
         el.classList.remove('fade');
       }, 350);
     }, 3200);
@@ -396,14 +401,144 @@
     if (msgInterval) { clearInterval(msgInterval); msgInterval = null; }
   }
 
+  // ── URL DETECTION & TITLE EXTRACTION ──
+  const COMPANY_INPUTS = [
+    { inputId: 'empresa_vende', loaderId: 'loader-vende' },
+    { inputId: 'empresa_compra', loaderId: 'loader-compra' }
+  ];
+  const URL_LIKE_PATTERN = /^(?:https?:\/\/)?(?:www\.)?[a-z0-9-]+(?:\.[a-z0-9-]+)+(?:[/:?#].*)?$/i;
+  const pendingUrlResolutions = new Map();
+
+  function looksLikeUrl(value) {
+    return URL_LIKE_PATTERN.test(value.trim());
+  }
+
+  function normalizeUrlCandidate(value) {
+    const trimmed = value.trim();
+    if (!looksLikeUrl(trimmed)) return null;
+
+    try {
+      const parsed = new URL(trimmed);
+      if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+        return parsed.href;
+      }
+      return null;
+    } catch (_) {
+      try {
+        return new URL(`https://${trimmed}`).href;
+      } catch (__){
+        return null;
+      }
+    }
+  }
+
+  async function resolveCompanyInput(inputId, loaderId) {
+    if (pendingUrlResolutions.has(inputId)) {
+      return pendingUrlResolutions.get(inputId);
+    }
+
+    const input = document.getElementById(inputId);
+    const loader = document.getElementById(loaderId);
+
+    const task = (async () => {
+      const rawValue = input.value.trim();
+      input.classList.remove('url-error');
+
+      if (!rawValue || !looksLikeUrl(rawValue)) {
+        input.classList.remove('url-loading');
+        loader.classList.remove('show');
+        return { status: 'skipped' };
+      }
+
+      const normalizedUrl = normalizeUrlCandidate(rawValue);
+      if (!normalizedUrl) {
+        input.classList.remove('url-loading');
+        loader.classList.remove('show');
+        input.classList.add('url-error');
+        return { status: 'invalid-url' };
+      }
+
+      loader.classList.add('show');
+      input.classList.add('url-loading');
+
+      try {
+        const res = await fetch('/api/extract-title', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: normalizedUrl })
+        });
+
+        let data = null;
+        try {
+          data = await res.json();
+        } catch (_) {
+          data = null;
+        }
+
+        if (res.ok && data && data.success && data.title) {
+          input.value = data.title;
+          input.classList.remove('url-loading');
+          loader.classList.remove('show');
+          return { status: 'resolved' };
+        }
+
+        input.classList.remove('url-loading');
+        loader.classList.remove('show');
+        input.classList.add('url-error');
+        return { status: 'invalid-url' };
+      } catch (_) {
+        input.classList.remove('url-loading');
+        loader.classList.remove('show');
+        input.classList.add('url-error');
+        return { status: 'invalid-url' };
+      }
+    })();
+
+    pendingUrlResolutions.set(inputId, task);
+    try {
+      return await task;
+    } finally {
+      pendingUrlResolutions.delete(inputId);
+    }
+  }
+
+  async function resolveCompanyInputsBeforeRun() {
+    const results = await Promise.all(
+      COMPANY_INPUTS.map(({ inputId, loaderId }) => resolveCompanyInput(inputId, loaderId))
+    );
+
+    if (results.some((result) => result.status === 'invalid-url')) {
+      throw new Error('Una URL parece inválida o no se pudo extraer el nombre de la empresa.');
+    }
+  }
+
   // ── MAIN ──
   async function runAnalysis() {
-    const empresa_vende  = document.getElementById('empresa_vende').value.trim();
-    const empresa_compra = document.getElementById('empresa_compra').value.trim();
-    const concepto_venta = document.getElementById('concepto_venta').value.trim();
+    const analyzeBtn = document.getElementById('analyze-btn');
+    if (analyzeBtn.disabled) return;
+    analyzeBtn.disabled = true;
 
-    if (!empresa_vende || !empresa_compra || !concepto_venta) {
-      alert('Completa los tres campos para generar el dossier.');
+    let empresa_vende = '';
+    let empresa_compra = '';
+    let concepto_venta = '';
+
+    try {
+      await resolveCompanyInputsBeforeRun();
+
+      empresa_vende  = document.getElementById('empresa_vende').value.trim();
+      empresa_compra = document.getElementById('empresa_compra').value.trim();
+      concepto_venta = document.getElementById('concepto_venta').value.trim();
+
+      if (!empresa_vende || !empresa_compra || !concepto_venta) {
+        alert('Completa los tres campos para generar el dossier.');
+        analyzeBtn.disabled = false;
+        return;
+      }
+    } catch (err) {
+      const errEl = document.getElementById('error');
+      errEl.textContent = err instanceof Error ? `ERROR: ${err.message}` : `ERROR: ${String(err)}`;
+      errEl.style.display = 'block';
+      analyzeBtn.disabled = false;
       return;
     }
 
@@ -416,30 +551,35 @@
     document.getElementById('wc-chevron').classList.remove('open');
     document.getElementById('wc-count').textContent          = '';
     document.getElementById('loading').style.display         = 'block';
-    document.getElementById('loading-msg').textContent       = 'Buscando información...';
-    document.getElementById('analyze-btn').disabled          = true;
+    document.querySelector('.loading-label').textContent     = 'Inteligencia comercial';
+    document.getElementById('loading-msg').textContent       = 'Iniciando secuencia de análisis...';
+    analyzeBtn.disabled                                      = true;
 
     let snippetCount = 0;
+    /** null = no llegó prepare_complete */
+    let webContext = null;
 
     try {
-      const res = await fetch('/api/stream', {
+      const res = await fetch('/api/prepare-stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ empresa_vende, empresa_compra, concepto_venta })
       });
 
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) {
+        const t = await res.text();
+        throw new Error(`POST /api/prepare-stream HTTP ${res.status}: ${t}`);
+      }
 
       const reader  = res.body.getReader();
       const decoder = new TextDecoder();
       let   buffer  = '';
 
-      while (true) {
+      prepareLoop: while (true) {
         const { done, value } = await reader.read();
         if (done) break;
         buffer += decoder.decode(value, { stream: true });
 
-        // SSE lines are separated by \n\n
         const parts = buffer.split('\n\n');
         buffer = parts.pop();
 
@@ -451,7 +591,6 @@
 
           if (evt.type === 'snippet') {
             snippetCount++;
-            // show context box on first snippet (collapsed)
             if (snippetCount === 1) {
               document.getElementById('web-context-box').style.display = 'block';
             }
@@ -472,34 +611,60 @@
             document.getElementById('loading-msg').textContent = `Obteniendo contenido web... (${evt.done}/${evt.total})`;
 
           } else if (evt.type === 'fetch_done') {
-            document.getElementById('loading-msg').textContent = 'Generando análisis...';
+            document.querySelector('.loading-label').textContent = 'Generando análisis';
             startMessages();
 
-          } else if (evt.type === 'model_started') {
-            document.getElementById('loading-msg').textContent = 'Generando análisis...';
-
-          } else if (evt.type === 'done') {
-            document.getElementById('result-content').innerHTML = marked.parse(evt.markdown);
-            document.getElementById('result').style.display = 'block';
-
-          } else if (evt.type === 'error') {
-            throw new Error(evt.error);
+          } else if (evt.type === 'prepare_complete') {
+            webContext = evt.web_context ?? '';
+            break prepareLoop;
           }
         }
       }
 
+      if (webContext === null) {
+        throw new Error('El stream /api/prepare-stream terminó sin evento prepare_complete');
+      }
+
+      const genRes = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          empresa_vende,
+          empresa_compra,
+          concepto_venta,
+          web_context: webContext
+        })
+      });
+      const genRaw = await genRes.text();
+      if (!genRes.ok) {
+        let detail = genRaw;
+        try {
+          const j = JSON.parse(genRaw);
+          if (typeof j.detail === 'string') detail = j.detail;
+          else if (j.detail !== undefined) detail = JSON.stringify(j.detail);
+        } catch (_) { /* usar genRaw */ }
+        throw new Error(`POST /api/generate HTTP ${genRes.status}: ${detail}`);
+      }
+      let genJson;
+      try {
+        genJson = JSON.parse(genRaw);
+      } catch (_) {
+        throw new Error(`POST /api/generate: respuesta no JSON (HTTP ${genRes.status}) — ${genRaw.slice(0, 1200)}`);
+      }
+      if (typeof genJson.markdown !== 'string') {
+        throw new Error(`POST /api/generate: falta markdown string en JSON — ${genRaw.slice(0, 1200)}`);
+      }
+      document.getElementById('result-content').innerHTML = marked.parse(genJson.markdown);
+      document.getElementById('result').style.display = 'block';
+
     } catch (err) {
       const errEl = document.getElementById('error');
-      let msg = err.message || 'Error desconocido';
-      if (msg === 'Failed to fetch' || msg === 'network error' || msg === 'Load failed') {
-        msg = 'La conexión se interrumpió. Puede que el análisis esté tardando demasiado. Intenta de nuevo o reduce el número de fuentes.';
-      }
-      errEl.textContent = `ERROR: ${msg}`;
+      errEl.textContent = err instanceof Error ? `ERROR: ${err.message}` : `ERROR: ${String(err)}`;
       errEl.style.display = 'block';
     } finally {
       stopMessages();
       document.getElementById('loading').style.display = 'none';
-      document.getElementById('analyze-btn').disabled  = false;
+      analyzeBtn.disabled = false;
     }
   }
 
@@ -535,9 +700,31 @@
     URL.revokeObjectURL(url);
   }
 
+  COMPANY_INPUTS.forEach(({ inputId, loaderId }) => {
+    document.getElementById(inputId).addEventListener('blur', () => {
+      resolveCompanyInput(inputId, loaderId);
+    });
+  });
+
   // ── ENTER KEY ──
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) runAnalysis();
+    if (e.key !== 'Enter') return;
+    if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
+
+    const active = document.activeElement;
+    const isInputField = active && (
+      active.id === 'empresa_vende' ||
+      active.id === 'empresa_compra' ||
+      active.id === 'concepto_venta'
+    );
+
+    if (!isInputField) return;
+
+    const analyzeBtn = document.getElementById('analyze-btn');
+    if (analyzeBtn.disabled) return;
+
+    e.preventDefault();
+    analyzeBtn.click();
   });
 </script>
 </body>
